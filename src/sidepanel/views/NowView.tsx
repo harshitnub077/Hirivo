@@ -115,7 +115,7 @@ export function NowView(props: Props) {
           isReposted: job.isReposted,
         }),
         checkLegitimacy({ domain, companyName: job.company }),
-        fitWanted ? analyzeJobFit(job.title, job.company, job.description, resume, facts).catch((e: Error) => e) : null,
+        fitWanted ? analyzeJobFit(job.title, job.company, job.description, resume, facts, { yearsExperience: settings.yearsExperience, skills: settings.skills }).catch((e: Error) => e) : null,
       ]);
       if (fit instanceof Error) setCheckError(`Fit check failed: ${fit.message}`);
       const fitResult = fit instanceof Error ? null : fit;
@@ -145,6 +145,9 @@ export function NowView(props: Props) {
               dealbreakers: fitResult.dealbreakers,
               matchingStrengths: fitResult.matchingStrengths,
               skillGaps: fitResult.skillGaps,
+              fitEvidence: fitResult.evidence,
+              // Requirement ids change between runs; keep a sprint only once it's done (its fact stays).
+              proofSprint: job.proofSprint?.completedAt ? job.proofSprint : undefined,
             }
           : {}),
         analyzedAt: Date.now(),

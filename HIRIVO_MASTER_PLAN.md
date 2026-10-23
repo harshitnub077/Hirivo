@@ -41,7 +41,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.2, built and verified)
+## 3. What exists today (v2.3, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -49,7 +49,8 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Analyze on click (JSON-LD JobPosting first, then LinkedIn, Naukri, generic), per-site permission prompt for unknown career sites | Done | `src/content/extractJob.ts`, `src/sidepanel/page.ts` |
 | Ghost-job check against the company's real Greenhouse/Lever/Ashby board, using real posting dates | Done | `src/services/ghostJobShield.ts`, `atsFeeds.ts` |
 | Company legitimacy: RDAP domain age, MX records | Done (existing) | `src/services/legitimacyScorer.ts` |
-| Honest fit score from the user's resume facts (no fallback resume, no clamping) | Done | `src/services/fitAdvisor.ts` |
+| Fit v2: requirements extracted, each matched to one resume fact, score computed in code (musts ×2, nice ×1); guards against invented requirements, fake fact ids and missing years; evidence table in the UI | Done (Phase B) | `src/services/fitAdvisor.ts`, `views/FitPanel.tsx` |
+| Proof Sprint: 3–7 day project for the biggest must-have gap on 40–70 fits; finishing adds a citable resume fact and rescores | Done (Phase B) | `src/services/proofSprint.ts`, `views/FitPanel.tsx` |
 | Proof-linked writer, grounding re-checked on every edit, cliché linter with India-specific rules | Done | `proofWriter.ts`, `phraseLinter.ts`, `views/WritePanel.tsx` |
 | Warm path from the LinkedIn `Connections.csv` export; email-pattern guesses (labelled) | Done | `warmPathMatcher.ts`, `views/PeoplePanel.tsx` |
 | Send via prefilled Gmail compose (no OAuth); LinkedIn note copy and log | Done | `src/services/outreach.ts` |
@@ -64,7 +65,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Apply flow: auto-fill ATS forms on open, attach resume file, detect confirmation, mark applied | Done | `src/content/index.ts`, `src/content/formFill.ts` |
 | Scam Shield: fees, OTP/bank requests, task-job wording, extreme pay, personal recruiter emails, chat-app-only contact, pressure tactics; quoted reasons; feeds the Safety pill | Done (Phase A) | `src/services/scamShield.ts` |
 | Repost fingerprint: SHA-256 of normalised description in `fingerprints` (schema v5); same-site reposts and re-dated listings | Done (Phase A) | `src/services/repostFingerprint.ts` |
-| Tests: 82 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Tests: 92 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
@@ -106,7 +107,7 @@ Paste each prompt as is. Each one assumes the rules in section 1 and ends with a
 > - A real Razorpay posting shows Clear.
 > - No network calls beyond RDAP and DoH.
 
-### Phase B: Evidence-table fit and Proof Sprint
+### Phase B: Evidence-table fit and Proof Sprint — ✅ done in v2.3
 
 > Replace the single-prompt fit check in `src/services/fitAdvisor.ts` with a two-step check that uses `routeLLMRequest`.
 >

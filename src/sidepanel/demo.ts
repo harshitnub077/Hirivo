@@ -39,12 +39,16 @@ export async function seedDemo() {
     scamFindings: [],
     legitScore: 100,
     legitDetails: { domainAgeDays: 4300, hasMx: true, mailProvider: 'Google Workspace', isFreeEmail: false },
-    fitScore: 78,
+    fitScore: 63,
     fitVerdict: 'MODERATE_FIT',
-    honestAdvice: 'Your React performance work maps directly to their checkout team. The gap is TypeScript at scale; mention the payments tracker to cover domain knowledge.',
-    matchingStrengths: ['React performance work with a measured result', 'Payments domain project with public traction'],
-    dealbreakers: [],
-    skillGaps: [{ skill: 'Design systems', studyRecommendation: 'Rebuild three components of their public Blade design system with tests.', timeToAcquire: '1 week' }],
+    honestAdvice: 'You meet 2 of 3 must-haves. Biggest gap: TypeScript at scale across a large codebase. A small project that proves it would change this conversation.',
+    fitEvidence: [
+      { id: 'R1', text: 'Strong React performance work', kind: 'must', factId: 'FACT-01', reason: 'Cut checkout load time 38% with Server Components.', met: true },
+      { id: 'R2', text: 'Experience with payments products', kind: 'must', factId: 'FACT-02', reason: 'Built a public UPI payment status tracker.', met: true },
+      { id: 'R3', text: 'TypeScript at scale across a large codebase', kind: 'must', factId: null, reason: 'Your TypeScript work is a solo project.', met: false },
+      { id: 'R4', text: 'Design systems experience', kind: 'nice', factId: null, reason: 'Nothing in your resume shows this yet.', met: false },
+      { id: 'R5', text: 'Testing with Jest or Playwright', kind: 'nice', factId: 'SKILLS', reason: 'Listed in skills, no project shows it.', met: true },
+    ],
     analyzedAt: now,
   });
   await db.watchlist.bulkPut([

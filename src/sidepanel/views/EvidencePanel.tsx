@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleHelp, RefreshCw, XCircle } from 'lucide-react';
 import { JobSnapshot } from '../../db';
 import { Callout, Field } from '../ui';
+import { EvidenceTable, ProofSprintCard } from './FitPanel';
 import type { ViewId } from '../App';
 
 interface Props {
@@ -99,7 +100,7 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
           <li className="neutral">{ICON.neutral}<span>Whether this exact role is still on the company's own hiring board, and for how long.</span></li>
           <li className="neutral">{ICON.neutral}<span>Scam signs: fees, personal emails, chat-app-only contact, task-job wording and recycled listings.</span></li>
           <li className="neutral">{ICON.neutral}<span>Domain age and mail records, to catch fake companies.</span></li>
-          <li className="neutral">{ICON.neutral}<span>Your resume against each requirement, scored honestly.</span></li>
+          <li className="neutral">{ICON.neutral}<span>Each requirement against the resume fact that proves it. The score is counted from that table, not guessed.</span></li>
         </ul>
       </div>
     );
@@ -172,25 +173,20 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
               </span>
             </div>
             {job.honestAdvice && <p className="small">{job.honestAdvice}</p>}
-            {(job.matchingStrengths?.length || job.dealbreakers?.length) && (
-              <Checklist
-                lines={[
-                  ...(job.matchingStrengths || []).map((text): Line => ({ tone: 'ok', text })),
-                  ...(job.dealbreakers || []).map((text): Line => ({ tone: 'risk', text })),
-                ]}
-              />
-            )}
-            {job.skillGaps && job.skillGaps.length > 0 && (
+            {job.fitEvidence?.length ? (
               <>
-                <div className="divider" />
-                <div className="eyebrow">Close the gap</div>
-                {job.skillGaps.map((g, i) => (
-                  <div key={i} className="small">
-                    <b>{g.skill}</b> <span className="muted">· {g.timeToAcquire}</span>
-                    <div className="muted">{g.studyRecommendation}</div>
-                  </div>
-                ))}
+                <EvidenceTable job={job} />
+                <ProofSprintCard job={job} hasKey={hasKey} onUpdateJob={onUpdateJob} onWrite={onWrite} />
               </>
+            ) : (
+              (job.matchingStrengths?.length || job.dealbreakers?.length) && (
+                <Checklist
+                  lines={[
+                    ...(job.matchingStrengths || []).map((text): Line => ({ tone: 'ok', text })),
+                    ...(job.dealbreakers || []).map((text): Line => ({ tone: 'risk', text })),
+                  ]}
+                />
+              )
             )}
           </div>
         )}
