@@ -7,6 +7,8 @@ import { checkLegitimacy, extractDomainFromUrl } from '../../services/legitimacy
 import { analyzeJobFit } from '../../services/fitAdvisor';
 import { findWarmPaths } from '../../services/warmPathMatcher';
 import { daysSince } from '../../services/atsFeeds';
+import { checkScam } from '../../services/scamShield';
+import { recordFingerprint } from '../../services/repostFingerprint';
 import { Callout, Empty, Pill, Segmented, Tone, toneForScore } from '../ui';
 import type { ActivePage } from '../page';
 import type { ViewId } from '../App';
@@ -16,6 +18,9 @@ import { WritePanel } from './WritePanel';
 import { ResumeImport } from './ResumeImport';
 
 type Panel = 'evidence' | 'people' | 'write';
+
+const TONE_RANK: Record<Tone, number> = { neutral: 0, ok: 1, caution: 2, risk: 3 };
+const worstTone = (a: Tone, b: Tone): Tone => (TONE_RANK[a] >= TONE_RANK[b] ? a : b);
 
 export interface Recipient {
   name: string;
@@ -114,6 +119,11 @@ export function NowView(props: Props) {
       ]);
       if (fit instanceof Error) setCheckError(`Fit check failed: ${fit.message}`);
       const fitResult = fit instanceof Error ? null : fit;
+      // Domain age and mail records are shown from legit itself, so Scam Shield only reads the listing here.
+      const scam = checkScam({ title: job.title, description: job.description, companyDomain: domain });
+      const repost = await recordFingerprint(job).catch(() => null);
+      const scamFindings = [...scam.findings, ...(repost?.finding ? [repost.finding] : [])];
+      const scamLevel = scamFindings.some((f) => f.tone === 'risk') ? 'risk' : scamFindings.length ? 'caution' : 'clear';
       await onUpdateJob({
         ...job,
         ghostScore: ghost.ghostScore,
@@ -121,6 +131,8 @@ export function NowView(props: Props) {
         atsType: ghost.atsType,
         atsSlug: ghost.atsSlug,
         atsPublishedAt: ghost.atsPublishedAt,
+        scamLevel,
+        scamFindings,
         legitScore: domain ? legit.score : undefined,
         legitDetails: domain
           ? { domainAgeDays: legit.domainAgeDays, hasMx: legit.hasMx, mailProvider: legit.mailProvider, isFreeEmail: legit.isFreeEmail }
@@ -149,8 +161,21 @@ export function NowView(props: Props) {
   const ghostTone: Tone = !analyzed ? 'neutral' : job.atsType === 'unknown' && (job.ghostScore ?? 0) < 60 ? 'neutral' : toneForScore(100 - (job.ghostScore ?? 0), { good: 65, ok: 40 });
   const realLabel = !analyzed ? '—' : ghostTone === 'ok' ? 'Live' : ghostTone === 'caution' ? 'Aging' : ghostTone === 'risk' ? 'Doubtful' : 'Unconfirmed';
   const fitTone = toneForScore(job.fitScore, { good: 80, ok: 55 });
-  const safetyTone: Tone = job.legitScore === undefined ? 'neutral' : toneForScore(job.legitScore, { good: 70, ok: 45 });
-  const safetyLabel = job.legitScore === undefined ? (analyzed ? 'Add site' : '—') : safetyTone === 'ok' ? 'Clear' : safetyTone === 'caution' ? 'Check' : 'Risky';
+  const legitTone: Tone = job.legitScore === undefined ? 'neutral' : toneForScore(job.legitScore, { good: 70, ok: 45 });
+  const scamTone: Tone = job.scamLevel === 'risk' ? 'risk' : job.scamLevel === 'caution' ? 'caution' : job.scamLevel === 'clear' ? 'ok' : 'neutral';
+  const safetyTone = worstTone(legitTone, scamTone);
+  const safetyLabel =
+    safetyTone === 'risk'
+      ? 'Risky'
+      : safetyTone === 'caution'
+        ? 'Check'
+        : safetyTone === 'ok'
+          ? job.legitScore === undefined
+            ? 'No flags'
+            : 'Clear'
+          : analyzed
+            ? 'Add site'
+            : '—';
   const atsAge = daysSince(job.atsPublishedAt);
 
   return (

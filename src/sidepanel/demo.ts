@@ -35,6 +35,8 @@ export async function seedDemo() {
     atsPublishedAt: new Date(now - 12 * day).toISOString(),
     ghostScore: 8,
     ghostReasons: ["Listed on Razorpay's Greenhouse board right now.", "Posted 12 days ago on the company's board."],
+    scamLevel: 'clear',
+    scamFindings: [],
     legitScore: 100,
     legitDetails: { domainAgeDays: 4300, hasMx: true, mailProvider: 'Google Workspace', isFreeEmail: false },
     fitScore: 78,

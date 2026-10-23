@@ -72,7 +72,18 @@ function legitLines(job: JobSnapshot): Line[] {
       ? { tone: 'ok', text: `Receives email${d.mailProvider ? ` (${d.mailProvider})` : ''}.` }
       : { tone: 'risk', text: 'This domain has no mail server. Real companies almost always do.' }
   );
-  lines.push({ tone: 'neutral', text: 'Never pay a "registration", "training" or "security" fee for a job. Real employers do not ask.' });
+  return lines;
+}
+
+function scamLines(job: JobSnapshot): Line[] {
+  if (!job.scamLevel) return [];
+  const lines: Line[] = (job.scamFindings || []).map((f) => ({ tone: f.tone, text: f.text }));
+  if (lines.length === 0) {
+    lines.push({ tone: 'ok', text: 'No scam signs in the listing: no fees, personal emails, chat-app-only contact, task-job wording or recycled posts.' });
+  }
+  if (!lines.some((l) => /Asks you to pay/.test(l.text))) {
+    lines.push({ tone: 'neutral', text: 'Never pay a "registration", "training" or "security" fee for a job. Real employers do not ask.' });
+  }
   return lines;
 }
 
@@ -86,6 +97,7 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
         <div className="h2">What Run checks looks at</div>
         <ul className="checklist" style={{ marginTop: 8 }}>
           <li className="neutral">{ICON.neutral}<span>Whether this exact role is still on the company's own hiring board, and for how long.</span></li>
+          <li className="neutral">{ICON.neutral}<span>Scam signs: fees, personal emails, chat-app-only contact, task-job wording and recycled listings.</span></li>
           <li className="neutral">{ICON.neutral}<span>Domain age and mail records, to catch fake companies.</span></li>
           <li className="neutral">{ICON.neutral}<span>Your resume against each requirement, scored honestly.</span></li>
         </ul>
@@ -113,12 +125,13 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
 
       <section className="card">
         <div className="card-head">
-          <div className="h2">Is the company real?</div>
+          <div className="h2">Is it safe?</div>
         </div>
         {job.legitDetails ? (
-          <Checklist lines={legitLines(job)} />
+          <Checklist lines={[...scamLines(job).filter((l) => l.tone !== 'neutral'), ...legitLines(job), ...scamLines(job).filter((l) => l.tone === 'neutral')]} />
         ) : (
           <div className="stack">
+            {job.scamLevel && <Checklist lines={scamLines(job)} />}
             <p className="small muted">This job board doesn't say which website the company owns. Add it to check the domain.</p>
             <Field label="Company website">
               <div className="row">

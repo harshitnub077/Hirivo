@@ -41,7 +41,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.1, built and verified)
+## 3. What exists today (v2.2, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -62,7 +62,9 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Discover: Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, HN Who is hiring, YC hiring startups (board finder), watchlist; ranking with reasons; small-teams filter; India-first location | Done | `src/services/discover/*`, `views/DiscoverPanel.tsx` |
 | Save visible jobs from LinkedIn/Naukri/Indeed/JSON-LD search pages (on click only) | Done | `src/content/extractJobList.ts` |
 | Apply flow: auto-fill ATS forms on open, attach resume file, detect confirmation, mark applied | Done | `src/content/index.ts`, `src/content/formFill.ts` |
-| Tests: 55 unit tests incl. a real Greenhouse form fixture; live source checks; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Scam Shield: fees, OTP/bank requests, task-job wording, extreme pay, personal recruiter emails, chat-app-only contact, pressure tactics; quoted reasons; feeds the Safety pill | Done (Phase A) | `src/services/scamShield.ts` |
+| Repost fingerprint: SHA-256 of normalised description in `fingerprints` (schema v5); same-site reposts and re-dated listings | Done (Phase A) | `src/services/repostFingerprint.ts` |
+| Tests: 82 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
@@ -81,7 +83,7 @@ npm run test:live       # checks every live job source still answers in the expe
 
 Paste each prompt as is. Each one assumes the rules in section 1 and ends with acceptance criteria. Run `npm run build` after each phase and load `dist/` in Chrome to check.
 
-### Phase A: Scam Shield and repost fingerprint (India-first)
+### Phase A: Scam Shield and repost fingerprint (India-first) — ✅ done in v2.2
 
 > In the Hirivo Chrome extension (read HIRIVO_MASTER_PLAN.md section 1 first), add `src/services/scamShield.ts`.
 >
