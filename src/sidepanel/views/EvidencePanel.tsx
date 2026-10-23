@@ -1,0 +1,200 @@
+import React, { useState } from 'react';
+import { AlertTriangle, ArrowRight, CheckCircle2, CircleHelp, RefreshCw, XCircle } from 'lucide-react';
+import { JobSnapshot } from '../../db';
+import { Callout, Field } from '../ui';
+import type { ViewId } from '../App';
+
+interface Props {
+  job: JobSnapshot;
+  analyzed: boolean;
+  checking: boolean;
+  hasKey: boolean;
+  hasResume: boolean;
+  onRecheck: () => void;
+  onUpdateJob: (job: JobSnapshot) => Promise<void>;
+  goTo: (v: ViewId) => void;
+  onWrite: () => void;
+}
+
+type Line = { tone: 'ok' | 'caution' | 'risk' | 'neutral'; text: string };
+
+const ICON = {
+  ok: <CheckCircle2 size={14} />,
+  caution: <AlertTriangle size={14} />,
+  risk: <XCircle size={14} />,
+  neutral: <CircleHelp size={14} />,
+};
+
+function Checklist({ lines }: { lines: Line[] }) {
+  return (
+    <ul className="checklist">
+      {lines.map((l, i) => (
+        <li key={i} className={l.tone}>
+          {ICON[l.tone]}
+          <span>{l.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ghostLines(job: JobSnapshot): Line[] {
+  return (job.ghostReasons || []).map((text) => ({
+    text,
+    tone: /right now|days? ago on the company/i.test(text)
+      ? 'ok'
+      : /not this one|reposted|evergreen|already filled/i.test(text)
+        ? 'risk'
+        : /not fresh|posted "|double-check/i.test(text)
+          ? 'caution'
+          : 'neutral',
+  }));
+}
+
+function legitLines(job: JobSnapshot): Line[] {
+  const d = job.legitDetails;
+  if (!d) return [];
+  const lines: Line[] = [];
+  if (d.domainAgeDays !== undefined) {
+    const years = Math.floor(d.domainAgeDays / 365);
+    lines.push(
+      d.domainAgeDays < 90
+        ? { tone: 'risk', text: `${job.companyDomain} was registered only ${d.domainAgeDays} days ago. New domains are common in job scams.` }
+        : d.domainAgeDays < 365
+          ? { tone: 'caution', text: `${job.companyDomain} is under a year old. Fine for a startup; be careful if they ask for money.` }
+          : { tone: 'ok', text: `${job.companyDomain} has been registered for ${years} year${years === 1 ? '' : 's'}.` }
+    );
+  } else {
+    lines.push({ tone: 'neutral', text: 'Domain age could not be read (some country domains hide it).' });
+  }
+  lines.push(
+    d.hasMx
+      ? { tone: 'ok', text: `Receives email${d.mailProvider ? ` (${d.mailProvider})` : ''}.` }
+      : { tone: 'risk', text: 'This domain has no mail server. Real companies almost always do.' }
+  );
+  lines.push({ tone: 'neutral', text: 'Never pay a "registration", "training" or "security" fee for a job. Real employers do not ask.' });
+  return lines;
+}
+
+export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRecheck, onUpdateJob, goTo, onWrite }: Props) {
+  const [site, setSite] = useState(job.companyDomain || '');
+  const doNotApply = job.fitVerdict === 'DO_NOT_APPLY';
+
+  if (!analyzed) {
+    return (
+      <div className="card">
+        <div className="h2">What Run checks looks at</div>
+        <ul className="checklist" style={{ marginTop: 8 }}>
+          <li className="neutral">{ICON.neutral}<span>Whether this exact role is still on the company's own hiring board, and for how long.</span></li>
+          <li className="neutral">{ICON.neutral}<span>Domain age and mail records, to catch fake companies.</span></li>
+          <li className="neutral">{ICON.neutral}<span>Your resume against each requirement, scored honestly.</span></li>
+        </ul>
+      </div>
+    );
+  }
+
+  const saveSite = async () => {
+    const clean = site.trim().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+    if (!clean.includes('.')) return;
+    await onUpdateJob({ ...job, companyDomain: clean, analyzedAt: 0 });
+  };
+
+  return (
+    <div className="stack">
+      <section className="card">
+        <div className="card-head">
+          <div className="h2">Is it still open?</div>
+          <button className="btn sm ghost" onClick={onRecheck} disabled={checking}>
+            <RefreshCw size={12} className={checking ? 'spin' : ''} /> Recheck
+          </button>
+        </div>
+        <Checklist lines={ghostLines(job)} />
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <div className="h2">Is the company real?</div>
+        </div>
+        {job.legitDetails ? (
+          <Checklist lines={legitLines(job)} />
+        ) : (
+          <div className="stack">
+            <p className="small muted">This job board doesn't say which website the company owns. Add it to check the domain.</p>
+            <Field label="Company website">
+              <div className="row">
+                <input value={site} onChange={(e) => setSite(e.target.value)} placeholder="razorpay.com" onKeyDown={(e) => e.key === 'Enter' && saveSite()} />
+                <button className="btn" onClick={saveSite}>Save</button>
+              </div>
+            </Field>
+          </div>
+        )}
+      </section>
+
+      <section className="card">
+        <div className="card-head">
+          <div className="h2">Do you fit?</div>
+          {job.fitScore !== undefined && <span className="small muted">Honest score, not flattery</span>}
+        </div>
+        {job.fitScore === undefined ? (
+          <Callout>
+            {!hasKey
+              ? 'Add a free AI key to score your fit.'
+              : !hasResume
+                ? 'Add your resume so Hirivo can compare it with this job.'
+                : 'The fit check did not finish. Press Recheck.'}{' '}
+            {(!hasKey || !hasResume) && (
+              <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => goTo('you')}>
+                Open You
+              </button>
+            )}
+          </Callout>
+        ) : (
+          <div className="stack">
+            <div className="row" style={{ alignItems: 'baseline', gap: 10 }}>
+              <span className="score num" style={{ color: doNotApply ? 'var(--risk)' : job.fitScore >= 80 ? 'var(--brand)' : 'var(--caution)' }}>
+                {job.fitScore}%
+              </span>
+              <span className="small muted">
+                {job.fitVerdict === 'STRONG_FIT' ? 'Strong fit' : job.fitVerdict === 'MODERATE_FIT' ? 'Partial fit' : 'Not a fit yet'}
+              </span>
+            </div>
+            {job.honestAdvice && <p className="small">{job.honestAdvice}</p>}
+            {(job.matchingStrengths?.length || job.dealbreakers?.length) && (
+              <Checklist
+                lines={[
+                  ...(job.matchingStrengths || []).map((text): Line => ({ tone: 'ok', text })),
+                  ...(job.dealbreakers || []).map((text): Line => ({ tone: 'risk', text })),
+                ]}
+              />
+            )}
+            {job.skillGaps && job.skillGaps.length > 0 && (
+              <>
+                <div className="divider" />
+                <div className="eyebrow">Close the gap</div>
+                {job.skillGaps.map((g, i) => (
+                  <div key={i} className="small">
+                    <b>{g.skill}</b> <span className="muted">· {g.timeToAcquire}</span>
+                    <div className="muted">{g.studyRecommendation}</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </section>
+
+      {doNotApply ? (
+        <Callout tone="risk">
+          <b>Honest advice: skip this one for now.</b> You'd be spending one of today's messages on a long shot. Close a gap above first, then come back.
+          <div style={{ marginTop: 8 }}>
+            <button className="btn sm" onClick={onWrite}>Write anyway</button>
+          </div>
+        </Callout>
+      ) : (
+        <button className="btn primary block" onClick={onWrite}>
+          Write outreach <ArrowRight size={14} />
+        </button>
+      )}
+    </div>
+  );
+}

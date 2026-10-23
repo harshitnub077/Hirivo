@@ -1,141 +1,59 @@
-import { LLMMessage, CompletionOptions } from './groq';
-
-let verifiedGeminiModel: string | null = null;
-
-export async function getVerifiedGeminiModel(apiKey: string): Promise<string> {
-  if (verifiedGeminiModel) return verifiedGeminiModel;
-  return 'gemini-2.0-flash';
-}
+import { CompletionOptions, CompletionResult, LLMMessage, ProviderError } from '../types';
+import { forgetModels, pickModel } from '../registry';
 
 export async function callGemini(
   apiKey: string,
   messages: LLMMessage[],
-  options: CompletionOptions = {}
-): Promise<string> {
-  const cleanKey = apiKey.trim();
-  if (!cleanKey) {
-    throw new Error('Gemini API Key is empty. Please enter your key in Settings.');
-  }
-
-  const modelCandidates = options.model
-    ? [options.model]
-    : [verifiedGeminiModel || 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest', 'gemini-1.5-pro'];
-
-  // Convert messages to Gemini format
-  const systemMessage = messages.find((m) => m.role === 'system');
-  const userAndAssistantMessages = messages.filter((m) => m.role !== 'system');
-
-  const contents = userAndAssistantMessages.map((m) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
-
-  const payload: Record<string, unknown> = {
-    contents,
+  options: CompletionOptions & { model: string }
+): Promise<CompletionResult> {
+  const system = messages.find((m) => m.role === 'system');
+  const payload: Record<string, any> = {
+    contents: messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
     generationConfig: {
       temperature: options.temperature ?? 0.2,
-      maxOutputTokens: Math.max(128, options.maxTokens ?? 1024),
+      maxOutputTokens: Math.max(256, options.maxTokens ?? 1024),
+      ...(options.jsonMode ? { responseMimeType: 'application/json' } : {}),
     },
   };
+  if (system) payload.systemInstruction = { parts: [{ text: system.content }] };
 
-  if (options.jsonMode) {
-    (payload.generationConfig as any).responseMimeType = 'application/json';
-  }
-
-  if (systemMessage) {
-    payload.systemInstruction = {
-      parts: [{ text: systemMessage.content }],
-    };
-  }
-
-  let lastError: Error | null = null;
-
-  for (const model of modelCandidates) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`;
-
+  // Key goes in a header, never in the URL, so it can't leak into logs or history.
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${options.model}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 404) forgetModels('gemini');
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text;
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errorBody = await res.text();
-        let parsedMessage = errorBody;
-        try {
-          const errJson = JSON.parse(errorBody);
-          if (errJson.error?.message) {
-            parsedMessage = errJson.error.message;
-          }
-        } catch {}
-        lastError = new Error(`Gemini API error with ${model} (${res.status}): ${parsedMessage}`);
-        continue;
-      }
-
-      const data = await res.json();
-      const candidate = data.candidates?.[0];
-      const parts = candidate?.content?.parts || [];
-
-      // Extract all text parts, ignoring internal thought/reasoning objects
-      const text = parts
-        .map((p: any) => p.text || '')
-        .join('')
-        .trim();
-
-      if (text && text.length > 0) {
-        verifiedGeminiModel = model;
-        return text;
-      } else {
-        lastError = new Error(`Gemini candidate finished with reason: ${candidate?.finishReason || 'EMPTY'}`);
-      }
-    } catch (netErr: any) {
-      lastError = netErr;
-    }
+      message = JSON.parse(text).error?.message || text;
+    } catch {}
+    throw new ProviderError(`Gemini ${res.status}: ${message}`, res.status);
   }
 
-  throw lastError || new Error('Gemini returned an empty response. Please verify your API key is enabled in Google AI Studio.');
+  const data = await res.json();
+  const candidate = data.candidates?.[0];
+  const content = (candidate?.content?.parts || [])
+    .filter((p: any) => !p.thought)
+    .map((p: any) => p.text || '')
+    .join('')
+    .trim();
+  if (!content) throw new ProviderError(`Gemini returned no text (${candidate?.finishReason || 'empty'}).`);
+  return { content, model: options.model, totalTokens: data.usageMetadata?.totalTokenCount ?? 0 };
 }
 
-export async function testGeminiConnection(apiKey: string): Promise<{ success: boolean; latencyMs: number; message: string }> {
-  const start = Date.now();
-  verifiedGeminiModel = null;
-
-  const probeCandidates = [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro',
-  ];
-
-  const cleanKey = apiKey.trim();
-
-  for (const candidate of probeCandidates) {
-    try {
-      const res = await callGemini(
-        cleanKey,
-        [{ role: 'user', content: 'Say PONG' }],
-        { model: candidate, maxTokens: 128 }
-      );
-      if (res && res.trim().length > 0) {
-        const latencyMs = Date.now() - start;
-        verifiedGeminiModel = candidate;
-        return {
-          success: true,
-          latencyMs,
-          message: `Connected successfully! Active Gemini model: ${candidate} (${latencyMs}ms)`,
-        };
-      }
-    } catch (err: any) {
-      console.log(`Gemini probe for ${candidate} failed: ${err.message}. Trying next...`);
-    }
+export async function testGeminiConnection(apiKey: string): Promise<{ success: boolean; message: string }> {
+  try {
+    forgetModels('gemini');
+    const model = await pickModel('gemini', apiKey.trim(), 'write');
+    const started = Date.now();
+    await callGemini(apiKey.trim(), [{ role: 'user', content: 'Reply with the single word: ok' }], { model, maxTokens: 16 });
+    return { success: true, message: `Connected in ${Date.now() - started} ms using ${model}.` };
+  } catch (err: any) {
+    return { success: false, message: err.message || 'Could not reach Gemini. Check the key at aistudio.google.com.' };
   }
-
-  return {
-    success: false,
-    latencyMs: Date.now() - start,
-    message: 'Could not connect to Gemini. Please check your key at aistudio.google.com/app/apikey.',
-  };
 }

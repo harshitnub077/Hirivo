@@ -1,33 +1,33 @@
 {
   "manifest_version": 3,
-  "name": "Hirivo - Verified Job Outreach Assistant",
-  "version": "1.0.0",
-  "description": "Ghost-job verification, honest fit analysis, proof-linked outreach, and warm referral finder.",
-  "permissions": [
-    "sidePanel",
-    "storage",
-    "tabs",
-    "scripting",
-    "identity",
-    "alarms"
-  ],
+  "name": "Hirivo: Real Jobs, Right People",
+  "short_name": "Hirivo",
+  "version": "2.0.0",
+  "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
+  "minimum_chrome_version": "116",
+  "permissions": ["sidePanel", "storage", "scripting", "activeTab", "alarms", "notifications"],
   "host_permissions": [
     "https://api.groq.com/*",
     "https://generativelanguage.googleapis.com/*",
     "https://openrouter.ai/*",
-    "https://*.rdap.org/*",
     "https://rdap.org/*",
     "https://dns.google/*",
-    "https://cloudflare-dns.com/*",
     "https://boards-api.greenhouse.io/*",
     "https://api.lever.co/*",
     "https://api.ashbyhq.com/*",
-    "https://gmail.googleapis.com/*",
     "https://*.linkedin.com/*",
     "https://*.naukri.com/*",
     "https://*.indeed.com/*",
-    "https://*.wellfound.com/*"
+    "https://*.wellfound.com/*",
+    "https://*.instahyre.com/*",
+    "https://*.cutshort.io/*",
+    "https://*.foundit.in/*",
+    "https://*.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://jobs.ashbyhq.com/*",
+    "https://apply.workable.com/*"
   ],
+  "optional_host_permissions": ["https://*/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -36,18 +36,21 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "Open Hirivo Side Panel"
+    "default_title": "Open Hirivo",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
   },
   "content_scripts": [
     {
       "matches": [
-        "https://*.linkedin.com/jobs/*",
-        "https://*.naukri.com/*",
-        "https://*.indeed.com/*",
-        "https://*.wellfound.com/jobs/*",
         "https://boards.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
         "https://jobs.lever.co/*",
-        "https://jobs.ashbyhq.com/*"
+        "https://jobs.ashbyhq.com/*",
+        "https://apply.workable.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"
@@ -55,6 +58,7 @@
   ],
   "icons": {
     "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   }

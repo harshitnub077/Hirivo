@@ -1,6 +1,7 @@
 import { routeLLMRequest } from '../llm/router';
 import { ResumeFact, VoiceProfile } from '../db';
-import { lintOutreachText, autoPurgeRoboticPhrases } from './phraseLinter';
+import { autoPurgeRoboticPhrases } from './phraseLinter';
+import { parseJsonLoose } from '../llm/json';
 
 export interface GroundedSentence {
   sentence: string;
@@ -28,33 +29,12 @@ export interface ProofWriterParams {
   realSignalHook?: string; // Recent blog post, GitHub commit, or company news
 }
 
-const DEFAULT_STARTER_FACTS: ResumeFact[] = [
-  {
-    id: 'FACT-01',
-    category: 'SKILL',
-    claim: 'Hands-on experience developing full-stack applications with modern frameworks and distributed systems',
-    sourceSnippet: 'Candidate Experience',
-    verified: true,
-  },
-  {
-    id: 'FACT-02',
-    category: 'PROJECT',
-    claim: 'Engineered responsive web applications and backend APIs with high test coverage and clean architecture',
-    sourceSnippet: 'Candidate Projects',
-    verified: true,
-  },
-  {
-    id: 'FACT-03',
-    category: 'METRIC',
-    claim: 'Demonstrated rapid delivery cycles and strong cross-functional communication in agile team environments',
-    sourceSnippet: 'Candidate Achievements',
-    verified: true,
-  },
-];
-
 export async function generateProofLinkedDraft(params: ProofWriterParams): Promise<ProofWriterResult> {
-  // Use user's facts if available; fallback to standard starter facts so draft generation never crashes
-  const effectiveFacts = params.facts.length > 0 ? params.facts : DEFAULT_STARTER_FACTS;
+  // Never invent facts: with no resume facts there is nothing true to say yet.
+  if (params.facts.length === 0) {
+    throw new Error('Add your resume in You → Resume first. Hirivo only writes claims it can prove.');
+  }
+  const effectiveFacts = params.facts;
 
   const factList = effectiveFacts.map((f) => `[${f.id}]: ${f.claim}`).join('\n');
   const greeting = params.voiceProfile?.preferredGreeting || 'Hi [Name],';
@@ -98,70 +78,49 @@ Generate the grounded outreach draft following all rules.`;
     temperature: 0.3,
   });
 
-  let parsed: any;
-  try {
-    parsed = JSON.parse(res.content);
-  } catch (err) {
-    throw new Error('LLM did not return valid JSON for draft writing. Please retry.');
-  }
+  const parsed: any = parseJsonLoose(res.content);
 
   const rawEmailBody = autoPurgeRoboticPhrases(parsed.emailBody || '');
   const emailSubject = autoPurgeRoboticPhrases(parsed.emailSubject || `Regarding ${params.jobTitle} at ${params.companyName}`);
   const linkedInNote = autoPurgeRoboticPhrases(parsed.linkedInNote || '');
 
-  // Client-Side Grounding Validator
-  const validFactIds = new Set(effectiveFacts.map((f) => f.id));
-  const citedFactIds = new Set<string>();
-
-  // Split into sentences
-  const sentenceRegex = /[^.!?]+[.!?]+|\s*$/g;
-  const rawSentences = rawEmailBody.match(sentenceRegex) || [rawEmailBody];
-
-  const groundedSentences: GroundedSentence[] = [];
-  let unverifiedClaimsCount = 0;
-
-  // Verbs that signal a factual claim
-  const claimVerbs = /\b(built|designed|developed|scaled|reduced|increased|led|managed|migrated|improved|implemented|architected|proficient|experienced)\b/i;
-
-  for (const raw of rawSentences) {
-    const s = raw.trim();
-    if (!s) continue;
-
-    const matches = Array.from(s.matchAll(/\[(FACT-\d+)\]/g)).map((m) => m[1]);
-    const validMatches = matches.filter((id) => validFactIds.has(id));
-    validMatches.forEach((id) => citedFactIds.add(id));
-
-    const makesClaim = claimVerbs.test(s);
-
-    if (validMatches.length > 0) {
-      groundedSentences.push({
-        sentence: s,
-        factIds: validMatches,
-        isGrounded: true,
-      });
-    } else if (makesClaim) {
-      unverifiedClaimsCount++;
-      groundedSentences.push({
-        sentence: s,
-        factIds: [],
-        isGrounded: false,
-        warning: 'Unsupported boast or claim detected. No matching resume fact cited.',
-      });
-    } else {
-      groundedSentences.push({
-        sentence: s,
-        factIds: [],
-        isGrounded: true,
-      });
-    }
-  }
+  const grounding = checkGrounding(rawEmailBody, effectiveFacts);
 
   return {
     emailSubject,
     emailBody: rawEmailBody,
     linkedInNote,
-    groundedSentences,
-    unverifiedClaimsCount,
-    citedFactIds: Array.from(citedFactIds),
+    ...grounding,
   };
+}
+
+// Verbs that signal a factual claim about the sender.
+const CLAIM_VERBS =
+  /\b(built|designed|developed|scaled|reduced|increased|led|managed|migrated|improved|implemented|architected|shipped|launched|grew|cut|saved|won|proficient|experienced|expert)\b/i;
+
+/** Client-side grounding check. Re-run on every edit so hand-typed claims are caught too. */
+export function checkGrounding(body: string, facts: ResumeFact[]) {
+  const validFactIds = new Set(facts.map((f) => f.id));
+  const citedFactIds = new Set<string>();
+  const groundedSentences: GroundedSentence[] = [];
+  let unverifiedClaimsCount = 0;
+
+  for (const raw of body.match(/[^.!?\n]+[.!?]*/g) || []) {
+    const s = raw.trim();
+    if (!s) continue;
+    const valid = Array.from(s.matchAll(/\[(FACT-\d+)\]/g))
+      .map((m) => m[1])
+      .filter((id) => validFactIds.has(id));
+    valid.forEach((id) => citedFactIds.add(id));
+
+    if (valid.length > 0) {
+      groundedSentences.push({ sentence: s, factIds: valid, isGrounded: true });
+    } else if (CLAIM_VERBS.test(s)) {
+      unverifiedClaimsCount++;
+      groundedSentences.push({ sentence: s, factIds: [], isGrounded: false, warning: 'Claim with no resume fact behind it.' });
+    } else {
+      groundedSentences.push({ sentence: s, factIds: [], isGrounded: true });
+    }
+  }
+  return { groundedSentences, unverifiedClaimsCount, citedFactIds: Array.from(citedFactIds) };
 }

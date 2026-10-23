@@ -1,41 +1,96 @@
-// Background Service Worker (Manifest V3)
-// Ephemeral execution: All persistent state is in chrome.storage.local or IndexedDB
+// Background service worker (MV3). It holds no state between wake-ups: everything lives in IndexedDB.
 import { db } from '../db';
+import { getSettings } from '../db/settings';
 import { buildAutofillProfile } from '../services/formAutofill';
+import { matchesTargets, refreshAll } from '../services/watchlist';
+import { dueFollowupStage } from '../services/outreach';
+
+const RADAR_ALARM = 'radar-poll';
+const FOLLOWUP_ALARM = 'followup-check';
+
+async function ensureAlarms() {
+  if (!(await chrome.alarms.get(RADAR_ALARM))) chrome.alarms.create(RADAR_ALARM, { periodInMinutes: 360, delayInMinutes: 1 });
+  if (!(await chrome.alarms.get(FOLLOWUP_ALARM))) chrome.alarms.create(FOLLOWUP_ALARM, { periodInMinutes: 180, delayInMinutes: 1 });
+}
 
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('Hirivo Extension Installed');
-
-  // Configure Side Panel to automatically open when the user clicks the extension action icon
-  if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
-    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-  }
-
-  // Set recurring alarm for checking outreach replies and follow-up cadences every 4 hours
-  chrome.alarms.create('check-replies-alarm', {
-    periodInMinutes: 240,
-  });
+  await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  // The old "check-replies" alarm did nothing; remove it for anyone upgrading.
+  await chrome.alarms.clear('check-replies-alarm');
+  await ensureAlarms();
 });
+
+chrome.runtime.onStartup.addListener(ensureAlarms);
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'check-replies-alarm') {
-    console.log('Running periodic reply and follow-up check...');
-  }
+  if (alarm.name === RADAR_ALARM) await pollWatchlist();
+  if (alarm.name === FOLLOWUP_ALARM) await checkFollowups();
+  await updateBadge();
 });
 
-// Relay listener for async cross-origin fetches & autofill profile delivery
+async function pollWatchlist() {
+  const settings = await getSettings();
+  const fresh = await refreshAll();
+  const relevant = fresh.filter(({ role }) => matchesTargets(role.title, settings.targetRoles));
+  if (!settings.earlyBirdAlerts || relevant.length === 0) return;
+
+  const first = relevant[0];
+  chrome.notifications.create(`radar:${Date.now()}`, {
+    type: 'basic',
+    iconUrl: 'icons/icon128.png',
+    title: relevant.length === 1 ? `New role at ${first.company.name}` : `${relevant.length} new roles on your watchlist`,
+    message:
+      relevant.length === 1
+        ? `${first.role.title}${first.role.location ? ` · ${first.role.location}` : ''}. Applying early helps.`
+        : relevant
+            .slice(0, 3)
+            .map(({ company, role }) => `${company.name}: ${role.title}`)
+            .join('\n'),
+    priority: 1,
+  });
+}
+
+async function checkFollowups() {
+  const open = await db.outreach.where('status').equals('SENT').toArray();
+  for (const r of open) {
+    const stage = dueFollowupStage(r);
+    if (stage === 0 || (r.notifiedStage ?? 0) >= stage) continue;
+    chrome.notifications.create(`followup:${r.id}:${stage}`, {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: stage === 1 ? `Time to follow up with ${r.recipientName}` : `Last follow-up for ${r.companyName}`,
+      message: `${r.jobTitle} at ${r.companyName}. Your follow-up is ready in Hirivo → Pipeline.`,
+      priority: 1,
+    });
+    await db.outreach.update(r.id, { notifiedStage: stage });
+  }
+}
+
+async function updateBadge() {
+  const [open, companies] = await Promise.all([db.outreach.where('status').equals('SENT').toArray(), db.watchlist.toArray()]);
+  const due = open.filter((r) => dueFollowupStage(r) > 0).length;
+  const fresh = companies.reduce((n, c) => n + c.newRoleIds.length, 0);
+  const count = due + fresh;
+  await chrome.action.setBadgeBackgroundColor({ color: due > 0 ? '#A15C00' : '#0F7A55' });
+  await chrome.action.setBadgeText({ text: count > 0 ? String(Math.min(count, 99)) : '' });
+}
+
+chrome.notifications.onClicked.addListener(async (id) => {
+  chrome.notifications.clear(id);
+  const win = await chrome.windows.getLastFocused();
+  if (win.id !== undefined) await chrome.sidePanel.open({ windowId: win.id }).catch(() => undefined);
+});
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'GET_AUTOFILL_PROFILE') {
-    (async () => {
-      try {
-        const settings = await db.settings.get('config');
-        const profile = buildAutofillProfile(settings || null);
-        sendResponse({ success: true, profile });
-      } catch (err: any) {
-        sendResponse({ success: false, error: err.message });
-      }
-    })();
-    return true; // Keep message channel open for async response
+    getSettings()
+      .then((settings) => sendResponse({ success: true, profile: buildAutofillProfile(settings) }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
   }
-  return true;
+  if (request.action === 'REFRESH_BADGE') {
+    updateBadge().finally(() => sendResponse({ success: true }));
+    return true;
+  }
+  return false;
 });

@@ -1,47 +1,31 @@
-import { LLMMessage, CompletionOptions } from './groq';
+import { CompletionOptions, CompletionResult, LLMMessage, ProviderError } from '../types';
 
 export async function callOpenRouter(
   apiKey: string,
   messages: LLMMessage[],
-  options: CompletionOptions = {}
-): Promise<string> {
-  const model = options.model || 'meta-llama/llama-3.1-8b-instruct:free';
-  const temperature = options.temperature ?? 0.2;
-  const max_tokens = options.maxTokens ?? 1024;
-
+  options: CompletionOptions & { model: string }
+): Promise<CompletionResult> {
   const payload: Record<string, unknown> = {
-    model,
+    model: options.model,
     messages,
-    temperature,
-    max_tokens,
+    temperature: options.temperature ?? 0.2,
+    max_tokens: options.maxTokens ?? 1024,
   };
-
-  if (options.jsonMode) {
-    payload.response_format = { type: 'json_object' };
-  }
+  if (options.jsonMode) payload.response_format = { type: 'json_object' };
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey.trim()}`,
-      'HTTP-Referer': 'https://hirivo.app',
-      'X-Title': 'Hirivo Extension',
+      Authorization: `Bearer ${apiKey}`,
+      'X-Title': 'Hirivo',
     },
     body: JSON.stringify(payload),
   });
-
-  if (!res.ok) {
-    const errorBody = await res.text();
-    const error = new Error(`OpenRouter API error (${res.status}): ${errorBody}`);
-    (error as any).status = res.status;
-    throw error;
-  }
+  if (!res.ok) throw new ProviderError(`OpenRouter ${res.status}: ${await res.text()}`, res.status);
 
   const data = await res.json();
-  const choice = data.choices?.[0]?.message?.content;
-  if (!choice) {
-    throw new Error('OpenRouter returned empty response');
-  }
-  return choice;
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new ProviderError('OpenRouter returned an empty reply.');
+  return { content, model: options.model, totalTokens: data.usage?.total_tokens ?? 0 };
 }

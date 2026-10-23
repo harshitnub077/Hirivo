@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hirivo-panel",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview:panel"],
+      "port": 5199
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { routeLLMRequest } from '../llm/router';
 import { ResumeRecord, ResumeFact } from '../db';
+import { parseJsonLoose } from '../llm/json';
 
 export interface FitAnalysisResult {
   matchScore: number; // 0-100
@@ -21,9 +22,12 @@ export async function analyzeJobFit(
   resume: ResumeRecord | null,
   facts: ResumeFact[]
 ): Promise<FitAnalysisResult> {
+  if (facts.length === 0 && !resume?.rawText) {
+    throw new Error('Add your resume in You → Resume so the fit check compares the job against you, not a guess.');
+  }
   const factSummary = facts.length > 0
     ? facts.map((f) => `[${f.id}] (${f.category}): ${f.claim}`).join('\n')
-    : resume?.rawText.slice(0, 3000) || 'General software engineer profile with web development, API engineering, and software delivery experience.';
+    : resume!.rawText.slice(0, 3000);
 
   const systemPrompt = `You are Hirivo's Honest Fit Advisor.
 Your objective is to provide a brutally honest, objective assessment of a candidate's fit for a job.
@@ -69,9 +73,11 @@ Analyze the match honestly. Provide the required JSON response.`;
   });
 
   try {
-    const parsed = JSON.parse(response.content);
+    const parsed = parseJsonLoose(response.content);
+    const score = Number(parsed.matchScore);
+    if (!Number.isFinite(score)) throw new Error('missing matchScore');
     return {
-      matchScore: Math.min(100, Math.max(0, Number(parsed.matchScore) || 50)),
+      matchScore: Math.min(100, Math.max(0, Math.round(score))),
       verdict: parsed.verdict || (parsed.matchScore >= 80 ? 'STRONG_FIT' : parsed.matchScore >= 55 ? 'MODERATE_FIT' : 'DO_NOT_APPLY'),
       honestAdvice: parsed.honestAdvice || 'Assessment completed.',
       dealbreakers: Array.isArray(parsed.dealbreakers) ? parsed.dealbreakers : [],

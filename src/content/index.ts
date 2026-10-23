@@ -1,105 +1,6 @@
-// Content script - Non-invasive DOM extraction & 1-Click Form Autofill Automator
-// Safe human-in-the-loop design: Autofills forms accurately; user clicks Submit.
-
-export interface ExtractedJobData {
-  title: string;
-  company: string;
-  location: string;
-  description: string;
-  postedDate?: string;
-  isReposted?: boolean;
-  atsUrl?: string;
-  sourceUrl: string;
-}
-
-function extractFromLinkedIn(): ExtractedJobData | null {
-  const titleEl = document.querySelector('.job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, h1');
-  const companyEl = document.querySelector('.job-details-jobs-unified-top-card__company-name, .jobs-unified-top-card__company-name, .jobs-details-top-card__company-url');
-  const locationEl = document.querySelector('.job-details-jobs-unified-top-card__bullet, .jobs-unified-top-card__bullet');
-  const descEl = document.querySelector('.jobs-description__content, #job-details, .jobs-box__html-content');
-
-  const textContent = document.body.innerText;
-  const isReposted = /reposted/i.test(textContent);
-
-  let postedDate: string | undefined;
-  const timeEl = document.querySelector('.jobs-unified-top-card__posted-date, time');
-  if (timeEl) {
-    postedDate = (timeEl as HTMLElement).innerText.trim();
-  }
-
-  let atsUrl: string | undefined;
-  const applyLinks = Array.from(document.querySelectorAll('a[href]'));
-  for (const a of applyLinks) {
-    const href = (a as HTMLAnchorElement).href;
-    if (href.includes('greenhouse.io') || href.includes('lever.co') || href.includes('ashbyhq.com') || href.includes('workable.com')) {
-      atsUrl = href;
-      break;
-    }
-  }
-
-  if (titleEl && descEl) {
-    return {
-      title: (titleEl as HTMLElement).innerText.trim(),
-      company: companyEl ? (companyEl as HTMLElement).innerText.trim() : 'Company',
-      location: locationEl ? (locationEl as HTMLElement).innerText.trim() : '',
-      description: (descEl as HTMLElement).innerText.trim(),
-      postedDate,
-      isReposted,
-      atsUrl,
-      sourceUrl: window.location.href,
-    };
-  }
-  return null;
-}
-
-function extractFromNaukri(): ExtractedJobData | null {
-  const titleEl = document.querySelector('.styles_jd-header-title__rZwM1, .styles_job-header-container h1, h1');
-  const companyEl = document.querySelector('.styles_jd-header-comp-name__MvqAI a, .styles_job-header-container a');
-  const locationEl = document.querySelector('.styles_jdn-header-loc__N0Wbv, .styles_loc__bxp4j');
-  const descEl = document.querySelector('.styles_job-desc-container__yWkrN, .styles_Jd-components__description__nZ3oW');
-
-  if (titleEl && descEl) {
-    return {
-      title: (titleEl as HTMLElement).innerText.trim(),
-      company: companyEl ? (companyEl as HTMLElement).innerText.trim() : 'Company',
-      location: locationEl ? (locationEl as HTMLElement).innerText.trim() : '',
-      description: (descEl as HTMLElement).innerText.trim(),
-      sourceUrl: window.location.href,
-    };
-  }
-  return null;
-}
-
-function extractGenericJob(): ExtractedJobData {
-  const h1 = document.querySelector('h1');
-  const title = h1 ? h1.innerText.trim() : document.title;
-  const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
-  const ogSite = document.querySelector('meta[property="og:site_name"]')?.getAttribute('content');
-
-  const main = document.querySelector('main, article, #job-description, .job-description, body');
-  const description = main ? (main as HTMLElement).innerText.slice(0, 5000).trim() : '';
-
-  return {
-    title: ogTitle || title,
-    company: ogSite || 'Target Company',
-    location: '',
-    description,
-    sourceUrl: window.location.href,
-  };
-}
-
-export function extractCurrentJobData(): ExtractedJobData {
-  const host = window.location.hostname.toLowerCase();
-  if (host.includes('linkedin.com')) {
-    const li = extractFromLinkedIn();
-    if (li) return li;
-  }
-  if (host.includes('naukri.com')) {
-    const nk = extractFromNaukri();
-    if (nk) return nk;
-  }
-  return extractGenericJob();
-}
+// Content script for ATS application pages (Greenhouse, Lever, Ashby, Workable) only.
+// It never runs on LinkedIn. It fills fields the user has saved, and the user always presses Submit.
+// Job-page reading lives in extractJob.ts and runs only when the user clicks Analyze.
 
 // -------------------------------------------------------------
 // FORM AUTOFILL AUTOMATOR ENGINE
@@ -209,14 +110,18 @@ function executeFormAutofill(profile: any): number {
     }
   }
 
-  showAutofillToast(`⚡ Hirivo Autofilled ${fieldsFilled} fields! Review & press Submit.`);
+  showAutofillToast(
+    fieldsFilled > 0
+      ? `Hirivo filled ${fieldsFilled} field${fieldsFilled === 1 ? '' : 's'}. Check them, then press Submit yourself.`
+      : 'Nothing to fill yet. Add your details in Hirivo → You → Profile.'
+  );
   return fieldsFilled;
 }
 
 function highlightField(el: HTMLElement) {
   el.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
-  el.style.borderColor = '#10b981';
-  el.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.25)';
+  el.style.borderColor = '#0f7a55';
+  el.style.boxShadow = '0 0 0 3px rgba(15, 122, 85, 0.22)';
 }
 
 function showAutofillToast(msg: string) {
@@ -230,14 +135,15 @@ function showAutofillToast(msg: string) {
     position: 'fixed',
     bottom: '24px',
     right: '24px',
-    backgroundColor: '#090d16',
-    color: '#34d399',
-    border: '1px solid #10b981',
+    backgroundColor: '#0e1116',
+    color: '#ffffff',
+    border: '1px solid #0e1116',
     borderRadius: '10px',
-    padding: '12px 18px',
+    padding: '12px 16px',
     fontSize: '13px',
-    fontWeight: '600',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+    fontWeight: '500',
+    maxWidth: '320px',
+    boxShadow: '0 8px 24px rgba(14,17,22,0.25)',
     zIndex: '2147483647',
     fontFamily: 'system-ui, -apple-system, sans-serif',
     transition: 'all 0.3s ease',
@@ -253,20 +159,20 @@ function injectFloatingAutofillButton() {
 
   const btn = document.createElement('button');
   btn.id = 'hirivo-float-trigger';
-  btn.innerHTML = `<span style="font-weight:800; color:#38bdf8;">⚡ Hirivo</span> Autofill`;
+  btn.textContent = 'Fill with Hirivo';
   Object.assign(btn.style, {
     position: 'fixed',
     bottom: '80px',
     right: '24px',
-    background: 'linear-gradient(135deg, #090d16 0%, #1e293b 100%)',
+    background: '#0f7a55',
     color: '#ffffff',
-    border: '1px solid #38bdf8',
+    border: '0',
     borderRadius: '9999px',
-    padding: '8px 16px',
-    fontSize: '12px',
-    fontWeight: '600',
+    padding: '9px 16px',
+    fontSize: '13px',
+    fontWeight: '500',
     cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(56, 189, 248, 0.3)',
+    boxShadow: '0 4px 14px rgba(14, 17, 22, 0.2)',
     zIndex: '2147483646',
     fontFamily: 'system-ui, sans-serif',
     display: 'flex',
@@ -290,10 +196,7 @@ setTimeout(injectFloatingAutofillButton, 1500);
 
 // Listen for messages from sidepanel
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  if (request.action === 'GET_JOB_DATA') {
-    const data = extractCurrentJobData();
-    sendResponse({ success: true, data });
-  } else if (request.action === 'EXECUTE_AUTOFILL') {
+  if (request.action === 'EXECUTE_AUTOFILL') {
     const count = executeFormAutofill(request.profile);
     sendResponse({ success: true, count });
   }

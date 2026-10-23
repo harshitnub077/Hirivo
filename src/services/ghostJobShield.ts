@@ -1,141 +1,111 @@
+import { daysSince, fetchRoles, findMatchingRole, parseAtsUrl, AtsRef } from './atsFeeds';
+
 export interface GhostJobCheckParams {
   jobTitle: string;
   companyName: string;
-  companyDomain?: string;
-  jobPostedDate?: string;
   sourceUrl: string;
+  atsUrl?: string;
+  jobPostedDate?: string; // as shown on the job board, e.g. "3 weeks ago"
   isReposted?: boolean;
 }
 
 export interface GhostJobResult {
-  ghostScore: number; // 0-100 (higher = more likely ghost job)
-  status: 'FRESH_LIVE' | 'MODERATE_RISK' | 'HIGH_GHOST_RISK';
+  ghostScore: number; // 0-100, higher = more likely stale or fake
+  status: 'FRESH_LIVE' | 'MODERATE_RISK' | 'HIGH_GHOST_RISK' | 'UNKNOWN';
   atsFound: boolean;
-  atsType?: 'greenhouse' | 'lever' | 'ashby' | 'unknown';
+  atsType?: AtsRef['ats'] | 'unknown';
+  atsSlug?: string;
+  atsPublishedAt?: string;
+  boardWasGuessed: boolean;
   reasons: string[];
   liveJobCount?: number;
 }
 
-// Clean company name to standard slug format
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-');
-}
+const slugGuesses = (name: string) => {
+  const base = name.toLowerCase().replace(/\b(inc|llc|ltd|pvt|private|limited|technologies|labs)\b\.?/g, '');
+  return Array.from(new Set([base.replace(/[^a-z0-9]/g, ''), base.trim().replace(/[^a-z0-9]+/g, '-')])).filter(Boolean);
+};
 
 export async function checkGhostJob(params: GhostJobCheckParams): Promise<GhostJobResult> {
   const reasons: string[] = [];
-  let ghostScore = 15; // Baseline low risk
-  let atsFound = false;
-  let atsType: GhostJobResult['atsType'] = 'unknown';
-  let liveJobCount = 0;
+  let score = 30; // unknown until proven either way
+  let boardWasGuessed = false;
 
-  const slug = slugify(params.companyName);
+  // 1. Prefer the board the page itself links to. Guess from the name only as a last resort.
+  let ref = parseAtsUrl(params.atsUrl) || parseAtsUrl(params.sourceUrl);
+  let roles = ref ? await fetchRoles(ref).catch(() => null) : null;
+  if (!roles) {
+    for (const slug of slugGuesses(params.companyName)) {
+      for (const ats of ['greenhouse', 'lever', 'ashby'] as const) {
+        const found = await fetchRoles({ ats, slug }).catch(() => null);
+        if (found && found.length > 0) {
+          ref = { ats, slug };
+          roles = found;
+          boardWasGuessed = true;
+          break;
+        }
+      }
+      if (roles) break;
+    }
+  }
 
-  // 1. Try public Greenhouse API
-  try {
-    const ghRes = await fetch(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`, {
-      method: 'GET',
-    });
-    if (ghRes.ok) {
-      const data = await ghRes.json();
-      if (Array.isArray(data.jobs)) {
-        atsFound = true;
-        atsType = 'greenhouse';
-        liveJobCount = data.jobs.length;
-        const normalizedTitle = params.jobTitle.toLowerCase();
-        const matches = data.jobs.some((j: any) =>
-          j.title?.toLowerCase().includes(normalizedTitle) ||
-          normalizedTitle.includes(j.title?.toLowerCase())
-        );
-
-        if (matches) {
-          reasons.push(`Verified live on company's Greenhouse ATS (${liveJobCount} open roles).`);
-          ghostScore = 5;
+  let atsPublishedAt: string | undefined;
+  if (ref && roles) {
+    const match = findMatchingRole(roles, params.jobTitle, params.sourceUrl);
+    const where = `${params.companyName}'s ${ref.ats[0].toUpperCase()}${ref.ats.slice(1)} board`;
+    if (match) {
+      score = 8;
+      atsPublishedAt = match.publishedAt;
+      const age = daysSince(match.publishedAt);
+      reasons.push(`Listed on ${where} right now.`);
+      if (age !== undefined) {
+        if (age > 90) {
+          score += 35;
+          reasons.push(`Open for ${age} days on the company's own board. Roles this old are often evergreen or already filled.`);
+        } else if (age > 45) {
+          score += 15;
+          reasons.push(`Open for ${age} days. Still live, but not fresh.`);
         } else {
-          reasons.push(`Company uses Greenhouse with ${liveJobCount} live listings, but this specific role is NOT on their board.`);
-          ghostScore += 45;
+          reasons.push(`Posted ${age} day${age === 1 ? '' : 's'} ago on the company's board.`);
         }
       }
+    } else {
+      score = 70;
+      reasons.push(`${where} has ${roles.length} open roles, but not this one. It may be closed, or posted only on the job board.`);
     }
-  } catch (err) {
-    // Silent failover to Lever
+    if (boardWasGuessed) reasons.push('Board found by name; double-check it belongs to this company.');
+  } else {
+    reasons.push('No public Greenhouse, Lever or Ashby board found, so the company board could not confirm this role.');
   }
 
-  // 2. Try Lever API if Greenhouse was not found
-  if (!atsFound) {
-    try {
-      const leverRes = await fetch(`https://api.lever.co/v0/postings/${slug}?mode=json`, {
-        method: 'GET',
-      });
-      if (leverRes.ok) {
-        const jobs = await leverRes.json();
-        if (Array.isArray(jobs) && jobs.length > 0) {
-          atsFound = true;
-          atsType = 'lever';
-          liveJobCount = jobs.length;
-          const normalizedTitle = params.jobTitle.toLowerCase();
-          const matches = jobs.some((j: any) =>
-            j.text?.toLowerCase().includes(normalizedTitle) ||
-            normalizedTitle.includes(j.text?.toLowerCase())
-          );
-
-          if (matches) {
-            reasons.push(`Verified active on Lever ATS feed.`);
-            ghostScore = 5;
-          } else {
-            reasons.push(`Company Lever board is live (${liveJobCount} roles), but this title is missing.`);
-            ghostScore += 45;
-          }
-        }
-      }
-    } catch (err) {
-      // Continue
-    }
-  }
-
-  // 3. Evaluate posting age and repost flags
   if (params.isReposted) {
-    ghostScore += 25;
-    reasons.push('Listing has been repeatedly reposted without hiring.');
+    score += 20;
+    reasons.push('The job board marks this listing as reposted.');
+  }
+  const posted = params.jobPostedDate?.toLowerCase() || '';
+  if (/(\d+|a)\s+months?\s+ago|30\+\s*days/.test(posted)) {
+    score += 15;
+    reasons.push(`Job board shows it was posted "${params.jobPostedDate}".`);
   }
 
-  if (params.jobPostedDate) {
-    const lower = params.jobPostedDate.toLowerCase();
-    if (lower.includes('30+') || lower.includes('month') || lower.includes('weeks ago')) {
-      const isVeryOld = lower.includes('2 months') || lower.includes('3 months') || lower.includes('30+');
-      if (isVeryOld) {
-        ghostScore += 35;
-        reasons.push(`Listing age is stale (${params.jobPostedDate}). High likelihood of evergreen resume harvesting.`);
-      } else {
-        ghostScore += 15;
-        reasons.push(`Posted ${params.jobPostedDate}.`);
-      }
-    }
-  }
-
-  // Cap score between 0 and 100
-  ghostScore = Math.min(100, Math.max(0, ghostScore));
-
-  let status: GhostJobResult['status'] = 'FRESH_LIVE';
-  if (ghostScore >= 60) {
-    status = 'HIGH_GHOST_RISK';
-  } else if (ghostScore >= 35) {
-    status = 'MODERATE_RISK';
-  }
-
-  if (reasons.length === 0) {
-    reasons.push('Standard active listing signals detected.');
-  }
+  score = Math.min(100, Math.max(0, score));
+  const status: GhostJobResult['status'] = !roles
+    ? 'UNKNOWN'
+    : score >= 60
+      ? 'HIGH_GHOST_RISK'
+      : score >= 35
+        ? 'MODERATE_RISK'
+        : 'FRESH_LIVE';
 
   return {
-    ghostScore,
+    ghostScore: score,
     status,
-    atsFound,
-    atsType,
+    atsFound: !!roles,
+    atsType: ref?.ats ?? 'unknown',
+    atsSlug: ref?.slug,
+    atsPublishedAt,
+    boardWasGuessed,
     reasons,
-    liveJobCount,
+    liveJobCount: roles?.length,
   };
 }

@@ -37,8 +37,11 @@ export interface JobSnapshot {
   location: string;
   description: string;
   postedDate?: string;
+  isReposted?: boolean;
+  atsUrl?: string; // apply link found on the page, when it points at a known ATS
   atsType?: 'greenhouse' | 'lever' | 'ashby' | 'workable' | 'unknown';
   atsSlug?: string;
+  atsPublishedAt?: string; // ISO date read from the ATS feed, not from the job board
   ghostScore?: number; // 0-100 (high = likely ghost)
   ghostReasons?: string[];
   legitScore?: number; // 0-100 (high = established)
@@ -57,26 +60,25 @@ export interface JobSnapshot {
   analyzedAt: number;
 }
 
-export interface DiscoveredOpportunity {
+export interface WatchedRole {
   id: string;
-  companyName: string;
-  companyDomain: string;
-  companyTier: 'UNDERRATED_GEM' | 'TOP_TECH' | 'HIGH_GROWTH';
-  workMode: 'REMOTE' | 'ON_SITE' | 'HYBRID';
+  title: string;
   location: string;
-  jobTitle: string;
-  applyUrl: string;
-  applyMethod: 'FORM_AUTOFILL' | 'DIRECT_EMAIL' | 'WARM_REFERRAL';
-  techStack: string[];
-  fundingStage: string;
-  matchScore: number;
-  ghostScore: number;
-  legitScore: number;
-  hiringLead?: string;
-  hiringLeadEmail?: string;
-  selected: boolean;
-  applied: boolean;
-  discoveredAt: number;
+  url: string;
+  publishedAt?: string; // ISO
+}
+
+export interface WatchlistCompany {
+  id: string; // `${ats}:${slug}`
+  name: string;
+  ats: 'greenhouse' | 'lever' | 'ashby';
+  slug: string;
+  addedAt: number;
+  lastCheckedAt?: number;
+  status: 'ok' | 'not_found' | 'error' | 'pending';
+  roles: WatchedRole[];
+  newRoleIds: string[]; // roles first seen on the latest check, cleared when viewed
+  roleCountHistory: { at: number; count: number }[]; // hiring pulse, newest last
 }
 
 export interface OutreachRecord {
@@ -87,6 +89,7 @@ export interface OutreachRecord {
   recipientName: string;
   recipientEmail: string;
   contactType: 'WARM_CONNECTION' | 'ALUMNI' | 'COLD_HIRING_MGR';
+  channel?: 'email' | 'linkedin';
   emailSubject: string;
   emailBody: string;
   linkedInNote: string;
@@ -94,6 +97,8 @@ export interface OutreachRecord {
   gmailDraftId?: string;
   gmailThreadId?: string;
   status: 'DRAFT_CREATED' | 'SENT' | 'FOLLOWUP_1_DUE' | 'FOLLOWUP_2_DUE' | 'REPLIED' | 'CLOSED';
+  followupsDone?: number; // 0, 1 or 2
+  notifiedStage?: number; // last follow-up stage we sent a notification for
   createdAt: number;
   followup1Date: number; // +4 days
   followup2Date: number; // +9 days
@@ -135,7 +140,7 @@ export interface UserSettings {
   userCollege: string;
   preferredLocation?: string;
   workMode?: 'all' | 'remote' | 'onsite' | 'hybrid';
-  companyTier?: 'all' | 'underrated' | 'top_tech';
+  earlyBirdAlerts?: boolean;
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
@@ -147,7 +152,7 @@ export class HirivoDatabase extends Dexie {
   facts!: EntityTable<ResumeFact, 'id'>;
   connections!: EntityTable<LinkedInConnection, 'id'>;
   jobs!: EntityTable<JobSnapshot, 'id'>;
-  opportunities!: EntityTable<DiscoveredOpportunity, 'id'>;
+  watchlist!: EntityTable<WatchlistCompany, 'id'>;
   outreach!: EntityTable<OutreachRecord, 'id'>;
   voiceProfiles!: EntityTable<VoiceProfile, 'id'>;
   llmCache!: EntityTable<LLMCacheItem, 'hashKey'>;
@@ -165,6 +170,11 @@ export class HirivoDatabase extends Dexie {
       voiceProfiles: 'id, updatedAt',
       llmCache: 'hashKey, expiresAt',
       settings: 'id',
+    });
+    // v3: the hardcoded "opportunities" radar is gone; the watchlist reads real ATS feeds.
+    this.version(3).stores({
+      opportunities: null,
+      watchlist: 'id, ats, addedAt, lastCheckedAt',
     });
   }
 }

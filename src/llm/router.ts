@@ -1,8 +1,14 @@
-import { db, UserSettings } from '../db';
+import { getSettings } from '../db/settings';
 import { computePromptHash, getCachedResponse, setCachedResponse } from './cache';
-import { callGroq, LLMMessage, CompletionOptions } from './providers/groq';
+import { pickModel } from './registry';
+import { recordUsage } from './usage';
+import { LLMMessage, ModelRole, ProviderId } from './types';
+import { callGroq } from './providers/groq';
 import { callGemini } from './providers/gemini';
 import { callOpenRouter } from './providers/openrouter';
+import { callNano } from './providers/nano';
+
+export type { LLMMessage } from './types';
 
 export interface RouteRequest {
   messages: LLMMessage[];
@@ -14,96 +20,69 @@ export interface RouteRequest {
 
 export interface RouteResult {
   content: string;
-  providerUsed: 'groq' | 'gemini' | 'openrouter' | 'cache';
+  providerUsed: ProviderId | 'cache';
+  model: string;
   cached: boolean;
 }
 
-async function getEffectiveSettings(): Promise<UserSettings | null> {
-  let settings = await db.settings.get('config');
-  if (!settings?.groqApiKey && !settings?.geminiApiKey && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    try {
-      const stored = await chrome.storage.local.get('config');
-      if (stored?.config) {
-        settings = stored.config;
-      }
-    } catch {}
-  }
-  return settings || null;
-}
+const ROLE_FOR_TASK: Record<RouteRequest['taskType'], ModelRole> = {
+  fit_analysis: 'reason',
+  draft_writing: 'write',
+  general: 'fast',
+};
 
 export async function routeLLMRequest(req: RouteRequest): Promise<RouteResult> {
-  const settings = await getEffectiveSettings();
-
-  // Build cache key from all messages + jsonMode flag
-  const promptKey = JSON.stringify({
-    msgs: req.messages,
-    json: req.jsonMode,
-    task: req.taskType,
-  });
-  const hash = await computePromptHash(promptKey);
+  const settings = await getSettings();
+  const role = ROLE_FOR_TASK[req.taskType];
+  const hash = await computePromptHash(JSON.stringify({ m: req.messages, j: req.jsonMode, r: role }));
 
   if (!req.skipCache) {
     const cached = await getCachedResponse(hash);
     if (cached) {
-      return {
-        content: cached,
-        providerUsed: 'cache',
-        cached: true,
-      };
+      await recordUsage('cache');
+      return { content: cached, providerUsed: 'cache', model: 'cache', cached: true };
     }
   }
 
-  const options: CompletionOptions = {
+  const keys: Record<Exclude<ProviderId, 'nano'>, string> = {
+    groq: settings.groqApiKey.trim(),
+    gemini: settings.geminiApiKey.trim(),
+    openrouter: settings.openrouterApiKey.trim(),
+  };
+  const preferred = settings.activeProvider || 'groq';
+  const chain: ProviderId[] = [preferred, ...(['groq', 'gemini', 'openrouter'] as const).filter((p) => p !== preferred)];
+  // The on-device model is only good enough for short classification work, never for writing.
+  if (role === 'fast') chain.push('nano');
+
+  const base = {
     jsonMode: req.jsonMode,
-    temperature: req.temperature ?? (req.taskType === 'fit_analysis' ? 0.1 : 0.4),
-    maxTokens: req.taskType === 'fit_analysis' ? 1200 : 800,
-    // Do not hardcode model; allow callGroq and callGemini to dynamically auto-detect the user's available model!
+    temperature: req.temperature ?? (role === 'write' ? 0.4 : 0.1),
+    maxTokens: role === 'reason' ? 1400 : 900,
   };
 
-  // Provider order: User's preferred first, then fallbacks
-  const preferred = settings?.activeProvider || 'groq';
-  const providerChain: Array<'groq' | 'gemini' | 'openrouter'> = [
-    preferred,
-    ...(['groq', 'gemini', 'openrouter'] as const).filter((p) => p !== preferred),
-  ];
-
-  let lastError: Error | null = null;
-
-  for (const provider of providerChain) {
+  const failures: string[] = [];
+  for (const provider of chain) {
     try {
-      if (provider === 'groq') {
-        const key = settings?.groqApiKey?.trim();
+      let result;
+      if (provider === 'nano') {
+        result = await callNano(req.messages, base);
+      } else {
+        const key = keys[provider];
         if (!key) continue;
-        const res = await callGroq(key, req.messages, options);
-        await setCachedResponse(hash, res, 'groq-auto');
-        return { content: res, providerUsed: 'groq', cached: false };
+        const model = await pickModel(provider, key, role);
+        const call = provider === 'groq' ? callGroq : provider === 'gemini' ? callGemini : callOpenRouter;
+        result = await call(key, req.messages, { ...base, model });
       }
-
-      if (provider === 'gemini') {
-        const key = settings?.geminiApiKey?.trim();
-        if (!key) continue;
-        const res = await callGemini(key, req.messages, options);
-        await setCachedResponse(hash, res, 'gemini-auto');
-        return { content: res, providerUsed: 'gemini', cached: false };
-      }
-
-      if (provider === 'openrouter') {
-        const key = settings?.openrouterApiKey?.trim();
-        if (!key) continue;
-        const res = await callOpenRouter(key, req.messages, { ...options, model: 'meta-llama/llama-3.1-8b-instruct:free' });
-        await setCachedResponse(hash, res, 'openrouter-free');
-        return { content: res, providerUsed: 'openrouter', cached: false };
-      }
+      await recordUsage(provider, result.totalTokens);
+      await setCachedResponse(hash, result.content, result.model);
+      return { content: result.content, providerUsed: provider, model: result.model, cached: false };
     } catch (err: any) {
-      console.warn(`Provider ${provider} failed (${err.status || err.message}). Checking next fallback...`);
-      lastError = err;
+      failures.push(`${provider}: ${err.message}`);
     }
   }
 
-  // If no API keys were configured
-  if (!settings?.groqApiKey && !settings?.geminiApiKey && !settings?.openrouterApiKey) {
-    throw new Error('No API key configured. Please paste your free Groq or Gemini API key in Settings and click "Save API Keys".');
+  if (!keys.groq && !keys.gemini && !keys.openrouter) {
+    throw new Error('Add a free Groq key in You → AI keys to use this. It takes about a minute.');
   }
-
-  throw lastError || new Error('All configured LLM providers failed or were rate-limited.');
+  throw new Error(`Every AI provider failed. ${failures.join(' | ')}`);
 }

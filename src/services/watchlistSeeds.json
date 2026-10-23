@@ -1,0 +1,208 @@
+{
+  "verifiedAt": "2026-10-23",
+  "companies": [
+    {
+      "name": "Razorpay",
+      "ats": "greenhouse",
+      "slug": "razorpaysoftwareprivatelimited",
+      "region": "India",
+      "openRolesAtCheck": 26
+    },
+    {
+      "name": "Groww",
+      "ats": "greenhouse",
+      "slug": "groww",
+      "region": "India",
+      "openRolesAtCheck": 10
+    },
+    {
+      "name": "Druva",
+      "ats": "greenhouse",
+      "slug": "druva",
+      "region": "India",
+      "openRolesAtCheck": 31
+    },
+    {
+      "name": "InMobi",
+      "ats": "greenhouse",
+      "slug": "inmobi",
+      "region": "India",
+      "openRolesAtCheck": 82
+    },
+    {
+      "name": "Rubrik",
+      "ats": "greenhouse",
+      "slug": "rubrik",
+      "region": "Global + India",
+      "openRolesAtCheck": 149
+    },
+    {
+      "name": "Databricks",
+      "ats": "greenhouse",
+      "slug": "databricks",
+      "region": "Global + India",
+      "openRolesAtCheck": 894
+    },
+    {
+      "name": "Stripe",
+      "ats": "greenhouse",
+      "slug": "stripe",
+      "region": "Global + India",
+      "openRolesAtCheck": 722
+    },
+    {
+      "name": "MongoDB",
+      "ats": "greenhouse",
+      "slug": "mongodb",
+      "region": "Global + India",
+      "openRolesAtCheck": 384
+    },
+    {
+      "name": "GitLab",
+      "ats": "greenhouse",
+      "slug": "gitlab",
+      "region": "Remote",
+      "openRolesAtCheck": 236
+    },
+    {
+      "name": "Cloudflare",
+      "ats": "greenhouse",
+      "slug": "cloudflare",
+      "region": "Global + India",
+      "openRolesAtCheck": 453
+    },
+    {
+      "name": "Twilio",
+      "ats": "greenhouse",
+      "slug": "twilio",
+      "region": "Global + India",
+      "openRolesAtCheck": 134
+    },
+    {
+      "name": "Elastic",
+      "ats": "greenhouse",
+      "slug": "elastic",
+      "region": "Remote",
+      "openRolesAtCheck": 396
+    },
+    {
+      "name": "Anthropic",
+      "ats": "greenhouse",
+      "slug": "anthropic",
+      "region": "Global + India",
+      "openRolesAtCheck": 681
+    },
+    {
+      "name": "CRED",
+      "ats": "lever",
+      "slug": "cred",
+      "region": "India",
+      "openRolesAtCheck": 8
+    },
+    {
+      "name": "Mindtickle",
+      "ats": "lever",
+      "slug": "mindtickle",
+      "region": "India",
+      "openRolesAtCheck": 21
+    },
+    {
+      "name": "Paytm",
+      "ats": "lever",
+      "slug": "paytm",
+      "region": "India",
+      "openRolesAtCheck": 197
+    },
+    {
+      "name": "Zeta",
+      "ats": "lever",
+      "slug": "zeta",
+      "region": "India",
+      "openRolesAtCheck": 27
+    },
+    {
+      "name": "Atlan",
+      "ats": "ashby",
+      "slug": "atlan",
+      "region": "India",
+      "openRolesAtCheck": 6
+    },
+    {
+      "name": "Plane",
+      "ats": "ashby",
+      "slug": "plane",
+      "region": "India",
+      "openRolesAtCheck": 33
+    },
+    {
+      "name": "Sarvam AI",
+      "ats": "ashby",
+      "slug": "sarvam",
+      "region": "India",
+      "openRolesAtCheck": 44
+    },
+    {
+      "name": "Linear",
+      "ats": "ashby",
+      "slug": "linear",
+      "region": "Remote",
+      "openRolesAtCheck": 34
+    },
+    {
+      "name": "Notion",
+      "ats": "ashby",
+      "slug": "notion",
+      "region": "Global",
+      "openRolesAtCheck": 140
+    },
+    {
+      "name": "Supabase",
+      "ats": "ashby",
+      "slug": "supabase",
+      "region": "Remote",
+      "openRolesAtCheck": 59
+    },
+    {
+      "name": "PostHog",
+      "ats": "ashby",
+      "slug": "posthog",
+      "region": "Remote",
+      "openRolesAtCheck": 10
+    },
+    {
+      "name": "Resend",
+      "ats": "ashby",
+      "slug": "resend",
+      "region": "Remote",
+      "openRolesAtCheck": 14
+    },
+    {
+      "name": "Replit",
+      "ats": "ashby",
+      "slug": "replit",
+      "region": "Global",
+      "openRolesAtCheck": 52
+    },
+    {
+      "name": "Perplexity",
+      "ats": "ashby",
+      "slug": "perplexity",
+      "region": "Global",
+      "openRolesAtCheck": 128
+    },
+    {
+      "name": "Cursor",
+      "ats": "ashby",
+      "slug": "cursor",
+      "region": "Global",
+      "openRolesAtCheck": 127
+    },
+    {
+      "name": "OpenAI",
+      "ats": "ashby",
+      "slug": "openai",
+      "region": "Global",
+      "openRolesAtCheck": 800
+    }
+  ]
+}

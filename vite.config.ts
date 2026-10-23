@@ -10,6 +10,9 @@ export default defineConfig({
     },
   },
   build: {
+    // Match manifest minimum_chrome_version. Keeping syntax native also matters for extractJob.ts:
+    // Chrome serialises that function into the page, so it must not depend on injected helpers.
+    target: 'chrome116',
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {

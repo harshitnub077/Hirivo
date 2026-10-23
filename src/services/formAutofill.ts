@@ -1,4 +1,4 @@
-import { UserSettings, ResumeRecord } from '../db';
+import { UserSettings } from '../db';
 
 export interface AutofillProfile {
   fullName: string;
@@ -14,8 +14,9 @@ export interface AutofillProfile {
   sponsorshipNeeded: 'No' | 'Yes';
 }
 
+// Empty fields stay empty: the autofill skips them rather than typing placeholder data into a real application.
 export function buildAutofillProfile(settings: UserSettings | null): AutofillProfile {
-  const fullName = settings?.userFullName || 'Alex Chen';
+  const fullName = settings?.userFullName || '';
   const nameParts = fullName.trim().split(/\s+/);
   const firstName = nameParts[0] || '';
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
@@ -24,12 +25,12 @@ export function buildAutofillProfile(settings: UserSettings | null): AutofillPro
     fullName,
     firstName,
     lastName,
-    email: settings?.userEmail || 'alex.chen@example.com',
-    phone: settings?.userPhone || '+1 (555) 234-5678',
-    location: settings?.preferredLocation || 'San Francisco, CA',
-    linkedinUrl: settings?.linkedinUrl || 'https://linkedin.com/in/alexchen',
-    githubUrl: settings?.githubUrl || 'https://github.com/alexchen',
-    portfolioUrl: settings?.portfolioUrl || 'https://alexchen.dev',
+    email: settings?.userEmail || '',
+    phone: settings?.userPhone || '',
+    location: settings?.preferredLocation || '',
+    linkedinUrl: settings?.linkedinUrl || '',
+    githubUrl: settings?.githubUrl || '',
+    portfolioUrl: settings?.portfolioUrl || '',
     workAuthorization: 'Yes',
     sponsorshipNeeded: 'No',
   };

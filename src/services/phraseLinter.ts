@@ -1,6 +1,6 @@
 export interface LinterIssue {
   phrase: string;
-  category: 'EMPTY_OPENING' | 'DESPERATION' | 'AI_BUZZWORD' | 'VAGUE_FLATTERY';
+  category: 'EMPTY_OPENING' | 'DESPERATION' | 'AI_BUZZWORD' | 'VAGUE_FLATTERY' | 'STIFF_FORMALITY';
   explanation: string;
   suggestedReplacement?: string;
   startIndex: number;
@@ -127,6 +127,38 @@ const BANNED_RULES: Rule[] = [
     category: 'AI_BUZZWORD',
     explanation: 'Over-the-top corporate flattery.',
     suggestedReplacement: 'leader in',
+  },
+
+  // Stiff formality common in Indian cold emails; reads as a template to most hiring managers.
+  {
+    pattern: /\b(?:respected|dear) (?:sir|ma'?am|madam|sir\s*\/\s*ma'?am)\b,?/gi,
+    category: 'STIFF_FORMALITY',
+    explanation: 'Use their first name. "Respected Sir/Madam" signals a mass email.',
+    suggestedReplacement: 'Hi there,',
+  },
+  {
+    pattern: /\bkindly do the needful\b\.?/gi,
+    category: 'STIFF_FORMALITY',
+    explanation: 'Vague and formulaic. Ask for one specific thing instead.',
+    suggestedReplacement: '',
+  },
+  {
+    pattern: /\b(?:PFA|please find (?:the )?attached(?: my)? (?:resume|cv))\b\.?/gi,
+    category: 'STIFF_FORMALITY',
+    explanation: 'Skip attachments in a first email; link one strong project instead.',
+    suggestedReplacement: '',
+  },
+  {
+    pattern: /\bI am writing (?:this mail|this email|to you) (?:to|in order to)\b/gi,
+    category: 'STIFF_FORMALITY',
+    explanation: 'They can see you are writing. Start with why them, why now.',
+    suggestedReplacement: '',
+  },
+  {
+    pattern: /\b(?:revert back|do revert)\b/gi,
+    category: 'STIFF_FORMALITY',
+    explanation: '"Revert" means undo to most readers. Say "reply".',
+    suggestedReplacement: 'reply',
   },
 ];
 
