@@ -42,6 +42,8 @@ export interface JobSnapshot {
   atsType?: 'greenhouse' | 'lever' | 'ashby' | 'workable' | 'unknown';
   atsSlug?: string;
   atsPublishedAt?: string; // ISO date read from the ATS feed, not from the job board
+  scamLevel?: 'clear' | 'caution' | 'risk';
+  scamFindings?: { tone: 'risk' | 'caution'; text: string }[];
   ghostScore?: number; // 0-100 (high = likely ghost)
   ghostReasons?: string[];
   legitScore?: number; // 0-100 (high = established)
@@ -101,6 +103,22 @@ export interface AtsBoardProbe {
   slug?: string;
   found: boolean;
   checkedAt: number;
+}
+
+export interface FingerprintSighting {
+  jobId: string;
+  source: string; // site the job was seen on; reposts are only counted within one site
+  company: string;
+  postedAt?: number; // best estimate of the posting date when last seen
+  seenAt: number;
+}
+
+export interface JobFingerprint {
+  hash: string; // SHA-256 of the normalised description
+  firstSeen: number;
+  lastSeen: number;
+  reposts: number; // times a known job came back with a newer posting date
+  sightings: FingerprintSighting[];
 }
 
 export interface SourceFetch {
@@ -214,6 +232,7 @@ export class HirivoDatabase extends Dexie {
   discovered!: EntityTable<DiscoveredJob, 'id'>;
   atsProbes!: EntityTable<AtsBoardProbe, 'id'>;
   sourceFetches!: EntityTable<SourceFetch, 'id'>;
+  fingerprints!: EntityTable<JobFingerprint, 'hash'>;
   outreach!: EntityTable<OutreachRecord, 'id'>;
   voiceProfiles!: EntityTable<VoiceProfile, 'id'>;
   llmCache!: EntityTable<LLMCacheItem, 'hashKey'>;
@@ -243,6 +262,10 @@ export class HirivoDatabase extends Dexie {
       discovered: 'id, source, status, score, firstSeenAt, company',
       atsProbes: 'id, checkedAt',
       sourceFetches: 'id',
+    });
+    // v5: repost fingerprints for the Scam Shield.
+    this.version(5).stores({
+      fingerprints: 'hash, lastSeen',
     });
   }
 }
