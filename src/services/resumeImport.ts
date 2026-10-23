@@ -105,7 +105,8 @@ export function extractContactInfo(text: string): ContactInfo {
   const githubUrl = url(/(?:https?:\/\/)?github\.com\/[A-Za-z0-9_-]+\/?(?![A-Za-z0-9_/-])/i);
   // Remove emails first so "name.me@gmail.com" is never read as the site "name.me".
   const withoutEmails = text.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, ' ');
-  const portfolioUrl = (withoutEmails.match(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+\.(?:dev|me|io|in|app|tech|site|xyz|vercel\.app|netlify\.app|github\.io)(?:\/[^\s]*)?/gi) || [])
+  // Lowercase hosts of 3+ characters only, so degrees like "B.Tech" or "M.Sc" never look like sites.
+  const portfolioUrl = (withoutEmails.match(/(?:https?:\/\/)?(?:www\.)?(?<![\w.])[a-z0-9-]{3,}\.(?:dev|me|io|in|app|tech|site|xyz|vercel\.app|netlify\.app|github\.io)(?![\w])(?:\/[^\s]*)?/g) || [])
     .map((u) => (u.startsWith('http') ? u : `https://${u}`))
     .find((u) => !/linkedin|github\.com|gmail|outlook|yahoo/i.test(u) && !(email && u.includes(email.split('@')[1])));
 
@@ -116,6 +117,22 @@ export function extractContactInfo(text: string): ContactInfo {
     .find((l) => /^[A-Za-z][A-Za-z.'-]+(?:\s+[A-Za-z][A-Za-z.'-]+){1,3}$/.test(l) && !/resume|curriculum|vitae|profile/i.test(l));
 
   return { fullName, email, phone, linkedinUrl, githubUrl, portfolioUrl };
+}
+
+const COLLEGE = /\b(IIT|IIIT|NIT|BITS|IIM|VIT|SRM|DTU|NSUT|[A-Z][\w.&' -]*(?:University|College|Institute|Vidyalaya|Polytechnic)(?: of [A-Z][\w ]+)?)\b[\w ,.'&-]*/;
+
+/** Finds the college line ("B.Tech, IIT Delhi" → "IIT Delhi"). */
+export function extractCollege(text: string): string | undefined {
+  for (const line of text.split('\n')) {
+    const m = line.match(COLLEGE);
+    if (m) {
+      return m[0]
+        .replace(/\s*[,|·(].*$/, '')
+        .replace(/\s+\d{4}.*$/, '')
+        .trim() || undefined;
+    }
+  }
+  return undefined;
 }
 
 const ACTION_VERB =
@@ -251,6 +268,7 @@ export async function buildProfile(text: string): Promise<ResumeProfile> {
           ...contact,
           ...ai,
           fullName: contact.fullName || ai.fullName,
+          college: ai.college || extractCollege(text),
           skills,
           roles: ai.roles.length ? ai.roles : suggestRolesHeuristic(skills, ai.yearsExperience),
           usedAI: true,
@@ -262,6 +280,7 @@ export async function buildProfile(text: string): Promise<ResumeProfile> {
   }
   return {
     ...contact,
+    college: extractCollege(text),
     skills: heuristicSkills,
     facts: extractFactsHeuristic(text),
     roles: suggestRolesHeuristic(heuristicSkills),

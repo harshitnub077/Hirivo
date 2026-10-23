@@ -3,6 +3,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { daysSince, findMatchingRole, parseAtsUrl } from '../../src/services/atsFeeds';
 import { parseHnPost } from '../../src/services/discover/hn';
 import {
+  extractCollege,
   extractContactInfo,
   extractFactsHeuristic,
   extractSkillsHeuristic,
@@ -57,6 +58,10 @@ describe('parseHnPost', () => {
     expect(job.company).toBe('PrairieLearn');
     expect(job.title).toBe('Full-Stack Software Engineer');
   });
+  it('keeps URLs out of the location', () => {
+    const job = parseHnPost({ id: 4, text: 'Enveritas | Backend Software Engineer | Remote (Global) | https://enveritas.org/jobs' })!;
+    expect(job.location).toBe('Remote (Global)');
+  });
   it('ignores chatter', () => {
     expect(parseHnPost({ id: 2, text: 'Is anyone hiring in Pune?' })).toBeNull();
     expect(parseHnPost({ id: 3, text: null })).toBeNull();
@@ -85,6 +90,12 @@ describe('resume extraction without AI', () => {
       githubUrl: 'https://github.com/aaravm',
       portfolioUrl: 'https://aarav.dev',
     });
+  });
+  it('does not mistake degrees for websites, and finds the college', () => {
+    const text = 'Riya Sen\nriya.sen@outlook.com\nB.Tech in CSE, National Institute of Technology Trichy, 2025\nM.Sc. Physics';
+    expect(extractContactInfo(text).portfolioUrl).toBeUndefined();
+    expect(extractCollege(text)).toBe('National Institute of Technology Trichy');
+    expect(extractCollege('B.Tech, IIT Delhi')).toBe('IIT Delhi');
   });
   it('finds achievement bullets as facts with padded ids', () => {
     const facts = extractFactsHeuristic(RESUME);

@@ -9,7 +9,15 @@ export async function seedDemo() {
   if (await db.jobs.get('linkedin:4040404040')) return;
   const now = Date.now();
   const day = 86_400_000;
-  await patchSettings({ userFullName: 'Aarav Mehta', groqApiKey: 'demo', targetRoles: ['frontend', 'full stack'] });
+  await patchSettings({
+    userFullName: 'Aarav Mehta',
+    groqApiKey: 'demo',
+    targetRoles: ['frontend', 'full stack', 'react'],
+    chosenRoles: ['Frontend Engineer', 'Full Stack Engineer'],
+    suggestedRoles: [{ title: 'Frontend Engineer', keywords: ['frontend', 'react'], level: 'entry', why: 'React performance work.' }],
+    skills: ['react', 'typescript', 'node.js', 'postgresql'],
+    locationPreference: 'india',
+  });
   await db.facts.bulkPut([
     { id: 'FACT-01', category: 'METRIC', claim: 'Cut checkout page load time 38% by moving to React Server Components', sourceSnippet: '', verified: true },
     { id: 'FACT-02', category: 'PROJECT', claim: 'Built an open-source UPI payment status tracker with 1.2k GitHub stars', sourceSnippet: '', verified: true },

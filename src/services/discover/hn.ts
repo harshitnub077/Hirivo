@@ -31,7 +31,10 @@ export function parseHnPost(comment: { id: number; text?: string | null; created
   const company = parts[0].replace(/\s*\(.*?\)\s*$/, '').slice(0, 80);
   const title = parts.slice(1).find((p) => ROLE_WORDS.test(p) && p.length < 140) || '';
   if (!title) return null;
-  const location = parts.slice(1).filter((p) => p !== title && /remote|onsite|on-site|hybrid|[A-Z][a-z]+,\s?[A-Z]|india|bangalore|bengaluru|london|new york|sf|berlin/i.test(p)).join(' · ');
+  const location = parts
+    .slice(1)
+    .filter((p) => p !== title && !/https?:|www\.|\.\w{2,4}(\/|$)/i.test(p) && /remote|onsite|on-site|hybrid|[A-Z][a-z]+,\s?[A-Z]|india|bangalore|bengaluru|london|new york|sf|berlin/i.test(p))
+    .join(' · ');
   const href = comment.text.match(/href="([^"]+)"/)?.[1];
   const hnUrl = `https://news.ycombinator.com/item?id=${comment.id}`;
   const body = htmlToText(comment.text);

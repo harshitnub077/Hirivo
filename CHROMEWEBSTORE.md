@@ -1,14 +1,16 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.0.0
+**Version:** 2.1.0
 **Category:** Productivity
 
 ## Short description (≤132 chars)
 Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.
 
 ## Detailed description
-Hirivo sits in Chrome's side panel next to any job posting. Press Analyze and it answers four questions:
+Upload your resume and Hirivo fills your profile, suggests roles that fit, and finds matching jobs from Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, Hacker News "Who is hiring" and YC startups. It ranks every job with clear reasons, and can show only small teams. On Greenhouse, Lever, Ashby and Workable it fills your application and attaches your resume; you press Submit.
+
+Next to any job posting, press Analyze and it answers four questions:
 
 **Is it real?** Hirivo looks for the role on the company's own hiring board (Greenhouse, Lever, Ashby) and reads how long it has been open. Stale or missing roles are flagged before you spend time on them.
 
@@ -34,13 +36,14 @@ Then Hirivo opens the email in Gmail for you to send, and reminds you to follow 
 | `storage` | Remembers daily AI usage counts locally. |
 | `scripting` | Reads the job on the current tab when the user presses Analyze. |
 | `activeTab` | Allows Analyze on the tab the user opened Hirivo from, without broad access. |
-| `alarms` | Checks watched companies every 6 hours and follow-ups every 3 hours. |
+| `alarms` | Checks watched companies every 6 hours, follow-ups every 3 hours, and Discover every 12 hours. |
 | `notifications` | Tells the user about new matching roles and due follow-ups. |
 | Host: `api.groq.com`, `generativelanguage.googleapis.com`, `openrouter.ai` | Sends the user's own AI requests to the provider they chose, with their key. |
 | Host: `rdap.org`, `dns.google` | Domain age and mail-record checks for company legitimacy. |
 | Host: `boards-api.greenhouse.io`, `api.lever.co`, `api.ashbyhq.com` | Reads public job-board feeds to confirm roles are live and power Radar. |
 | Host: LinkedIn, Naukri, Indeed, Wellfound, Instahyre, Cutshort, foundit | Reads the job page on Analyze only. No script runs on these sites by itself. |
-| Host: `*.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com` | Reads job pages, and offers a "Fill with Hirivo" button on application forms. The user always submits. |
+| Host: `*.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com` | Reads job pages, fills application forms and attaches the user's resume. The user always submits. |
+| Host: `remotive.com`, `remoteok.com`, `himalayas.app`, `jobicy.com`, `www.arbeitnow.com`, `hn.algolia.com`, `yc-oss.github.io` | Public job APIs and open datasets for Discover. Each listing is credited and links to its source. |
 | Optional host: `https://*/*` | Requested one site at a time, only when the user presses Analyze on a company careers page outside the list above. |
 
 ## Data use disclosure

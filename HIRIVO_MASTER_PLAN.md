@@ -18,7 +18,8 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 6. **Local-first.** All data lives in IndexedDB (`HirivoDB`). There is no Hirivo server. AI calls go straight from the browser to the provider the user picked, using the user's own key.
 7. **No hardcoded model IDs in calls.** Use `pickModel(provider, key, role)` from `src/llm/registry.ts`. To change a model, edit the preference lists there.
 8. **Free resources only**: Groq, Gemini and OpenRouter free tiers, Chrome's built-in Gemini Nano, and public ATS feeds, RDAP and DNS-over-HTTPS.
-9. **Design system only.** Use the tokens and classes in `src/sidepanel/styles/globals.css`, with no new colours, gradients or glassmorphism. Inline styles are for one-off spacing only.
+9. **Job sources: public APIs only, credited, within their limits.** No background scraping of LinkedIn, Naukri or any site whose terms forbid it. Search-result pages are read only on a user click, only for what is visible, with no scrolling or paging. Every listing links back to its source.
+10. **Design system only.** Use the tokens and classes in `src/sidepanel/styles/globals.css`, with no new colours, gradients or glassmorphism. Inline styles are for one-off spacing only.
 
 ---
 
@@ -40,7 +41,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.0, built and verified)
+## 3. What exists today (v2.1, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -57,6 +58,11 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | LLM router: Groq → Gemini → OpenRouter → Gemini Nano, model registry, cache, daily usage | Done | `src/llm/*` |
 | Autofill on Greenhouse/Lever/Ashby/Workable (empty fields stay empty) | Done | `src/content/index.ts`, `formAutofill.ts` |
 | Export data, delete everything | Done | `views/YouView.tsx` |
+| Resume upload (PDF via pdf.js, DOCX via fflate, TXT): fills profile, keeps only traceable facts, suggests roles; first-run step | Done | `src/services/resumeImport.ts`, `views/ResumeImport.tsx` |
+| Discover: Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, HN Who is hiring, YC hiring startups (board finder), watchlist; ranking with reasons; small-teams filter; India-first location | Done | `src/services/discover/*`, `views/DiscoverPanel.tsx` |
+| Save visible jobs from LinkedIn/Naukri/Indeed/JSON-LD search pages (on click only) | Done | `src/content/extractJobList.ts` |
+| Apply flow: auto-fill ATS forms on open, attach resume file, detect confirmation, mark applied | Done | `src/content/index.ts`, `src/content/formFill.ts` |
+| Tests: 55 unit tests incl. a real Greenhouse form fixture; live source checks; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
@@ -65,6 +71,8 @@ npm run build           # tsc + vite → dist/ (load unpacked in chrome://extens
 npm run generate-icons  # brand SVG → PNG icons + store tile
 npm run verify-seeds    # re-check the Radar suggestion list against live boards
 npm run preview:panel   # dev server; open /sidepanel.html?demo for sample data
+npm test                # unit tests (runs in CI on every push)
+npm run test:live       # checks every live job source still answers in the expected shape
 ```
 
 ---
@@ -196,6 +204,19 @@ Paste each prompt as is. Each one assumes the rules in section 1 and ends with a
 > Acceptance: every permission in the manifest is used in code and justified in the doc.
 
 ---
+
+### Phase H: More discovery sources (after A–G)
+
+> Add sources to `src/services/discover/` following `boards.ts`: return `RawJob[]`, credit the source, respect its limits, and add a live test in `tests/live/`.
+>
+> Candidates:
+> - Wellfound and Instahyre via JSON-LD on pages the user opens (already supported by save-from-page).
+> - Public Workable (`apply.workable.com/api/v1/widget/accounts/{slug}`) and SmartRecruiters (`api.smartrecruiters.com/v1/companies/{id}/postings`) boards in the YC board finder.
+> - Indian startup lists with open data licences.
+>
+> Never add a source that requires login or forbids automated access.
+>
+> Acceptance: `npm run test:live` passes for the new source, and Discover credits it.
 
 ## 5. Growth and money (after 100 real users, not before)
 

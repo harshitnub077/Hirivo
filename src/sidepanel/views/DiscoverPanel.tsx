@@ -140,8 +140,10 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
       )}
 
       {shown.length === 0 ? (
-        <Empty icon={<Sparkles size={28} />} title={running ? 'Searching every source…' : 'Nothing here yet'}>
-          {filter === 'new'
+        <Empty icon={<Sparkles size={28} className={running ? 'spin' : undefined} />} title={running ? 'Searching every source…' : 'Nothing here yet'}>
+          {running
+            ? 'Checking 7 job sources and up to 24 startup hiring boards. This takes about 20–30 seconds.'
+            : filter === 'new'
             ? 'Press Refresh. If nothing shows up, widen your roles or choose Anywhere.'
             : filter === 'saved'
               ? 'Save jobs with the bookmark button, or from a LinkedIn or Naukri search page.'
@@ -184,29 +186,38 @@ function JobRow({ job, onApply }: { job: DiscoveredJob; onApply: () => void }) {
   const saved = job.status === 'saved';
   return (
     <div className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-      <div className="row" style={{ alignItems: 'flex-start' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="h2">{job.title}</div>
-          <div className="small muted truncate">
-            {[job.company, job.location, age !== undefined ? (age === 0 ? 'today' : `${age} d ago`) : ''].filter(Boolean).join(' · ')}
+      {job.kind === 'company' ? (
+        <div>
+          <div className="row between">
+            <div className="h2 truncate">{job.company}</div>
+            {job.smallTeamReason && <Pill tone="ok">{job.smallTeamReason}</Pill>}
           </div>
+          <div className="small">{job.title.replace(/^Hiring:\s*/, '')}</div>
+          <div className="small muted truncate">{job.location}</div>
         </div>
-        <Pill tone={toneForScore(job.score, { good: 70, ok: 45 })} title="Match with your roles and skills">
-          {job.score}
-        </Pill>
-      </div>
-      <div className="row wrap" style={{ gap: 5 }}>
-        {job.smallTeamReason && <Pill tone="ok">{job.smallTeamReason}</Pill>}
-        {job.salary && <Pill>{job.salary}</Pill>}
-        <a
-          className="small muted"
-          href={job.sourceUrl || job.url}
-          onClick={(e) => (e.preventDefault(), openUrl(job.sourceUrl || job.url))}
-        >
-          via {job.sourceLabel}
-        </a>
-      </div>
-      {job.matchReasons.length > 0 && <div className="small muted">{job.matchReasons.join(' · ')}</div>}
+      ) : (
+        <>
+          <div className="row" style={{ alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="h2">{job.title}</div>
+              <div className="small muted truncate">
+                {[job.company, job.location, age !== undefined ? (age === 0 ? 'today' : `${age} d ago`) : ''].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+            <Pill tone={toneForScore(job.score, { good: 70, ok: 45 })} title="Match with your roles and skills">
+              {job.score}
+            </Pill>
+          </div>
+          <div className="row wrap" style={{ gap: 5 }}>
+            {job.smallTeamReason && <Pill tone="ok">{job.smallTeamReason}</Pill>}
+            {job.salary && <Pill>{job.salary}</Pill>}
+            <a className="small muted" href={job.sourceUrl || job.url} onClick={(e) => (e.preventDefault(), openUrl(job.sourceUrl || job.url))}>
+              via {job.sourceLabel}
+            </a>
+          </div>
+          {job.matchReasons.length > 0 && <div className="small muted">{job.matchReasons.join(' · ')}</div>}
+        </>
+      )}
       <div className="row" style={{ gap: 6 }}>
         {job.status === 'applying' ? (
           <>
