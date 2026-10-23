@@ -106,7 +106,7 @@ export const App: React.FC = () => {
             goTo={setView}
           />
         )}
-        {view === 'radar' && <RadarView watchlist={watchlist} settings={settings} />}
+        {view === 'radar' && <RadarView watchlist={watchlist} settings={settings} hasResume={facts.length > 0 || !!resume} />}
         {view === 'pipeline' && <PipelineView outreach={outreach} settings={settings} />}
         {view === 'you' && <YouView settings={settings} resume={resume ?? null} facts={facts} voiceProfile={voiceProfile} />}
       </main>

@@ -1,5 +1,7 @@
 import { db, JobSnapshot } from '../db';
 import { extractJobFromPage, ExtractedJobData } from '../content/extractJob';
+import { extractJobListFromPage, ListedJob } from '../content/extractJobList';
+import { savePageJobs } from '../services/discover';
 
 export interface ActivePage {
   tabId: number;
@@ -73,4 +75,35 @@ export async function analyzeActivePage(): Promise<JobSnapshot> {
   };
   await db.jobs.put(job);
   return job;
+}
+
+/** Saves the job cards visible on the current search page. Called only from a user click. */
+export async function saveJobsFromActivePage(): Promise<{ host: string; count: number }> {
+  const page = await getActivePage();
+  if (!page) throw new Error('Open a job search page (LinkedIn, Naukri, Indeed, Wellfound…) first.');
+  const run = () => chrome.scripting.executeScript({ target: { tabId: page.tabId }, func: extractJobListFromPage });
+  let results;
+  try {
+    results = await run();
+  } catch {
+    const granted = await chrome.permissions.request({ origins: [`${new URL(page.url).origin}/*`] }).catch(() => false);
+    if (!granted) throw new Error(`Hirivo needs your OK to read ${page.host}.`);
+    results = await run();
+  }
+  const { host, jobs } = results[0]?.result as { host: string; jobs: ListedJob[] };
+  if (!jobs?.length) throw new Error('No job cards found on this page. Open a search results list and try again.');
+  const count = await savePageJobs(
+    jobs.map((j) => ({
+      source: 'page' as const,
+      sourceId: j.url,
+      sourceLabel: host,
+      title: j.title,
+      company: j.company,
+      location: j.location,
+      remote: /remote/i.test(j.location),
+      url: j.url,
+      tags: [],
+    }))
+  );
+  return { host, count };
 }

@@ -74,6 +74,8 @@ export interface DiscoveredJob {
   id: string; // `${source}:${sourceId}`
   source: JobSource;
   sourceLabel: string; // shown as credit, e.g. "Remotive"
+  sourceUrl?: string; // link back to the source when url points elsewhere
+  kind?: 'job' | 'company'; // 'company' = hiring, but no public board to list roles from
   title: string;
   company: string;
   location: string;
@@ -238,7 +240,7 @@ export class HirivoDatabase extends Dexie {
     this.version(4).stores({
       resumeFiles: 'id',
       discovered: 'id, source, status, score, firstSeenAt, company',
-      atsProbes: 'id, checkedAt, found',
+      atsProbes: 'id, checkedAt',
       sourceFetches: 'id',
     });
   }

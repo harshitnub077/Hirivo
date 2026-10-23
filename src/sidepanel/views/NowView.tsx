@@ -13,6 +13,7 @@ import type { ViewId } from '../App';
 import { EvidencePanel } from './EvidencePanel';
 import { PeoplePanel } from './PeoplePanel';
 import { WritePanel } from './WritePanel';
+import { ResumeImport } from './ResumeImport';
 
 type Panel = 'evidence' | 'people' | 'write';
 
@@ -57,6 +58,15 @@ export function NowView(props: Props) {
   if (!job) {
     return (
       <div className="view">
+        {facts.length === 0 && !resume && (
+          <section className="stack">
+            <div>
+              <div className="h1">Start with your resume</div>
+              <p className="small muted">Hirivo fills your profile, picks roles that fit, and starts finding jobs for you.</p>
+            </div>
+            <ResumeImport onDone={() => props.goTo('radar')} />
+          </section>
+        )}
         <Empty
           icon={<ScanSearch size={30} />}
           title={page ? 'Analyze this job' : 'Open a job posting'}

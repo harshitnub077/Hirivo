@@ -16,12 +16,32 @@ import {
 } from '../../services/watchlist';
 import { openUrl } from '../../services/outreach';
 import { Callout, Empty, Field, Pill, Segmented, timeAgo } from '../ui';
+import { DiscoverPanel } from './DiscoverPanel';
 
 type Region = 'India' | 'Remote' | 'Global';
 
 const regionOf = (r: string): Region => (r.startsWith('India') ? 'India' : r === 'Remote' ? 'Remote' : 'Global');
 
-export function RadarView({ watchlist, settings }: { watchlist: WatchlistCompany[]; settings: UserSettings }) {
+export function RadarView({ watchlist, settings, hasResume }: { watchlist: WatchlistCompany[]; settings: UserSettings; hasResume: boolean }) {
+  const [mode, setMode] = useState<'discover' | 'watchlist'>('discover');
+  const newRoles = watchlist.reduce((n, c) => n + c.newRoleIds.length, 0);
+  return (
+    <div className="view">
+      <Segmented
+        label="Radar"
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'discover', label: 'Discover' },
+          { value: 'watchlist', label: newRoles ? `Watchlist · ${newRoles} new` : 'Watchlist' },
+        ]}
+      />
+      {mode === 'discover' ? <DiscoverPanel settings={settings} hasResume={hasResume} /> : <WatchlistPanel watchlist={watchlist} settings={settings} />}
+    </div>
+  );
+}
+
+function WatchlistPanel({ watchlist, settings }: { watchlist: WatchlistCompany[]; settings: UserSettings }) {
   const [link, setLink] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,11 +78,11 @@ export function RadarView({ watchlist, settings }: { watchlist: WatchlistCompany
     });
 
   return (
-    <div className="view">
+    <div className="stack">
       <section className="card">
         <div className="card-head">
           <div>
-            <div className="h1">Radar</div>
+            <div className="h1">Watchlist</div>
             <div className="small muted">
               {watchlist.length ? `${watchlist.length} companies · checked ${lastChecked ? timeAgo(lastChecked) : 'never'}` : 'Follow companies; hear about new roles first.'}
             </div>

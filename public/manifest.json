@@ -2,10 +2,17 @@
   "manifest_version": 3,
   "name": "Hirivo: Real Jobs, Right People",
   "short_name": "Hirivo",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "minimum_chrome_version": "116",
-  "permissions": ["sidePanel", "storage", "scripting", "activeTab", "alarms", "notifications"],
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "scripting",
+    "activeTab",
+    "alarms",
+    "notifications"
+  ],
   "host_permissions": [
     "https://api.groq.com/*",
     "https://generativelanguage.googleapis.com/*",
@@ -25,9 +32,18 @@
     "https://*.greenhouse.io/*",
     "https://jobs.lever.co/*",
     "https://jobs.ashbyhq.com/*",
-    "https://apply.workable.com/*"
+    "https://apply.workable.com/*",
+    "https://remotive.com/*",
+    "https://remoteok.com/*",
+    "https://himalayas.app/*",
+    "https://jobicy.com/*",
+    "https://www.arbeitnow.com/*",
+    "https://yc-oss.github.io/*",
+    "https://hn.algolia.com/*"
   ],
-  "optional_host_permissions": ["https://*/*"],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -52,7 +68,9 @@
         "https://jobs.ashbyhq.com/*",
         "https://apply.workable.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
