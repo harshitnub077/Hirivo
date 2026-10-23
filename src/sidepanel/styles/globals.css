@@ -879,3 +879,26 @@ details.section[open] > summary {
   gap: 6px;
   align-items: baseline;
 }
+
+/* ---------- Hook Finder ---------- */
+
+.hooks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hook {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.hook .grow {
+  flex: 1;
+  min-width: 0;
+}

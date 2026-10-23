@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.1.0
+**Version:** 2.4.0
 **Category:** Productivity
 
 ## Short description (≤132 chars)
@@ -44,7 +44,8 @@ Then Hirivo opens the email in Gmail for you to send, and reminds you to follow 
 | Host: LinkedIn, Naukri, Indeed, Wellfound, Instahyre, Cutshort, foundit | Reads the job page on Analyze only. No script runs on these sites by itself. |
 | Host: `*.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com` | Reads job pages, fills application forms and attaches the user's resume. The user always submits. |
 | Host: `remotive.com`, `remoteok.com`, `himalayas.app`, `jobicy.com`, `www.arbeitnow.com`, `hn.algolia.com`, `yc-oss.github.io` | Public job APIs and open datasets for Discover. Each listing is credited and links to its source. |
-| Optional host: `https://*/*` | Requested one site at a time, only when the user presses Analyze on a company careers page outside the list above. |
+| Host: `api.github.com`, `news.google.com` | GitHub org members and releases, and Google News headlines, for the contact ladder and opening-line suggestions. |
+| Optional host: `https://*/*` | Requested one site at a time, only when the user presses Analyze, Look up or Read this page on a site outside the list above. |
 
 ## Data use disclosure
 - Hirivo does not sell, share or transfer user data, and has no server.

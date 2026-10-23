@@ -74,3 +74,16 @@ export function addRenderedPage(lookup: SiteLookup, html: string, company: strin
   mergeScans(total, scanPage(parse(html), company, lookup.domain, path));
   return { ...lookup, people: total.people, inboxes: total.inboxes, pagesChecked: Array.from(new Set([...lookup.pagesChecked, path])) };
 }
+
+const hasStorage = () => typeof chrome !== 'undefined' && !!chrome.storage?.local;
+
+/** The last lookup for a domain, without fetching anything. */
+export async function getCachedLookup(domain: string): Promise<SiteLookup | undefined> {
+  if (!hasStorage()) return undefined;
+  const hit = (await chrome.storage.local.get(`site:${domain}`))[`site:${domain}`];
+  return hit && Date.now() - hit.at < WEEK ? (hit.value as SiteLookup) : undefined;
+}
+
+export async function saveLookup(lookup: SiteLookup) {
+  if (hasStorage()) await chrome.storage.local.set({ [`site:${lookup.domain}`]: { at: Date.now(), value: lookup } });
+}

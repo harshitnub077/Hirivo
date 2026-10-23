@@ -41,7 +41,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.3, built and verified)
+## 3. What exists today (v2.4, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -65,7 +65,9 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Apply flow: auto-fill ATS forms on open, attach resume file, detect confirmation, mark applied | Done | `src/content/index.ts`, `src/content/formFill.ts` |
 | Scam Shield: fees, OTP/bank requests, task-job wording, extreme pay, personal recruiter emails, chat-app-only contact, pressure tactics; quoted reasons; feeds the Safety pill | Done (Phase A) | `src/services/scamShield.ts` |
 | Repost fingerprint: SHA-256 of normalised description in `fingerprints` (schema v5); same-site reposts and re-dated listings | Done (Phase A) | `src/services/repostFingerprint.ts` |
-| Tests: 92 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Contact ladder: people you know → staff on the company site (investors/testimonials filtered, ranked by closeness to hiring) → GitHub org members → careers inbox; every contact has a why; alumni search the user runs | Done (Phase C) | `src/services/contactLadder.ts`, `src/services/contacts/*`, `views/PeoplePanel.tsx` |
+| Hook Finder: blog feed, GitHub releases, HN, Google News; only linked hooks under 90 days | Done (Phase C) | `src/services/hookFinder.ts`, `views/WritePanel.tsx` |
+| Tests: 111 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
@@ -125,7 +127,7 @@ Paste each prompt as is. Each one assumes the rules in section 1 and ends with a
 > - A frontend resume against a senior Go job scores under 40 with gaps listed.
 > - Finishing a sprint adds a FACT that the writer can cite.
 
-### Phase C: Contact ladder and Hook Finder
+### Phase C: Contact ladder and Hook Finder — ✅ done in v2.4 (alumni: LinkedIn's export has no school column, so alumni are a search the user runs, plus a shared-college tag when an export includes schools)
 
 > Add `src/services/contactLadder.ts` returning ranked candidates with a `why` field, in this order:
 > 1. 1st-degree connections (existing CSV)

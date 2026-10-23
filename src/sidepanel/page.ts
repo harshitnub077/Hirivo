@@ -2,6 +2,7 @@ import { db, JobSnapshot } from '../db';
 import { extractJobFromPage, ExtractedJobData } from '../content/extractJob';
 import { extractJobListFromPage, ListedJob } from '../content/extractJobList';
 import { savePageJobs } from '../services/discover';
+import { grabRenderedPage } from '../content/grabPage';
 
 export interface ActivePage {
   tabId: number;
@@ -106,4 +107,22 @@ export async function saveJobsFromActivePage(): Promise<{ host: string; count: n
     }))
   );
   return { host, count };
+}
+
+/** Returns the rendered HTML of the current tab, for team pages built with JavaScript. User click only. */
+export async function grabActivePageHtml(): Promise<{ url: string; html: string; host: string }> {
+  const page = await getActivePage();
+  if (!page) throw new Error('Open the company team page in this window first.');
+  const run = () => chrome.scripting.executeScript({ target: { tabId: page.tabId }, func: grabRenderedPage });
+  let results;
+  try {
+    results = await run();
+  } catch {
+    const granted = await chrome.permissions.request({ origins: [`${new URL(page.url).origin}/*`] }).catch(() => false);
+    if (!granted) throw new Error(`Hirivo needs your OK to read ${page.host}.`);
+    results = await run();
+  }
+  const r = results[0]?.result as { url: string; html: string } | undefined;
+  if (!r?.html) throw new Error('Could not read this page.');
+  return { ...r, host: page.host };
 }

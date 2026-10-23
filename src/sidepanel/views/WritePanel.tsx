@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Copy, Mail, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { Check, Copy, Mail, Newspaper, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { findHooks, Hook, hookForWriter } from '../../services/hookFinder';
+import { getCachedLookup } from '../../services/contacts/siteLookup';
+import { hasSiteAccess } from '../../services/siteAccess';
 import { JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
 import { checkGrounding, generateProofLinkedDraft } from '../../services/proofWriter';
 import { autoPurgeRoboticPhrases, lintOutreachText } from '../../services/phraseLinter';
@@ -17,6 +20,58 @@ interface Props {
   recipient: Recipient;
   onRecipientChange: (r: Recipient) => void;
   goTo: (v: ViewId) => void;
+}
+
+function HookFinder({ job, onUse }: { job: JobSnapshot; onUse: (hook: string) => void }) {
+  const [hooks, setHooks] = useState<Hook[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [more, setMore] = useState(false);
+
+  const find = async () => {
+    setBusy(true);
+    try {
+      const lookup = job.companyDomain ? await getCachedLookup(job.companyDomain) : undefined;
+      const siteAllowed = job.companyDomain ? await hasSiteAccess(job.companyDomain) : false;
+      setHooks(await findHooks({ company: job.company, domain: job.companyDomain, githubOrg: lookup?.githubOrg, feedUrl: lookup?.feedUrl, siteAllowed }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!hooks) {
+    return (
+      <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={find} disabled={busy || !job.company}>
+        {busy ? <RefreshCw size={12} className="spin" /> : <Newspaper size={12} />} {busy ? 'Looking for recent news…' : `Find recent news about ${job.company}`}
+      </button>
+    );
+  }
+  if (hooks.length === 0) {
+    return <p className="small muted">Nothing dated and linkable from the last 90 days. Leave the hook blank rather than invent one.</p>;
+  }
+  return (
+    <div className="hooks">
+      {hooks.slice(0, more ? 8 : 3).map((h) => (
+        <div key={h.id} className="hook">
+          <div className="grow">
+            <a className="small" href={h.url} onClick={(e) => (e.preventDefault(), openUrl(h.url))}>
+              {h.title}
+            </a>
+            <div className="small muted">
+              {h.sourceLabel} · {new Date(h.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </div>
+          </div>
+          <button className="btn sm" onClick={() => onUse(hookForWriter(h))}>
+            Use
+          </button>
+        </div>
+      ))}
+      {!more && hooks.length > 3 && (
+        <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setMore(true)}>
+          {hooks.length - 3} more
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipient, onRecipientChange, goTo }: Props) {
@@ -141,6 +196,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
         <Field label="Opening hook (optional)" hint="Something real and recent: a blog post, release or news. Leave it blank rather than invent one.">
           <input value={hook} onChange={(e) => setHook(e.target.value)} placeholder="Your post on moving payouts to Kafka" />
         </Field>
+        <HookFinder job={job} onUse={setHook} />
         <button className="btn primary block" onClick={generate} disabled={generating}>
           {generating ? <RefreshCw size={14} className="spin" /> : <Sparkles size={14} />}
           {generating ? 'Writing from your resume facts…' : body ? 'Write a new version' : 'Write my email'}
