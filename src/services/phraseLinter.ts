@@ -129,6 +129,35 @@ const BANNED_RULES: Rule[] = [
     suggestedReplacement: 'leader in',
   },
 
+  // Generic closers and filler seen in real model drafts.
+  {
+    pattern: /\bI would love to (?:discuss|chat about|explore|learn more about) how (?:my|I)[^.]*\./gi,
+    category: 'VAGUE_FLATTERY',
+    explanation: 'Generic closer. Ask for one specific, small thing instead.',
+    suggestedReplacement: '',
+  },
+  {
+    pattern: /\b(?:accelerate|drive|support) (?:your|the team's|[A-Z]\w+['’]s) (?:engineering |business |growth )?(?:goals|mission|vision)\b/gi,
+    category: 'VAGUE_FLATTERY',
+    explanation: 'Says nothing specific about them. Name the actual product or problem.',
+  },
+  {
+    pattern: /\b(?:caught my eye|(?:I think )?my background (?:fits|aligns)(?: well)?)\b/gi,
+    category: 'VAGUE_FLATTERY',
+    explanation: 'Filler. Say what specifically about the role matches one of your results.',
+  },
+  {
+    pattern: /\bI specialize in\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Reads like a resume line. Show one result instead.',
+  },
+  {
+    pattern: /\bthank you for your time and consideration\b\.?/gi,
+    category: 'EMPTY_OPENING',
+    explanation: 'Stock sign-off. A plain "Thanks," is warmer.',
+    suggestedReplacement: '',
+  },
+
   // Stiff formality common in Indian cold emails; reads as a template to most hiring managers.
   {
     pattern: /\b(?:respected|dear) (?:sir|ma'?am|madam|sir\s*\/\s*ma'?am)\b,?/gi,

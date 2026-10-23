@@ -86,7 +86,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
   const [copied, copy] = useCopy();
 
   const lint = useMemo(() => lintOutreachText(body), [body]);
-  const grounding = useMemo(() => checkGrounding(body, facts), [body, facts]);
+  const grounding = useMemo(() => checkGrounding(body, facts, { company: job.company, hasHook: Boolean(hook.trim()) }), [body, facts, job.company, hook]);
   const wordCount = stripCitations(body).split(/\s+/).filter(Boolean).length;
   const set = (patch: Partial<Recipient>) => onRecipientChange({ ...recipient, ...patch });
 
@@ -116,6 +116,8 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
         facts,
         voiceProfile,
         realSignalHook: hook.trim() || undefined,
+        requirements: (job.fitEvidence || []).sort((a, b) => Number(b.met) - Number(a.met)).map((r) => r.text),
+        senderName: settings.userFullName,
       });
       setSubject(draft.emailSubject);
       setBody(draft.emailBody);
@@ -241,13 +243,15 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
           {grounding.unverifiedClaimsCount > 0 ? (
             <Callout tone="risk">
               <b>
-                {grounding.unverifiedClaimsCount} claim{grounding.unverifiedClaimsCount > 1 ? 's have' : ' has'} no resume fact behind it.
+                {grounding.unverifiedClaimsCount} sentence{grounding.unverifiedClaimsCount > 1 ? 's need' : ' needs'} a source.
               </b>
               <ul className="checklist" style={{ marginTop: 6 }}>
                 {grounding.groundedSentences
                   .filter((s) => !s.isGrounded)
                   .map((s, n) => (
-                    <li key={n}>“{s.sentence}”</li>
+                    <li key={n}>
+                      “{s.sentence}” <span className="muted">{s.warning}</span>
+                    </li>
                   ))}
               </ul>
               <label className="row small" style={{ marginTop: 8 }}>

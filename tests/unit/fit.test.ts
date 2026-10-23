@@ -39,6 +39,16 @@ beforeEach(() => {
   calls.length = 0;
 });
 
+describe('email writer post-processing', () => {
+  it('greets by first name and signs with the sender name', async () => {
+    replies.push({ emailSubject: 'Checkout speed at Zeta', emailBody: 'Hi Priya Sharma,\n\nI cut checkout load time 38% [FACT-01].\n\nBest,', linkedInNote: 'Hi Priya' });
+    const { generateProofLinkedDraft } = await import('../../src/services/proofWriter');
+    const d = await generateProofLinkedDraft({ jobTitle: 'Frontend Engineer', companyName: 'Zeta', recipientName: 'Priya Sharma', facts: FRONTEND_FACTS, senderName: 'Aarav Mehta' });
+    expect(d.emailBody.startsWith('Hi Priya,')).toBe(true);
+    expect(d.emailBody.trimEnd().endsWith('Best,\nAarav Mehta')).toBe(true);
+  });
+});
+
 describe('computeFitScore', () => {
   it('counts must-haves twice and nice-to-haves once', () => {
     // musts: 2 met of 3 (weight 4 of 6); nice: 1 met of 2 (1 of 2) → 5/8 = 62.5 → 63
@@ -129,7 +139,7 @@ describe('analyzeJobFit', () => {
     );
     const r = await analyzeJobFit('Senior Backend Engineer (Go)', 'Lendo', GO_JD, null, FRONTEND_FACTS, { yearsExperience: 2 });
 
-    expect(calls.map((c) => c.taskType)).toEqual(['general', 'fit_analysis']);
+    expect(calls.map((c) => c.taskType)).toEqual(['fit_analysis', 'fit_analysis']);
     expect(r.matchScore).toBe(computeFitScore(r.evidence));
     expect(r.matchScore).toBe(10); // 1 of 10 weight
     expect(r.matchScore).toBeLessThan(40);

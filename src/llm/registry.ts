@@ -3,10 +3,11 @@ import { ModelRole, ProviderId } from './types';
 // Preference order per role. Only IDs the provider's /models endpoint actually returns are used;
 // anything retired simply drops out. Update these lists when better free models appear.
 const PREFERENCES: Record<Exclude<ProviderId, 'nano'>, Record<ModelRole, string[]>> = {
+  // Checked against a live key on 2026-10-24: the Llama 3.x models are gone from Groq; GPT-OSS and Qwen remain.
   groq: {
-    fast: ['llama-3.1-8b-instant', 'openai/gpt-oss-20b'],
-    reason: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'],
-    write: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'],
+    fast: ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'llama-3.1-8b-instant'],
+    reason: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'],
+    write: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'],
   },
   gemini: {
     fast: ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'],
@@ -21,7 +22,7 @@ const PREFERENCES: Record<Exclude<ProviderId, 'nano'>, Record<ModelRole, string[
 };
 
 // Non-chat models some providers list alongside chat ones.
-const NOT_CHAT = /whisper|tts|orpheus|guard|safeguard|embed|vision|audio|image|aqa|imagen|veo|compound/i;
+const NOT_CHAT = /whisper|tts|orpheus|guard|safeguard|embed|vision|audio|image|aqa|imagen|veo|compound|allam/i;
 
 const CACHE_MS = 12 * 60 * 60 * 1000;
 const memory = new Map<string, { at: number; ids: string[] }>();

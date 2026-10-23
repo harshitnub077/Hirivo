@@ -111,6 +111,13 @@ describe('grounding', () => {
     expect(g.unverifiedClaimsCount).toBe(1);
     expect(g.groundedSentences.find((s) => !s.isGrounded)?.sentence).toMatch(/led a team/);
   });
+  it('flags unsourced claims about the company unless a hook was given', () => {
+    const body = "Hi Priya, the team's focus on React-driven payment flows matches my work. Razorpay recently launched a new checkout UI. I cut load time 38% [FACT-01].";
+    const noHook = checkGrounding(body, facts, { company: 'Razorpay', hasHook: false });
+    expect(noHook.unverifiedClaimsCount).toBe(2);
+    expect(noHook.groundedSentences.filter((s) => !s.isGrounded).every((s) => /no source/.test(s.warning || ''))).toBe(true);
+    expect(checkGrounding(body, facts, { company: 'Razorpay', hasHook: true }).unverifiedClaimsCount).toBe(0);
+  });
   it('does not accept citations to facts that do not exist', () => {
     expect(checkGrounding('I built a compiler [FACT-99].', facts).unverifiedClaimsCount).toBe(1);
   });

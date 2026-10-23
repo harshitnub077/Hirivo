@@ -57,6 +57,7 @@ const TASK_SCAM = /\b(?:(?:like|subscribe to|rate|review)\s+(?:youtube\s+)?(?:vi
 const EASY_MONEY = /\b(?:earn|income|salary|payout)\b[^.\n]{0,40}\b(?:daily|per day|every day|weekly)\b[^.\n]{0,40}\b(?:from home|no experience|part[- ]time|mobile)\b|\bno (?:experience|interview|qualification) (?:needed|required)\b[^.\n]{0,40}\b(?:earn|daily|per day)\b/i;
 const PERSONAL_DOCS = /\b(?:share|send|upload)\b[^.\n]{0,30}\b(?:aadhaar|aadhar|pan card|bank (?:details|account)|otp|upi pin|atm pin|cvv)\b/i;
 const EMAIL = /[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,})/gi;
+const PLACEHOLDER = /\b(?:job description (?:needs to be|to be|will be) (?:added|updated)|description (?:coming soon|tbd|to follow)|lorem ipsum|insert (?:job )?description)\b/i;
 
 /** Converts amounts like "₹1,50,000", "Rs 2 lakh", "50k" to rupees (or the raw number for $/€). */
 export function parseAmount(raw: string): number {
@@ -123,6 +124,9 @@ export function checkScam(input: ScamInput): ScamResult {
   else if (CHAT_APP.test(text) && /\b(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b/.test(text)) {
     add('caution', 'Gives a personal phone number with WhatsApp or Telegram as the way to reach them.');
   }
+
+  const placeholder = hit(PLACEHOLDER);
+  if (placeholder) add('caution', `The posting has no real job description: ${quote(placeholder)}. Placeholder listings are often never filled.`);
 
   const urgent = hit(URGENCY);
   if (urgent) add('caution', `Pressure tactic: ${quote(urgent)}.`);

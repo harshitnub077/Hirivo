@@ -74,6 +74,14 @@ describe('checkScam', () => {
   });
 });
 
+describe('placeholder postings', () => {
+  it('flags a posting with no real description', () => {
+    const r = checkScam({ title: 'Lead SDE', description: 'About us... Job Description Needs to be Added. Equal opportunity employer.', companyDomain: 'razorpay.com' });
+    expect(r.level).toBe('caution');
+    expect(r.findings[0].text).toContain('no real job description');
+  });
+});
+
 describe('quotes', () => {
   it('keep "Rs." and decimals inside the quoted clause', () => {
     const r = checkScam({ title: 'Job', description: 'Selected candidates must deposit Rs. 2,500.50 as security deposit before joining. Thanks.' });

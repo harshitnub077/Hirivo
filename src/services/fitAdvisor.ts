@@ -112,8 +112,9 @@ export async function analyzeJobFit(
   }
   const jd = jobDescription.slice(0, 7000);
 
+  // The reasoning model: small models return empty or vague lists on long, marketing-heavy postings.
   const extracted = await routeLLMRequest({
-    taskType: 'general',
+    taskType: 'fit_analysis',
     jsonMode: true,
     temperature: 0,
     messages: [
@@ -130,7 +131,9 @@ Return ONLY JSON: {"requirements":[{"text": string, "kind": "must"|"nice", "year
     ],
   });
   const requirements = cleanRequirements(parseJsonLoose(extracted.content), `${jobTitle}\n${jd}`);
-  if (requirements.length === 0) throw new Error('Could not find clear requirements in this job description.');
+  if (requirements.length === 0) {
+    throw new Error('This posting lists no real requirements (it may be a placeholder), so there is nothing honest to score against.');
+  }
 
   const matched = await routeLLMRequest({
     taskType: 'fit_analysis',
