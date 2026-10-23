@@ -13,6 +13,7 @@ const DEFAULTS: UserSettings = {
   userEmail: '',
   userCollege: '',
   earlyBirdAlerts: true,
+  autoFillForms: true,
 };
 
 export async function getSettings(): Promise<UserSettings> {

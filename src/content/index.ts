@@ -1,204 +1,203 @@
 // Content script for ATS application pages (Greenhouse, Lever, Ashby, Workable) only.
-// It never runs on LinkedIn. It fills fields the user has saved, and the user always presses Submit.
+// It never runs on LinkedIn. It fills fields the user has saved and attaches their resume,
+// never overwrites what the user typed, and never presses Submit.
 // Job-page reading lives in extractJob.ts and runs only when the user clicks Analyze.
 
-// -------------------------------------------------------------
-// FORM AUTOFILL AUTOMATOR ENGINE
-// -------------------------------------------------------------
+interface Profile {
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  location: string;
+  college: string;
+  linkedinUrl: string;
+  githubUrl: string;
+  portfolioUrl: string;
+}
 
-function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) {
-  const valueSetter = Object.getOwnPropertyDescriptor(element, 'value')?.set;
-  const prototype = Object.getPrototypeOf(element);
-  const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
-  if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
-    prototypeValueSetter.call(element, value);
-  } else if (valueSetter) {
-    valueSetter.call(element, value);
-  } else {
-    element.value = value;
-  }
+// Order matters: the first rule that matches a field wins.
+const RULES: { key: keyof Profile; test: RegExp; not?: RegExp }[] = [
+  { key: 'firstName', test: /\b(first[_\s-]?name|fname|given[_\s-]?name|preferred first)\b/ },
+  { key: 'lastName', test: /\b(last[_\s-]?name|lname|family[_\s-]?name|surname)\b/ },
+  { key: 'email', test: /\be-?mail\b/ },
+  { key: 'phone', test: /\b(phone|mobile|tel|contact[_\s-]?number|whatsapp)\b/ },
+  { key: 'linkedinUrl', test: /linkedin/ },
+  { key: 'githubUrl', test: /github/ },
+  { key: 'portfolioUrl', test: /\b(portfolio|website|personal[_\s-]?site|blog|other url)\b/ },
+  { key: 'college', test: /\b(school|university|college|institution)\b/, not: /high school|degree|discipline|major/ },
+  { key: 'location', test: /\b(current )?(location|city)\b/, not: /relocat|willing|preferred/ },
+  { key: 'fullName', test: /\b(full[_\s-]?name|your name|^name)\b|^name\b/, not: /first|last|company|school|reference|employer/ },
+];
 
+const SUCCESS_TEXT = /thank you for (applying|your (application|interest))|application (has been |was )?(submitted|received)|we('ve| have) received your application/i;
+
+function describe(el: Field): string {
+  const id = el.id;
+  const forLabel = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`)?.textContent : '';
+  const wrapLabel = el.closest('label')?.textContent || '';
+  const group = el.closest('.field, .application-question, [class*="field"], [class*="question"]')?.querySelector('label, legend')?.textContent || '';
+  return [el.name, id, el.getAttribute('placeholder'), el.getAttribute('aria-label'), el.getAttribute('autocomplete'), forLabel, wrapLabel, group]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function setNativeValue(element: Field, value: string) {
+  const proto = Object.getPrototypeOf(element);
+  const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  if (setter) setter.call(element, value);
+  else element.value = value;
   element.dispatchEvent(new Event('input', { bubbles: true }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
+  element.dispatchEvent(new Event('blur', { bubbles: true }));
 }
 
-function executeFormAutofill(profile: any): number {
-  let fieldsFilled = 0;
-  const inputs = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-    'input:not([type="hidden"]):not([type="submit"]), textarea, select'
-  ));
+function highlight(el: HTMLElement) {
+  el.style.transition = 'box-shadow 0.3s ease';
+  el.style.boxShadow = '0 0 0 2px rgba(15, 122, 85, 0.45)';
+}
 
-  for (const input of inputs) {
-    const name = (input.name || '').toLowerCase();
-    const id = (input.id || '').toLowerCase();
-    const placeholder = (input.getAttribute('placeholder') || '').toLowerCase();
-    const aria = (input.getAttribute('aria-label') || '').toLowerCase();
-    const label = input.closest('label')?.innerText.toLowerCase() || '';
-    const key = `${name} ${id} ${placeholder} ${aria} ${label}`;
-
-    // First Name
-    if (/\b(first_?name|fname|given_?name)\b/.test(key) && profile.firstName) {
-      setNativeValue(input, profile.firstName);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // Last Name
-    if (/\b(last_?name|lname|family_?name|surname)\b/.test(key) && profile.lastName) {
-      setNativeValue(input, profile.lastName);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // Full Name
-    if (/\b(full_?name|name)\b/.test(key) && !/first|last|company|school/i.test(key) && profile.fullName) {
-      setNativeValue(input, profile.fullName);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // Email
-    if (/\b(email|e-mail)\b/.test(key) && profile.email) {
-      setNativeValue(input, profile.email);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // Phone
-    if (/\b(phone|mobile|tel|contact_?number)\b/.test(key) && profile.phone) {
-      setNativeValue(input, profile.phone);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // LinkedIn URL
-    if (/\b(linkedin|urls\[linkedin\])\b/.test(key) && profile.linkedinUrl) {
-      setNativeValue(input, profile.linkedinUrl);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // GitHub URL
-    if (/\b(github|urls\[github\])\b/.test(key) && profile.githubUrl) {
-      setNativeValue(input, profile.githubUrl);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // Portfolio / Website
-    if (/\b(portfolio|website|urls\[portfolio\]|personal_?site)\b/.test(key) && profile.portfolioUrl) {
-      setNativeValue(input, profile.portfolioUrl);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
-
-    // Location / City
-    if (/\b(location|city|address)\b/.test(key) && profile.location) {
-      setNativeValue(input, profile.location);
-      fieldsFilled++;
-      highlightField(input);
-      continue;
-    }
+function fillFields(profile: Profile): number {
+  let filled = 0;
+  const fields = Array.from(document.querySelectorAll<Field>('input:not([type="hidden"]):not([type="submit"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]), textarea'));
+  for (const el of fields) {
+    if (el.disabled || (el as HTMLInputElement).readOnly || el.value.trim()) continue; // never overwrite the user
+    const text = describe(el);
+    if (el instanceof HTMLTextAreaElement && !/linkedin|github|website|portfolio/.test(text)) continue; // free-text answers are the user's to write
+    const rule = RULES.find((r) => r.test.test(text) && !(r.not && r.not.test(text)));
+    const value = rule ? profile[rule.key] : '';
+    if (!value) continue;
+    setNativeValue(el, value);
+    highlight(el);
+    filled++;
   }
-
-  showAutofillToast(
-    fieldsFilled > 0
-      ? `Hirivo filled ${fieldsFilled} field${fieldsFilled === 1 ? '' : 's'}. Check them, then press Submit yourself.`
-      : 'Nothing to fill yet. Add your details in Hirivo → You → Profile.'
-  );
-  return fieldsFilled;
+  return filled;
 }
 
-function highlightField(el: HTMLElement) {
-  el.style.transition = 'box-shadow 0.3s ease, border-color 0.3s ease';
-  el.style.borderColor = '#0f7a55';
-  el.style.boxShadow = '0 0 0 3px rgba(15, 122, 85, 0.22)';
+function base64ToFile(b64: string, name: string, type: string): File {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], name, { type });
 }
 
-function showAutofillToast(msg: string) {
-  const existing = document.getElementById('hirivo-toast');
-  if (existing) existing.remove();
+function attachResume(file: File): boolean {
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="file"]'));
+  const target =
+    inputs.find((i) => /resume|cv\b|curriculum/.test(describe(i)) && !/cover/.test(describe(i))) ||
+    (inputs.length === 1 && !/cover/.test(describe(inputs[0])) ? inputs[0] : undefined);
+  if (!target || (target.files && target.files.length > 0)) return false;
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  target.files = transfer.files;
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+  target.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
+}
 
-  const toast = document.createElement('div');
-  toast.id = 'hirivo-toast';
-  toast.innerText = msg;
-  Object.assign(toast.style, {
+function toast(msg: string) {
+  document.getElementById('hirivo-toast')?.remove();
+  const el = document.createElement('div');
+  el.id = 'hirivo-toast';
+  el.setAttribute('role', 'status');
+  el.textContent = msg;
+  Object.assign(el.style, {
     position: 'fixed',
     bottom: '24px',
     right: '24px',
-    backgroundColor: '#0e1116',
+    maxWidth: '340px',
+    background: '#0e1116',
     color: '#ffffff',
-    border: '1px solid #0e1116',
     borderRadius: '10px',
     padding: '12px 16px',
-    fontSize: '13px',
-    fontWeight: '500',
-    maxWidth: '320px',
+    font: '500 13px/1.45 system-ui, -apple-system, sans-serif',
     boxShadow: '0 8px 24px rgba(14,17,22,0.25)',
     zIndex: '2147483647',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    transition: 'all 0.3s ease',
   });
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 7000);
 }
 
-// Inject floating 1-Click Autofill Trigger button on job forms
-function injectFloatingAutofillButton() {
-  const isJobForm = document.querySelector('form, #application-form, .application-form, [data-qa="application-form"]');
-  if (!isJobForm || document.getElementById('hirivo-float-trigger')) return;
+const send = <T = any>(message: Record<string, unknown>) => new Promise<T>((resolve) => chrome.runtime.sendMessage(message, resolve));
 
+async function fillAll(manual: boolean) {
+  const res = await send<{ profile?: Profile }>({ action: 'GET_AUTOFILL_PROFILE' });
+  if (!res?.profile) return;
+  const filled = fillFields(res.profile);
+  let attached = false;
+  const file = await send<{ name?: string; type?: string; base64?: string }>({ action: 'GET_RESUME_FILE' });
+  if (file?.base64 && file.name) attached = attachResume(base64ToFile(file.base64, file.name, file.type || 'application/pdf'));
+
+  if (filled || attached) {
+    toast(`Hirivo filled ${filled} field${filled === 1 ? '' : 's'}${attached ? ' and attached your resume' : ''}. Check the form, answer any questions, then press Submit yourself.`);
+  } else if (manual) {
+    toast('Nothing left to fill. Add details in Hirivo → You → Profile, or upload your resume there.');
+  }
+}
+
+function hasApplicationForm() {
+  return Boolean(document.querySelector('input[type="email"], input[name*="email" i], input[type="file"]'));
+}
+
+function addButton() {
+  if (document.getElementById('hirivo-float-trigger') || !hasApplicationForm()) return;
   const btn = document.createElement('button');
   btn.id = 'hirivo-float-trigger';
+  btn.type = 'button';
   btn.textContent = 'Fill with Hirivo';
   Object.assign(btn.style, {
     position: 'fixed',
-    bottom: '80px',
+    bottom: '84px',
     right: '24px',
     background: '#0f7a55',
     color: '#ffffff',
     border: '0',
     borderRadius: '9999px',
     padding: '9px 16px',
-    fontSize: '13px',
-    fontWeight: '500',
+    font: '500 13px system-ui, -apple-system, sans-serif',
     cursor: 'pointer',
     boxShadow: '0 4px 14px rgba(14, 17, 22, 0.2)',
     zIndex: '2147483646',
-    fontFamily: 'system-ui, sans-serif',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
   });
-
-  btn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'GET_AUTOFILL_PROFILE' }, (response) => {
-      if (response?.profile) {
-        executeFormAutofill(response.profile);
-      }
-    });
-  });
-
+  btn.addEventListener('click', () => fillAll(true));
   document.body.appendChild(btn);
 }
 
-// Run detector after page load
-setTimeout(injectFloatingAutofillButton, 1500);
+// Wait for single-page forms (Ashby, Lever) to render, then fill once if the user enabled it.
+let autoFilled = false;
+let reported = false;
+let scheduled = false;
+const observer = new MutationObserver(() => {
+  if (scheduled) return;
+  scheduled = true;
+  setTimeout(() => {
+    scheduled = false;
+    tick();
+  }, 500);
+});
+async function tick() {
+  if (!reported && SUCCESS_TEXT.test(document.body.innerText.slice(0, 5000))) {
+    reported = true;
+    send({ action: 'APPLICATION_SUBMITTED', url: location.href, title: document.title });
+  }
+  if (!hasApplicationForm()) return;
+  addButton();
+  if (autoFilled) return;
+  autoFilled = true;
+  const { autoFill } = await send<{ autoFill?: boolean }>({ action: 'GET_AUTOFILL_SETTINGS' });
+  if (autoFill) setTimeout(() => fillAll(false), 600);
+}
+observer.observe(document.documentElement, { childList: true, subtree: true });
+tick();
 
-// Listen for messages from sidepanel
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'EXECUTE_AUTOFILL') {
-    const count = executeFormAutofill(request.profile);
-    sendResponse({ success: true, count });
+    fillAll(true).then(() => sendResponse({ success: true }));
+    return true;
   }
-  return true;
+  return false;
 });

@@ -1,5 +1,7 @@
 import React from 'react';
 import confetti from 'canvas-confetti';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { setJobStatus } from '../../services/discover';
 import { Inbox, Mail, MessageSquare } from 'lucide-react';
 import { db, OutreachRecord, UserSettings } from '../../db';
 import { todayKey } from '../../db/settings';
@@ -16,6 +18,7 @@ import { Empty, Meter, Pill, timeAgo, useCopy } from '../ui';
 
 export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[]; settings: UserSettings }) {
   const [copied, copy] = useCopy();
+  const applications = useLiveQuery(() => db.discovered.where('status').anyOf('applying', 'applied').toArray(), []) ?? [];
   const used = settings.lastSendDate === todayKey() ? settings.todaySendCount : 0;
   const cap = settings.dailySendCap || 15;
   const replied = outreach.filter((r) => r.status === 'REPLIED').length;
@@ -100,6 +103,33 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
           <Meter value={(used / cap) * 100} tone={used >= cap ? 'risk' : 'ok'} label="Messages sent today" />
         </div>
       </section>
+
+      {applications.length > 0 && (
+        <section className="card">
+          <div className="h2" style={{ marginBottom: 8 }}>Applications ({applications.length})</div>
+          <div className="list">
+            {applications
+              .sort((a, b) => (b.appliedAt || b.firstSeenAt) - (a.appliedAt || a.firstSeenAt))
+              .map((j) => (
+                <div key={j.id} className="list-item">
+                  <div className="grow">
+                    <div className="h2 truncate">{j.title}</div>
+                    <div className="small muted truncate">
+                      {j.company} · {j.status === 'applied' ? `applied ${timeAgo(j.appliedAt || j.firstSeenAt)}` : 'opened, not submitted yet'}
+                    </div>
+                  </div>
+                  {j.status === 'applied' ? (
+                    <Pill tone="ok">Applied</Pill>
+                  ) : (
+                    <button className="btn sm" onClick={() => setJobStatus(j.id, 'applied')}>
+                      Submitted
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
 
       {outreach.length === 0 ? (
         <Empty icon={<Inbox size={30} />} title="Nothing sent yet">

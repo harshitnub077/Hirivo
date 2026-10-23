@@ -256,6 +256,10 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
           <Field label="GitHub URL"><input type="url" {...p('githubUrl')} /></Field>
         </div>
         <Field label="Portfolio URL"><input type="url" {...p('portfolioUrl')} /></Field>
+        <label className="row small">
+          <input type="checkbox" checked={settings.autoFillForms !== false} onChange={(e) => patchSettings({ autoFillForms: e.target.checked })} />
+          Fill Greenhouse, Lever, Ashby and Workable forms as soon as they open, and attach my resume
+        </label>
         <button className="btn primary" onClick={saveProfile}>Save profile</button>
       </Section>
 

@@ -97,6 +97,32 @@ async function updateBadge() {
   await chrome.action.setBadgeText({ text: count > 0 ? String(Math.min(count, 99)) : '' });
 }
 
+async function resumeAsBase64() {
+  const file = await db.resumeFiles.get('primary');
+  if (!file) return {};
+  const bytes = new Uint8Array(await file.data.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { name: file.name, type: file.type, base64: btoa(binary) };
+}
+
+/** Marks the job the user opened from Discover as applied when its board shows a success page. */
+async function markApplied(pageUrl: string) {
+  const applying = await db.discovered.where('status').equals('applying').toArray();
+  if (applying.length === 0) return;
+  const boardKey = (u: string) => {
+    try {
+      const url = new URL(u);
+      return `${url.hostname.replace(/^(job-boards|boards)\./, '')}/${url.pathname.split('/').filter(Boolean)[0] || ''}`;
+    } catch {
+      return '';
+    }
+  };
+  const key = boardKey(pageUrl);
+  const match = applying.find((j) => boardKey(j.url) === key) || (applying.length === 1 ? applying[0] : undefined);
+  if (match) await db.discovered.update(match.id, { status: 'applied', appliedAt: Date.now() });
+}
+
 chrome.notifications.onClicked.addListener(async (id) => {
   chrome.notifications.clear(id);
   const win = await chrome.windows.getLastFocused();
@@ -108,6 +134,18 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     getSettings()
       .then((settings) => sendResponse({ success: true, profile: buildAutofillProfile(settings) }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+  if (request.action === 'GET_AUTOFILL_SETTINGS') {
+    getSettings().then((s) => sendResponse({ autoFill: s.autoFillForms !== false }));
+    return true;
+  }
+  if (request.action === 'GET_RESUME_FILE') {
+    resumeAsBase64().then(sendResponse, () => sendResponse({}));
+    return true;
+  }
+  if (request.action === 'APPLICATION_SUBMITTED') {
+    markApplied(String(request.url || '')).finally(() => sendResponse({ success: true }));
     return true;
   }
   if (request.action === 'REFRESH_BADGE') {

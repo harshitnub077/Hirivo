@@ -10,6 +10,7 @@ export interface AutofillProfile {
   linkedinUrl: string;
   githubUrl: string;
   portfolioUrl: string;
+  college: string;
   workAuthorization: 'Yes' | 'No';
   sponsorshipNeeded: 'No' | 'Yes';
 }
@@ -31,6 +32,7 @@ export function buildAutofillProfile(settings: UserSettings | null): AutofillPro
     linkedinUrl: settings?.linkedinUrl || '',
     githubUrl: settings?.githubUrl || '',
     portfolioUrl: settings?.portfolioUrl || '',
+    college: settings?.userCollege || '',
     workAuthorization: 'Yes',
     sponsorshipNeeded: 'No',
   };
