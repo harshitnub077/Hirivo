@@ -39,7 +39,9 @@
     "https://jobicy.com/*",
     "https://www.arbeitnow.com/*",
     "https://yc-oss.github.io/*",
-    "https://hn.algolia.com/*"
+    "https://hn.algolia.com/*",
+    "https://api.github.com/*",
+    "https://news.google.com/*"
   ],
   "optional_host_permissions": [
     "https://*/*"

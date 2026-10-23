@@ -26,6 +26,8 @@ export interface LinkedInConnection {
   position: string;
   email: string;
   connectedOn: string;
+  url?: string; // profile link from the export
+  school?: string; // only when the export includes an education column
 }
 
 export interface JobSnapshot {

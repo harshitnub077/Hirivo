@@ -52,6 +52,8 @@ export function parseLinkedInConnectionsCSV(csvText: string): LinkedInConnection
   const posIdx = headers.findIndex((h) => h === 'position');
   const emailIdx = headers.findIndex((h) => h.includes('email'));
   const dateIdx = headers.findIndex((h) => h.includes('connected on'));
+  const urlIdx = headers.findIndex((h) => h === 'url' || h.includes('profile url'));
+  const schoolIdx = headers.findIndex((h) => /^(school|education|university|college)/.test(h));
 
   for (let i = headerIndex + 1; i < lines.length; i++) {
     const row = parseRow(lines[i]);
@@ -63,6 +65,8 @@ export function parseLinkedInConnectionsCSV(csvText: string): LinkedInConnection
     const position = posIdx !== -1 ? row[posIdx] : '';
     const email = emailIdx !== -1 ? row[emailIdx] : '';
     const connectedOn = dateIdx !== -1 ? row[dateIdx] : '';
+    const url = urlIdx !== -1 ? row[urlIdx] : '';
+    const school = schoolIdx !== -1 ? row[schoolIdx] : '';
 
     if (!firstName && !company) continue;
 
@@ -78,6 +82,8 @@ export function parseLinkedInConnectionsCSV(csvText: string): LinkedInConnection
       position,
       email,
       connectedOn,
+      ...(url ? { url } : {}),
+      ...(school ? { school } : {}),
     });
   }
 
