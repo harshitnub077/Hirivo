@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "Hirivo - Verified Job Outreach Assistant",
+  "version": "1.0.0",
+  "description": "Ghost-job verification, honest fit analysis, proof-linked outreach, and warm referral finder.",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "tabs",
+    "scripting",
+    "identity",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://api.groq.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://openrouter.ai/*",
+    "https://*.rdap.org/*",
+    "https://rdap.org/*",
+    "https://dns.google/*",
+    "https://cloudflare-dns.com/*",
+    "https://boards-api.greenhouse.io/*",
+    "https://api.lever.co/*",
+    "https://api.ashbyhq.com/*",
+    "https://gmail.googleapis.com/*",
+    "https://*.linkedin.com/*",
+    "https://*.naukri.com/*",
+    "https://*.indeed.com/*",
+    "https://*.wellfound.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open Hirivo Side Panel"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.linkedin.com/jobs/*",
+        "https://*.naukri.com/*",
+        "https://*.indeed.com/*",
+        "https://*.wellfound.com/jobs/*",
+        "https://boards.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

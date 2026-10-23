@@ -1,0 +1,178 @@
+export interface LinterIssue {
+  phrase: string;
+  category: 'EMPTY_OPENING' | 'DESPERATION' | 'AI_BUZZWORD' | 'VAGUE_FLATTERY';
+  explanation: string;
+  suggestedReplacement?: string;
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface LinterResult {
+  humanScore: number; // 0-100% (100% = clean human tone)
+  issues: LinterIssue[];
+  cleanText: string;
+}
+
+interface Rule {
+  pattern: RegExp;
+  category: LinterIssue['category'];
+  explanation: string;
+  suggestedReplacement?: string;
+}
+
+const BANNED_RULES: Rule[] = [
+  // Empty Openings
+  {
+    pattern: /\bi hope this email finds you well\b/gi,
+    category: 'EMPTY_OPENING',
+    explanation: 'Overused automated opening. Jump straight to the context or reason.',
+    suggestedReplacement: '',
+  },
+  {
+    pattern: /\bi hope you(?:'re| are) having a great (?:week|day)\b/gi,
+    category: 'EMPTY_OPENING',
+    explanation: 'Generic small talk that signals cold mass email.',
+    suggestedReplacement: '',
+  },
+  {
+    pattern: /\bmy name is [a-z\s]+ and i am reaching out because\b/gi,
+    category: 'EMPTY_OPENING',
+    explanation: 'Robotic intro. State your relevance directly.',
+    suggestedReplacement: '',
+  },
+
+  // Flattery & Desperation
+  {
+    pattern: /\bi am writing to express my keen interest\b/gi,
+    category: 'DESPERATION',
+    explanation: 'Classic AI boilerplate. Replace with direct capability.',
+    suggestedReplacement: 'I noticed your team is building',
+  },
+  {
+    pattern: /\bi would be thrilled to join\b/gi,
+    category: 'DESPERATION',
+    explanation: 'Signals generic excitement over specific value creation.',
+    suggestedReplacement: 'I’d love to contribute to',
+  },
+  {
+    pattern: /\byour esteemed company\b/gi,
+    category: 'VAGUE_FLATTERY',
+    explanation: 'Sounds like a template translated from a bot.',
+    suggestedReplacement: 'your team',
+  },
+  {
+    pattern: /\bdream job\b/gi,
+    category: 'DESPERATION',
+    explanation: 'Overused hyperbole that recruiters filter out.',
+    suggestedReplacement: 'compelling opportunity',
+  },
+
+  // AI Buzzwords
+  {
+    pattern: /\bdelve(?:s|d|ing)? into\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: '"Delve" is a hallmark ChatGPT word.',
+    suggestedReplacement: 'examine',
+  },
+  {
+    pattern: /\btestament to\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Cliché AI transition.',
+    suggestedReplacement: 'reflection of',
+  },
+  {
+    pattern: /\bgame-?changer\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Marketing jargon with zero concrete meaning.',
+    suggestedReplacement: 'major improvement',
+  },
+  {
+    pattern: /\bsynerg(?:y|ies|istic)\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Empty corporate jargon.',
+    suggestedReplacement: 'alignment',
+  },
+  {
+    pattern: /\bspearheaded\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Over-embellished resume verb.',
+    suggestedReplacement: 'led',
+  },
+  {
+    pattern: /\bharness(?:ing|ed)? the power of\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Dramatic AI cliché.',
+    suggestedReplacement: 'using',
+  },
+  {
+    pattern: /\brockstar|ninja|guru\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Dated Silicon Valley cliché.',
+    suggestedReplacement: 'skilled engineer',
+  },
+  {
+    pattern: /\bin today's fast-paced world\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Instant flag of AI generation.',
+    suggestedReplacement: '',
+  },
+  {
+    pattern: /\btapestry of\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Hallmark poetic hallucination.',
+    suggestedReplacement: 'collection of',
+  },
+  {
+    pattern: /\bbeacon of\b/gi,
+    category: 'AI_BUZZWORD',
+    explanation: 'Over-the-top corporate flattery.',
+    suggestedReplacement: 'leader in',
+  },
+];
+
+export function lintOutreachText(text: string): LinterResult {
+  const issues: LinterIssue[] = [];
+  let cleanText = text;
+
+  for (const rule of BANNED_RULES) {
+    let match: RegExpExecArray | null;
+    const regex = new RegExp(rule.pattern.source, rule.pattern.flags);
+
+    while ((match = regex.exec(text)) !== null) {
+      issues.push({
+        phrase: match[0],
+        category: rule.category,
+        explanation: rule.explanation,
+        suggestedReplacement: rule.suggestedReplacement,
+        startIndex: match.index,
+        endIndex: match.index + match[0].length,
+      });
+    }
+  }
+
+  // Deduplicate and sort issues by startIndex
+  issues.sort((a, b) => a.startIndex - b.startIndex);
+
+  // Compute Human Tone Score
+  // Every issue subtracts 15% from 100%
+  const penalty = issues.length * 15;
+  const humanScore = Math.max(0, 100 - penalty);
+
+  return {
+    humanScore,
+    issues,
+    cleanText,
+  };
+}
+
+export function autoPurgeRoboticPhrases(text: string): string {
+  let result = text;
+  for (const rule of BANNED_RULES) {
+    result = result.replace(rule.pattern, rule.suggestedReplacement ?? '');
+  }
+  // Clean up double spaces or orphan punctuation
+  return result
+    .replace(/[ ]{2,}/g, ' ')
+    .replace(/^[,\s]+/gm, '')
+    .trim();
+}

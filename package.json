@@ -1,0 +1,33 @@
+{
+  "name": "hirivo",
+  "displayName": "Hirivo - Verified Job Outreach Assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ghost-job verification, honest fit analysis, proof-linked outreach, and warm referral finder.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "generate-icons": "node scripts/generate-icons.js"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
+    "dexie": "^4.0.11",
+    "dexie-react-hooks": "^1.1.7",
+    "lucide-react": "^1.16.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/chrome": "^0.0.308",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.1"
+  }
+}
