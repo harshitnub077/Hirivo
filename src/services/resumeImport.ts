@@ -94,16 +94,18 @@ export function readDocx(bytes: Uint8Array): string {
 export function extractContactInfo(text: string): ContactInfo {
   const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
   const phone = text
-    .match(/(?:\+?\d{1,3}[\s-]?)?(?:\(?\d{3,5}\)?[\s-]?)\d{3,5}[\s-]?\d{3,5}/g)
+    .match(/\+?\(?\d[\d\s().-]{8,16}\d/g)
     ?.map((p) => p.trim())
-    .find((p) => p.replace(/\D/g, '').length >= 10 && p.replace(/\D/g, '').length <= 13);
+    .find((p) => p.replace(/\D/g, '').length >= 10 && p.replace(/\D/g, '').length <= 13 && !/\d{4}\s*[-–]\s*\d{4}/.test(p));
   const url = (re: RegExp) => {
     const m = text.match(re)?.[0];
     return m ? (m.startsWith('http') ? m : `https://${m}`).replace(/[).,;]+$/, '') : undefined;
   };
   const linkedinUrl = url(/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[A-Za-z0-9_-]+\/?/i);
   const githubUrl = url(/(?:https?:\/\/)?github\.com\/[A-Za-z0-9_-]+\/?(?![A-Za-z0-9_/-])/i);
-  const portfolioUrl = (text.match(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+\.(?:dev|me|io|in|app|tech|site|xyz|vercel\.app|netlify\.app|github\.io)(?:\/[^\s]*)?/gi) || [])
+  // Remove emails first so "name.me@gmail.com" is never read as the site "name.me".
+  const withoutEmails = text.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, ' ');
+  const portfolioUrl = (withoutEmails.match(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+\.(?:dev|me|io|in|app|tech|site|xyz|vercel\.app|netlify\.app|github\.io)(?:\/[^\s]*)?/gi) || [])
     .map((u) => (u.startsWith('http') ? u : `https://${u}`))
     .find((u) => !/linkedin|github\.com|gmail|outlook|yahoo/i.test(u) && !(email && u.includes(email.split('@')[1])));
 
