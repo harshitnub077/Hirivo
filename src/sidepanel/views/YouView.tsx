@@ -9,7 +9,9 @@ import { nanoAvailability, prepareNano } from '../../llm/providers/nano';
 import { getUsageToday } from '../../llm/usage';
 import { calibrateVoiceProfile } from '../../services/voiceFingerprint';
 import { importConnectionsToDB, parseLinkedInConnectionsCSV } from '../../services/warmPathMatcher';
+import { buildProfile, saveProfile as saveResumeProfile } from '../../services/resumeImport';
 import { Callout, Field, Pill } from '../ui';
+import { ResumeImport } from './ResumeImport';
 
 interface Props {
   settings: UserSettings;
@@ -32,24 +34,6 @@ function Section({ icon, title, meta, children, open }: { icon: React.ReactNode;
   );
 }
 
-const ACTION_VERB = /\b(built|led|designed|reduced|increased|developed|improved|managed|scaled|architected|implemented|created|engineered|launched|shipped|grew|cut|saved|won|automated|migrated|mentored)\b/i;
-
-function extractFacts(text: string): ResumeFact[] {
-  const lines = text
-    .split(/\n+/)
-    .map((l) => l.replace(/^[-•*▪◦●]\s*/, '').trim())
-    .filter((l) => l.length > 25);
-  const bullets = lines.filter((l) => ACTION_VERB.test(l));
-  const chosen = (bullets.length ? bullets : lines).slice(0, 20);
-  return chosen.map((claim, i) => ({
-    id: `FACT-${String(i + 1).padStart(2, '0')}`,
-    category: /\d/.test(claim) ? 'METRIC' : bullets.length ? 'PROJECT' : 'SKILL',
-    claim,
-    sourceSnippet: claim,
-    verified: true,
-  }));
-}
-
 export function YouView({ settings, resume, facts, voiceProfile }: Props) {
   const [keys, setKeys] = useState({ groq: settings.groqApiKey, gemini: settings.geminiApiKey, openrouter: settings.openrouterApiKey });
   const [test, setTest] = useState<Record<string, { success: boolean; message: string } | 'running'>>({});
@@ -61,6 +45,7 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
   const [note, setNote] = useState<string | null>(null);
   const usage = useLiveQuery(() => getUsageToday(), []);
   const connectionCount = useLiveQuery(() => db.connections.count(), []) ?? 0;
+  const resumeFile = useLiveQuery(() => db.resumeFiles.get('primary'), []);
 
   useEffect(() => {
     nanoAvailability().then(setNano);
@@ -83,13 +68,9 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
 
   const saveResume = async () => {
     if (!resumeText.trim()) return;
-    const extracted = extractFacts(resumeText);
-    await db.transaction('rw', db.resumes, db.facts, async () => {
-      await db.resumes.put({ id: 'primary', fileName: 'Pasted resume', rawText: resumeText, uploadedAt: Date.now(), wordCount: resumeText.split(/\s+/).length });
-      await db.facts.clear();
-      await db.facts.bulkPut(extracted);
-    });
-    flash(`Saved. ${extracted.length} facts found. Delete any that aren't true or useful.`);
+    const profile = await buildProfile(resumeText);
+    await saveResumeProfile(null, resumeText, profile);
+    flash(`Saved. ${profile.facts.length} facts found. Delete any that aren't true or useful.`);
   };
 
   const addFact = async () => {
@@ -224,9 +205,16 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
       </Section>
 
       <Section icon={<FileText size={16} />} title="Resume" open={facts.length === 0 && !!(settings.groqApiKey || settings.geminiApiKey)} meta={<Pill tone={facts.length ? 'ok' : 'caution'}>{facts.length} facts</Pill>}>
-        <p className="small muted">Paste your resume. Each achievement becomes a fact; the writer may only claim what these facts say.</p>
-        <textarea rows={6} value={resumeText} onChange={(e) => setResumeText(e.target.value)} placeholder="Paste your resume text here…" />
-        <button className="btn primary" onClick={saveResume} disabled={!resumeText.trim()}>Save and find facts</button>
+        <p className="small muted">Each achievement becomes a fact; the writer may only claim what these facts say.</p>
+        {resumeFile && <p className="small">Saved file: <b>{resumeFile.name}</b> (attached automatically on application forms)</p>}
+        <ResumeImport compact />
+        <details>
+          <summary className="small muted" style={{ cursor: 'pointer' }}>Or paste resume text</summary>
+          <div className="stack" style={{ marginTop: 8 }}>
+            <textarea rows={6} value={resumeText} onChange={(e) => setResumeText(e.target.value)} placeholder="Paste your resume text here…" />
+            <button className="btn" onClick={saveResume} disabled={!resumeText.trim()}>Save and find facts</button>
+          </div>
+        </details>
         {facts.length > 0 && (
           <div className="list">
             {facts.map((f) => (

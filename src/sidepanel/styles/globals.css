@@ -742,3 +742,73 @@ details.section[open] > summary {
 [hidden] {
   display: none !important;
 }
+
+/* ---------- Resume upload ---------- */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 26px 16px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 150ms var(--ease), background 150ms var(--ease);
+}
+
+.dropzone svg {
+  color: var(--brand);
+  margin-bottom: 4px;
+}
+
+.dropzone.compact {
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+}
+
+.dropzone.compact svg {
+  margin: 0;
+}
+
+.dropzone:hover,
+.dropzone.over {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.dropzone:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.role-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.role-option.on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+
+.role-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}

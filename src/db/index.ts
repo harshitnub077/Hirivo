@@ -60,6 +60,54 @@ export interface JobSnapshot {
   analyzedAt: number;
 }
 
+export interface ResumeFile {
+  id: string; // 'primary'
+  name: string;
+  type: string;
+  data: Blob;
+  savedAt: number;
+}
+
+export type JobSource = 'remotive' | 'remoteok' | 'himalayas' | 'jobicy' | 'arbeitnow' | 'hn' | 'yc' | 'watchlist' | 'page';
+
+export interface DiscoveredJob {
+  id: string; // `${source}:${sourceId}`
+  source: JobSource;
+  sourceLabel: string; // shown as credit, e.g. "Remotive"
+  title: string;
+  company: string;
+  location: string;
+  remote: boolean;
+  url: string; // the original posting; apply buttons always go here
+  postedAt?: number;
+  salary?: string;
+  tags: string[];
+  snippet?: string;
+  teamSize?: number; // when the source knows it (YC)
+  smallTeamReason?: string; // e.g. "YC W24 · 18 people"
+  score: number; // 0-100 match with the user's roles and skills
+  matchReasons: string[];
+  status: 'new' | 'saved' | 'applying' | 'applied' | 'dismissed';
+  firstSeenAt: number;
+  appliedAt?: number;
+}
+
+export interface AtsBoardProbe {
+  id: string; // normalised company key
+  company: string;
+  ats?: 'greenhouse' | 'lever' | 'ashby';
+  slug?: string;
+  found: boolean;
+  checkedAt: number;
+}
+
+export interface SourceFetch {
+  id: string; // source name
+  fetchedAt: number;
+  count: number;
+  error?: string;
+}
+
 export interface WatchedRole {
   id: string;
   title: string;
@@ -141,6 +189,12 @@ export interface UserSettings {
   preferredLocation?: string;
   workMode?: 'all' | 'remote' | 'onsite' | 'hybrid';
   earlyBirdAlerts?: boolean;
+  skills?: string[];
+  yearsExperience?: number;
+  suggestedRoles?: { title: string; keywords: string[]; level: 'intern' | 'entry' | 'mid' | 'senior'; why: string }[];
+  chosenRoles?: string[]; // titles the user picked from suggestedRoles
+  locationPreference?: 'india' | 'remote' | 'anywhere';
+  smallTeamsOnly?: boolean;
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
@@ -153,6 +207,10 @@ export class HirivoDatabase extends Dexie {
   connections!: EntityTable<LinkedInConnection, 'id'>;
   jobs!: EntityTable<JobSnapshot, 'id'>;
   watchlist!: EntityTable<WatchlistCompany, 'id'>;
+  resumeFiles!: EntityTable<ResumeFile, 'id'>;
+  discovered!: EntityTable<DiscoveredJob, 'id'>;
+  atsProbes!: EntityTable<AtsBoardProbe, 'id'>;
+  sourceFetches!: EntityTable<SourceFetch, 'id'>;
   outreach!: EntityTable<OutreachRecord, 'id'>;
   voiceProfiles!: EntityTable<VoiceProfile, 'id'>;
   llmCache!: EntityTable<LLMCacheItem, 'hashKey'>;
@@ -175,6 +233,13 @@ export class HirivoDatabase extends Dexie {
     this.version(3).stores({
       opportunities: null,
       watchlist: 'id, ats, addedAt, lastCheckedAt',
+    });
+    // v4: resume file upload and the Discover feed.
+    this.version(4).stores({
+      resumeFiles: 'id',
+      discovered: 'id, source, status, score, firstSeenAt, company',
+      atsProbes: 'id, checkedAt, found',
+      sourceFetches: 'id',
     });
   }
 }
