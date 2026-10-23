@@ -190,13 +190,13 @@ export function suggestRolesHeuristic(skills: string[], yearsExperience = 0): Su
 
 const words = (s: string) => (s.toLowerCase().match(/[a-z0-9%+#.]{3,}/g) || []).map((w) => w.replace(/\.$/, ''));
 
-/** A fact is kept only if most of its words appear in the resume. */
-export function isTraceable(claim: string, resumeText: string): boolean {
-  const pool = new Set(words(resumeText));
+/** True when most of the claim's words appear in the source text (default: 80% of them). */
+export function isTraceable(claim: string, sourceText: string, minShare = 0.8, minWords = 3): boolean {
+  const pool = new Set(words(sourceText));
   const claimWords = words(claim);
-  if (claimWords.length < 3) return false;
+  if (claimWords.length < minWords) return false;
   const found = claimWords.filter((w) => pool.has(w)).length;
-  return found / claimWords.length >= 0.8;
+  return found / claimWords.length >= minShare;
 }
 
 // ---------- AI structuring ----------

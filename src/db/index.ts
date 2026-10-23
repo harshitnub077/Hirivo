@@ -57,9 +57,36 @@ export interface JobSnapshot {
   fitVerdict?: 'STRONG_FIT' | 'MODERATE_FIT' | 'DO_NOT_APPLY';
   honestAdvice?: string;
   skillGaps?: { skill: string; studyRecommendation: string; timeToAcquire: string }[];
+  fitEvidence?: FitRequirement[]; // one row per job requirement; the fit score is computed from these
+  proofSprint?: ProofSprint;
   dealbreakers?: string[];
   matchingStrengths?: string[];
   analyzedAt: number;
+}
+
+export interface FitRequirement {
+  id: string; // R1, R2…
+  text: string;
+  kind: 'must' | 'nice';
+  years?: number;
+  factId: string | null; // FACT-xx, 'SKILLS' (listed only), or null for a gap
+  reason: string;
+  met: boolean;
+}
+
+export interface ProofSprint {
+  gapId: string; // the requirement it closes
+  gap: string;
+  title: string;
+  scope: string;
+  stack: string[];
+  days: { day: number; task: string }[];
+  deliverable: string;
+  factClaim: string; // the resume fact added when the user finishes
+  createdAt: number;
+  completedAt?: number;
+  factId?: string;
+  link?: string;
 }
 
 export interface ResumeFile {
