@@ -47,7 +47,9 @@
   "optional_host_permissions": [
     "https://*/*",
     "https://gmail.googleapis.com/*",
-    "https://oauth2.googleapis.com/*"
+    "https://oauth2.googleapis.com/*",
+    "https://accounts.google.com/*",
+    "https://*.chromiumapp.org/*"
   ],
   "background": {
     "service_worker": "background.js",

@@ -12,6 +12,9 @@ import {
   getAccessToken,
   GmailNeedsReconnect,
   signInHelp,
+  decodeAuthError,
+  authErrorHelp,
+  connectGmail,
   checkClientInputs,
   parseClientFile,
   hasRequiredScopes,
@@ -255,5 +258,50 @@ describe('setup mistakes are caught before Google opens', () => {
   });
   it('explains a wrong secret in plain words', () => {
     expect(signInHelp('The provided client secret is invalid.')).toMatch(/client secret is wrong/);
+  });
+});
+
+describe('when Chrome\'s sign-in window fails', () => {
+  const id = '614000213654-6bkm0qho3apeamvb01ehle1034rr2d8q.apps.googleusercontent.com';
+  const secret = 'GOCSPX-abcdefghijklmnopqrstuvwx12';
+  const redirectUri = 'https://hihenpcapnoebhdlfmedmndgjepjmpoo.chromiumapp.org/';
+
+  it('reads Google\'s real error pages', () => {
+    // Captured from accounts.google.com for an unregistered redirect address.
+    const bad = 'Cg9pbnZhbGlkX3JlcXVlc3QS3gEKWW91IGNhbid0IHNpZ24gaW4gdG8gdGhpcyBhcHAgYmVjYXVzZSBpdCBkb2Vzbid0IGNvbXBseSB3aXRoIEdvb2dsZSdzIE9BdXRoIDIuMCBwb2xpY3kgZm9yIGtlZXBpbmcgYXBwcyBzZWN1cmUuCgpZb3UgY2FuIGxldCB0aGUgYXBwIGRldmVsb3BlciBrbm93IHRoYXQgdGhpcyBhcHAgZG9lc24ndCBjb21wbHkgd2l0aCBvbmUgb3IgbW9yZSBHb29nbGUgdmFsaWRhdGlvbiBydWxlcy4KICAaWWh0dHBzOi8vZGV2ZWxvcGVycy5nb29nbGUuY29tL2lkZW50aXR5L3Byb3RvY29scy9vYXV0aDIvcG9saWNpZXMjc2VjdXJlLXJlc3BvbnNlLWhhbmRsaW5nIJADKigKDHJlZGlyZWN0X3VyaRIYaHR0cHM6Ly9leGFtcGxlLmludmFsaWQv';
+    expect(decodeAuthError(bad)).toMatchObject({ code: 'invalid_request', message: expect.stringMatching(/can't sign in to this app/) });
+    expect(decodeAuthError('ChVyZWRpcmVjdF91cmlfbWlzbWF0Y2gSsAEK').code).toBe('redirect_uri_mismatch');
+    expect(decodeAuthError('Cg5pbnZhbGlkX2NsaWVudBI').code).toBe('invalid_client');
+    expect(authErrorHelp('redirect_uri_mismatch', '', redirectUri)).toContain(redirectUri);
+  });
+
+  it('falls back to an ordinary tab and still connects', async () => {
+    const opened: string[] = [];
+    const f = fakeFetch([
+      [/oauth2\.googleapis\.com\/token/, () => ({ access_token: 'tok', expires_in: 3600, refresh_token: 'r', scope: 'https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.readonly' })],
+      [/\/profile/, () => ({ emailAddress: 'harshit@gmail.com' })],
+    ]);
+    const state = await connectGmail(id, secret, {
+      fetch: f.fn,
+      redirectUri,
+      preflight: async () => undefined,
+      launch: async () => Promise.reject(new Error('Authorization page could not be loaded.')),
+      launchTab: async (url, ru) => (opened.push(url), `${ru}?code=abc&state=${new URL(url).searchParams.get('state')}`),
+    });
+    expect(opened).toHaveLength(1);
+    expect(state.email).toBe('harshit@gmail.com');
+  });
+
+  it('a setup problem found by the check stops before any window opens', async () => {
+    let launched = false;
+    await expect(
+      connectGmail(id, secret, {
+        fetch: fakeFetch([]).fn,
+        redirectUri,
+        preflight: async () => Promise.reject(new Error(authErrorHelp('redirect_uri_mismatch', '', redirectUri))),
+        launch: async () => ((launched = true), ''),
+      })
+    ).rejects.toThrow(/Authorized redirect URIs/);
+    expect(launched).toBe(false);
   });
 });

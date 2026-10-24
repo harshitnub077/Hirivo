@@ -168,6 +168,10 @@ export interface AuthDeps {
   fetch: Fetch;
   /** chrome.identity.launchWebAuthFlow; undefined where unavailable (tests, no permission). */
   launch?: (url: string, interactive: boolean) => Promise<string>;
+  /** Sign-in in a normal browser tab, used when Chrome's sign-in window fails to load. */
+  launchTab?: (url: string, redirectUri: string) => Promise<string>;
+  /** Asks Google about the setup before any window opens; throws the exact fix when it's wrong. */
+  preflight?: (url: string, redirectUri: string) => Promise<void>;
   redirectUri?: string;
   now?: () => number;
 }
@@ -183,16 +187,102 @@ const defaultDeps = (): AuthDeps => ({
             .launchWebAuthFlow({ url, interactive, ...(interactive ? {} : { abortOnLoadForNonInteractive: true, timeoutMsForNonInteractive: 8000 }) } as chrome.identity.WebAuthFlowDetails)
             .then((r) => r || Promise.reject(new Error('Sign-in was closed.')))
       : undefined,
+  launchTab: typeof chrome !== 'undefined' && chrome.tabs ? launchInTab : undefined,
+  preflight: (url, redirectUri) => preflightAuth(url, redirectUri),
   redirectUri: typeof chrome !== 'undefined' && chrome.identity?.getRedirectURL ? chrome.identity.getRedirectURL() : undefined,
   now: () => Date.now(),
 });
+
+/** Google's error page carries the reason as base64 in ?authError=; pull out the code and message. */
+export function decodeAuthError(param: string): { code: string; message: string } {
+  try {
+    const b64 = decodeURIComponent(param).replace(/-/g, '+').replace(/_/g, '/');
+    const text = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+    const code = text.match(/redirect_uri_mismatch|invalid_client|deleted_client|org_internal|access_denied|disallowed_useragent|unauthorized_client|invalid_request|admin_policy_enforced/)?.[0] || 'unknown';
+    const message = (text.match(/[\x20-\x7e]{25,}/g) || []).filter((t) => !/^https?:/.test(t))[0] || '';
+    return { code, message };
+  } catch {
+    return { code: 'unknown', message: '' };
+  }
+}
+
+/** The fix for each of Google's sign-in errors. */
+export function authErrorHelp(code: string, message: string, redirectUri: string): string {
+  switch (code) {
+    case 'redirect_uri_mismatch':
+      return `Google doesn’t have Hirivo’s redirect address on your client. Add exactly ${redirectUri} under Clients → your client → Authorized redirect URIs, save, wait a minute, then press Connect.`;
+    case 'invalid_client':
+      return 'Google can’t find that client ID. Copy it again from Clients in Google Auth Platform (or load the client JSON file).';
+    case 'deleted_client':
+      return 'That Google client was deleted. Create a new Web application client and load its JSON file.';
+    case 'org_internal':
+      return 'Your Google app is set to Internal. On Google Auth Platform → Audience, choose External, then add yourself as a test user.';
+    case 'access_denied':
+      return signInHelp('access_denied');
+    default:
+      return message ? `Google says: ${message}` : 'Google refused the sign-in request. Check the client ID and redirect address, then try again.';
+  }
+}
+
+/** Loads the sign-in URL the way the window would and reads where Google sends it. */
+async function preflightAuth(url: string, redirectUri: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(url, { credentials: 'omit' });
+  } catch {
+    throw new Error('This browser can’t reach accounts.google.com. Check your internet, VPN or firewall, and any extension that blocks Google sign-in (ad or privacy blockers), then try again.');
+  }
+  const err = new URL(res.url).searchParams.get('authError');
+  if (/\/signin\/oauth\/error/.test(res.url) && err) {
+    const { code, message } = decodeAuthError(err);
+    throw new Error(authErrorHelp(code, message, redirectUri));
+  }
+}
+
+/** Sign-in in an ordinary tab: the user's usual Google session, and no special window to fail. */
+function launchInTab(url: string, redirectUri: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let tabId: number | undefined;
+    const cleanup = () => {
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      chrome.tabs.onRemoved.removeListener(onRemoved);
+      clearTimeout(timer);
+    };
+    const onUpdated = (id: number, info: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+      const u = info.url || tab.url || '';
+      if (id !== tabId || !u.startsWith(redirectUri)) return;
+      cleanup();
+      chrome.tabs.remove(id).catch(() => undefined);
+      resolve(u);
+    };
+    const onRemoved = (id: number) => {
+      if (id !== tabId) return;
+      cleanup();
+      reject(new Error('Sign-in was closed.'));
+    };
+    const timer = setTimeout(() => (cleanup(), reject(new Error('Sign-in timed out. Press Connect to try again.'))), 10 * 60_000);
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.tabs.onRemoved.addListener(onRemoved);
+    chrome.tabs.create({ url, active: true }).then((t) => (tabId = t.id), (e) => (cleanup(), reject(e)));
+  });
+}
 
 async function codeFlow(state: GmailState | { clientId: string; clientSecret: string }, deps: AuthDeps, silent: boolean, loginHint?: string) {
   if (!deps.launch || !deps.redirectUri) throw new GmailNeedsReconnect();
   const verifier = randomVerifier();
   const nonce = randomVerifier().slice(0, 16);
   const url = buildAuthUrl({ clientId: state.clientId, redirectUri: deps.redirectUri, challenge: await pkceChallenge(verifier), state: nonce, loginHint, silent });
-  const code = parseAuthRedirect(await deps.launch(url, !silent), nonce);
+  if (!silent) await deps.preflight?.(url, deps.redirectUri);
+  let redirected: string;
+  try {
+    redirected = await deps.launch(url, !silent);
+  } catch (err: any) {
+    // Chrome's sign-in window can fail to load (blockers, profile sign-in, a stuck earlier window).
+    // The same sign-in works in an ordinary tab.
+    if (silent || !deps.launchTab || !/could not be loaded|only one web auth flow|load timed out/i.test(err?.message || '')) throw err;
+    redirected = await deps.launchTab(url, deps.redirectUri);
+  }
+  const code = parseAuthRedirect(redirected, nonce);
   return tokenRequest(
     { grant_type: 'authorization_code', code, code_verifier: verifier, client_id: state.clientId, client_secret: state.clientSecret, redirect_uri: deps.redirectUri },
     deps.fetch
@@ -302,7 +392,9 @@ async function connectOnce(clientId: string, clientSecret: string, override: Par
   if (problem) throw new Error(problem);
   if (typeof chrome !== 'undefined' && chrome.permissions) {
     // Optional permissions: asked only here, so nothing changes for people who never connect.
-    const ok = await chrome.permissions.request({ permissions: ['identity'], origins: GMAIL_ORIGINS });
+    // accounts.google.com: the setup check; <id>.chromiumapp.org: catching the sign-in result in a tab.
+    const redirectOrigin = `https://${chrome.runtime.id}.chromiumapp.org/*`;
+    const ok = await chrome.permissions.request({ permissions: ['identity'], origins: [...GMAIL_ORIGINS, 'https://accounts.google.com/*', redirectOrigin] });
     if (!ok) throw new Error('Hirivo needs your OK to use Google sign-in and the Gmail API.');
   }
   // chrome.identity exists only once the permission is granted, so build the helpers now.
