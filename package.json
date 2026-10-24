@@ -1,7 +1,7 @@
 {
   "name": "hirivo",
   "displayName": "Hirivo: Real Jobs, Right People",
-  "version": "2.14.0",
+  "version": "3.0.0",
   "private": true,
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "type": "module",

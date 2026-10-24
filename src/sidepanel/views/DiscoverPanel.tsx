@@ -11,6 +11,8 @@ import { ResumeImport } from './ResumeImport';
 import { AutopilotButton } from './AutopilotViews';
 import { Daily5Card } from './Daily5Card';
 import { SearchCard } from './SearchCard';
+import { autoEnqueueNewMatches } from '../../services/autopilot/auto';
+import { startAutopilot } from '../../services/autopilot/client';
 import { browserSearchHost } from '../../services/discover/host';
 
 type Filter = 'new' | 'saved' | 'applying' | 'companies';
@@ -31,8 +33,11 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
     setRunning(true);
     setMessage(null);
     try {
+      const started = Date.now();
       const r = await runDiscover({ force, host: browserSearchHost() });
-      setMessage({ tone: 'ok', text: `${r.total} matching jobs, ${r.added} new.` });
+      const handed = await autoEnqueueNewMatches(settings, { since: started });
+      if (handed.length) await startAutopilot();
+      setMessage({ tone: 'ok', text: `${r.total} matching jobs, ${r.added} new.${handed.length ? ` Autopilot is applying to ${handed.length} of them (Pipeline).` : ''}` });
     } catch (err: any) {
       setMessage({ tone: 'caution', text: err.message });
     } finally {

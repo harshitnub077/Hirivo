@@ -4,6 +4,8 @@ import { runQueue, type ApplyReport, type AutopilotHost } from '../services/auto
 import type { ExtractedJobData } from '../content/extractJob';
 import { runDiscover } from '../services/discover';
 import { browserSearchHost } from '../services/discover/host';
+import { autoEnqueueNewMatches } from '../services/autopilot/auto';
+import { getSettings } from '../db/settings';
 
 function ask<T>(message: Record<string, unknown>): Promise<T> {
   return new Promise((resolve, reject) =>
@@ -18,7 +20,7 @@ function ask<T>(message: Record<string, unknown>): Promise<T> {
 const host: AutopilotHost = {
   readPage: (url) => ask<{ page: ExtractedJobData | null }>({ action: 'AP_READ_PAGE', url }).then((r) => r.page),
   sendEmail: (m) => ask<{ draftId: string; threadId: string }>({ action: 'AP_SEND', ...m }),
-  apply: (url, submit) => ask<ApplyReport>({ action: 'AP_APPLY', url, submit }),
+  apply: (url, submit, keepTab = true) => ask<ApplyReport>({ action: 'AP_APPLY', url, submit, keepTab }),
   notify: (title, message, jobId) => ask({ action: 'AP_NOTIFY', title, message, jobId }).then(() => undefined),
   canReadAnySite: () => ask<{ ok: boolean }>({ action: 'AP_CAN_READ' }).then((r) => Boolean(r?.ok)),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
@@ -29,9 +31,14 @@ async function search(reason: 'alert' | 'daily') {
   if (searching) return;
   searching = true;
   try {
+    const started = Date.now();
     const r = await runDiscover({ host: browserSearchHost() });
     const newTopMatches = r.newTopMatches.slice(0, 5).map((j) => ({ title: j.title, company: j.company }));
-    await chrome.runtime.sendMessage({ action: 'SEARCH_DONE', reason, newTopMatches }).catch(() => undefined);
+    // "Apply automatically to new matches": hand this search's best new jobs to Autopilot.
+    const handed = await autoEnqueueNewMatches(await getSettings(), { since: started }).catch(() => []);
+    const handedOver = handed.map((j) => ({ title: j.title, company: j.company }));
+    await chrome.runtime.sendMessage({ action: 'SEARCH_DONE', reason, newTopMatches, handedOver }).catch(() => undefined);
+    if (handed.length) runQueue(host);
   } catch {
     if (reason === 'daily') await chrome.runtime.sendMessage({ action: 'SEARCH_DONE', reason, newTopMatches: [] }).catch(() => undefined);
   } finally {

@@ -113,7 +113,16 @@ async function startSearch(reason: 'alert' | 'daily') {
   chrome.runtime.sendMessage({ target: 'offscreen', action: 'SEARCH_RUN', reason }).catch(() => undefined);
 }
 
-async function searchDone(reason: 'alert' | 'daily', newTopMatches: { title: string; company: string }[]) {
+async function searchDone(reason: 'alert' | 'daily', newTopMatches: { title: string; company: string }[], handedOver: { title: string; company: string }[] = []) {
+  if (handedOver.length) {
+    chrome.notifications.create(`autoapply:${Date.now()}`, {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: `Autopilot is applying to ${handedOver.length} new ${handedOver.length === 1 ? 'match' : 'matches'}`,
+      message: handedOver.slice(0, 3).map((j) => `${j.company}: ${j.title}`).join('\n') + (handedOver.length > 3 ? `\nand ${handedOver.length - 3} more. See Pipeline.` : ''),
+      priority: 1,
+    });
+  }
   if (reason === 'daily') return sendDaily5();
   const settings = await getSettings();
   if (!settings.earlyBirdAlerts || newTopMatches.length === 0) return;
@@ -320,7 +329,7 @@ async function readPageInTab(url: string) {
   }
 }
 
-async function applyInTab(url: string, submit: boolean): Promise<ApplyReport> {
+async function applyInTab(url: string, submit: boolean, keepTab = true): Promise<ApplyReport> {
   const tab = await chrome.tabs.create({ url, active: false });
   const tabId = tab.id!;
   await waitForLoad(tabId);
@@ -335,6 +344,10 @@ async function applyInTab(url: string, submit: boolean): Promise<ApplyReport> {
   }
   if (!report) return { status: 'failed', filled: 0, written: 0, left: [], error: 'the form page never answered', tabId };
   if (report.status === 'submitted') setTimeout(() => chrome.tabs.remove(tabId).catch(() => undefined), 5000);
+  else if (!keepTab) {
+    await chrome.tabs.remove(tabId).catch(() => undefined);
+    return { ...report, tabId: undefined };
+  }
   return { ...report, tabId };
 }
 
@@ -393,10 +406,10 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   };
   if (request.action === 'AP_START') return reply(startAutopilot());
   if (request.action === 'TAB_SCRAPE') return reply(scrapeInTab(String(request.url)));
-  if (request.action === 'SEARCH_DONE') return reply(searchDone(request.reason, request.newTopMatches || []));
+  if (request.action === 'SEARCH_DONE') return reply(searchDone(request.reason, request.newTopMatches || [], request.handedOver || []));
   if (request.action === 'AP_CAN_READ') return reply(chrome.permissions.contains({ origins: ['https://*/*'] }).then((ok) => ({ ok })));
   if (request.action === 'AP_READ_PAGE') return reply(readPageInTab(String(request.url)).then((page) => ({ page })));
-  if (request.action === 'AP_APPLY') return reply(applyInTab(String(request.url), Boolean(request.submit)));
+  if (request.action === 'AP_APPLY') return reply(applyInTab(String(request.url), Boolean(request.submit), request.keepTab !== false));
   if (request.action === 'AP_SEND') return reply(sendEmail(request));
   if (request.action === 'AP_NOTIFY') {
     chrome.notifications.create(`autopilot:${request.jobId}:${Date.now()}`, { type: 'basic', iconUrl: 'icons/icon128.png', title: String(request.title), message: String(request.message), priority: 1 });

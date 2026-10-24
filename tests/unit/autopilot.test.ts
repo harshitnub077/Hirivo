@@ -34,7 +34,7 @@ vi.mock('../../src/services/multiOutreach', async (orig) => {
 
 import { db } from '../../src/db';
 import { patchSettings } from '../../src/db/settings';
-import { processJob, type ApplyReport, type AutopilotHost } from '../../src/services/autopilot/run';
+import { processJob, runQueue, type ApplyReport, type AutopilotHost } from '../../src/services/autopilot/run';
 import { enqueue } from '../../src/services/autopilot/queue';
 import { atsJobId, domainGuesses, findCompanyDomain, homepageIsCompany } from '../../src/services/autopilot/details';
 import { findSubmitButton } from '../../src/content/formEngine';
@@ -55,9 +55,16 @@ function fakeHost(report: Partial<ApplyReport> = {}) {
   return { host, sent, notes };
 }
 
-function network({ scam = false } = {}) {
-  vi.stubGlobal('fetch', async (input: string) => {
+const LINKEDIN_PAGE = readFileSync(resolve(__dirname, '../fixtures/sources/linkedin-posting.html'), 'utf8');
+
+function network({ scam = false, board = true } = {}) {
+  vi.stubGlobal('fetch', async (input: string, init?: RequestInit) => {
     const url = String(input);
+    if (url.includes('linkedin.com/jobs-guest/jobs/api/jobPosting/')) {
+      if (init?.credentials !== 'omit') throw new Error('LinkedIn must be read logged-out');
+      return new Response(LINKEDIN_PAGE);
+    }
+    if (!board && url.includes('/boards/acme/jobs')) return new Response('', { status: 404 });
     if (url.includes('/boards/acme/jobs/123'))
       return new Response(JSON.stringify({ title: 'Backend Engineer', company_name: 'Acme', location: { name: 'Bengaluru' }, first_published: new Date().toISOString(),
         content: scam ? '&lt;p&gt;Pay a registration fee of Rs 2000 to confirm your seat.&lt;/p&gt;' : '&lt;p&gt;Build Go services and Kafka pipelines for payments at scale.&lt;/p&gt;' }));
@@ -98,7 +105,7 @@ describe('Autopilot, start to finish', () => {
     expect(row.emailed).toHaveLength(3);
     expect((await db.outreach.toArray()).every((o) => o.autopilot && o.gmailThreadId)).toBe(true);
     expect((await db.discovered.get('yc:x'))?.status).toBe('applied');
-    expect(host.apply).toHaveBeenCalledWith('https://job-boards.greenhouse.io/acme/jobs/123', true);
+    expect(host.apply).toHaveBeenCalledWith('https://job-boards.greenhouse.io/acme/jobs/123', true, true);
     expect(row.steps.map((s) => s.text).join(' | ')).toMatch(/Read “Backend Engineer” at Acme.*Company site: acme.com.*Sent to .*Submitted/);
   });
 
@@ -134,12 +141,52 @@ describe('Autopilot, start to finish', () => {
     expect(notes.at(-1)).toMatch(/one step left/);
   });
 
-  it('never automates LinkedIn', async () => {
+  it('applies to a LinkedIn job on the company’s own board when it is there', async () => {
     network();
-    const { row, host } = await run('https://www.linkedin.com/jobs/view/4040404040/');
-    expect(row.status).toBe('needs-you');
+    const { row, host } = await run('https://www.linkedin.com/jobs/view/backend-engineer-at-acme-4040404040/');
+    expect(host.apply).toHaveBeenCalledWith(GH_URL, true, true);
+    expect(host.readPage).not.toHaveBeenCalled(); // never a LinkedIn tab
+    expect(row).toMatchObject({ status: 'done', url: GH_URL });
+    expect(row.steps.map((s) => s.text).join(' | ')).toMatch(/Found it on Acme’s own Greenhouse board/);
+  });
+
+  it('never applies on LinkedIn: reads it logged-out, writes to people, leaves Apply to the user', async () => {
+    network({ board: false });
+    const { row, host, sent } = await run('https://www.linkedin.com/jobs/view/4482743503/');
     expect(host.apply).not.toHaveBeenCalled();
     expect(host.readPage).not.toHaveBeenCalled();
+    expect(row).toMatchObject({ status: 'needs-you', needs: 'Apply on LinkedIn' });
+    expect(sent).toEqual([]); // no website found for Sirma in this fake network, so no verified addresses
+    const log = row.steps.map((s) => s.text).join(' | ');
+    expect(log).toMatch(/Read “Backend Developer Intern with Devops Knowledge.*” at Sirma Business Consulting India Private Ltd\./);
+    expect(log).toMatch(/people|People/); // research still runs
+    expect(log).toMatch(/Apply on LinkedIn yourself/);
+  });
+
+  it('keeps automatic runs quiet and their tabs closed', async () => {
+    network({ board: false });
+    await enqueue([{ url: 'https://www.naukri.com/job-listings-backend-engineer-acme-bengaluru-0-to-2-years-231026500904', title: 'Backend Engineer', company: 'Acme' }], { auto: true });
+    const item = (await db.autopilot.toArray())[0];
+    const h = fakeHost();
+    (h.host.readPage as any).mockResolvedValue({ title: 'Backend Engineer', company: 'Acme', location: 'Bengaluru', description: 'Build Go services and Kafka pipelines for payments at scale. '.repeat(4) });
+    await processJob(item, h.host);
+    const row = (await db.autopilot.get(item.id))!;
+    expect(row).toMatchObject({ status: 'needs-you', needs: 'Apply on Naukri', auto: true });
+    expect(h.notes.filter((n) => /apply on/i.test(n))).toEqual([]); // summed up after the search instead
+  });
+});
+
+describe('pacing', () => {
+  it('waits 1-3 minutes between applications, not after the last one', async () => {
+    network();
+    // One email per job, so the 30-90 s gaps between emails don't mix in.
+    await patchSettings({ autopilot: { enabled: true, sendEmails: true, submitForms: true, peoplePerCompany: 1 } });
+    await enqueue([{ url: GH_URL, title: 'Backend Engineer', company: 'Acme' }, { url: 'https://job-boards.greenhouse.io/acme/jobs/124', title: 'Backend Engineer', company: 'Acme' }]);
+    const h = fakeHost();
+    await runQueue(h.host);
+    const waits = (h.host.sleep as any).mock.calls.map((c: number[]) => c[0]).filter((ms: number) => ms >= 60_000);
+    expect(waits).toHaveLength(1);
+    expect(waits[0]).toBeLessThanOrEqual(180_000);
   });
 });
 

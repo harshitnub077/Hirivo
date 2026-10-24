@@ -13,7 +13,7 @@ export function jobIdOf(url: string): string {
   }
 }
 
-export async function enqueue(jobs: { url: string; title: string; company: string }[], { force = false } = {}): Promise<number> {
+export async function enqueue(jobs: { url: string; title: string; company: string }[], { force = false, auto = false } = {}): Promise<number> {
   const now = Date.now();
   let added = 0;
   for (const j of jobs) {
@@ -29,6 +29,7 @@ export async function enqueue(jobs: { url: string; title: string; company: strin
       steps: [{ at: now, text: 'Handed to Autopilot.', tone: 'neutral' }],
       emailed: existing?.emailed || [],
       force,
+      auto: auto || undefined,
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     });

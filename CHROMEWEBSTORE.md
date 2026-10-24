@@ -1,17 +1,17 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.14.0
+**Version:** 3.0.0
 **Category:** Productivity
 **Language:** English (India), English
 **Privacy policy:** [docs/privacy.md](docs/privacy.md). Publish it at a public URL (GitHub Pages, or the file's GitHub link) and paste that link into the dashboard.
 
 ## Short description (≤132 chars)
-Checks if a job is real and safe, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.
+Finds internships and jobs near you on LinkedIn, Naukri and more, emails the right people, and fills every application for you.
 
 ## Detailed description
 
-Hirivo is a job-search co-pilot for people who would rather send five good applications than fifty ignored ones. It never invents anything about you and never acts on LinkedIn for you. You press Send and Submit yourself, unless you turn on Autopilot for the jobs you choose.
+Hirivo is a job and internship automator for students and job seekers. Say once what you want (internship or job, your city and a radius, how recent), and Hirivo finds the freshest matches across LinkedIn, Naukri, Indeed, Internshala, Unstop and startup boards, researches each company and its people, emails them from your own Gmail, writes LinkedIn notes for you to send, and fills the application. It never invents anything about you and never acts on LinkedIn for you. You press Send and Submit yourself, unless you turn on Autopilot.
 
 **Start with your resume.** Upload a PDF, Word or text resume. Hirivo fills your profile, keeps only facts it can trace back to the file, and suggests the roles you fit.
 
@@ -32,6 +32,8 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 
 **Follow up on time.** The email opens in Gmail for you to send. Hirivo reminds you on day 4 and day 9 and stops when you get a reply. Optional Gmail power mode, with your own Google app, saves real drafts (with your resume attached if you like), keeps follow-ups in the same thread and spots replies by itself.
 
+**Apply automatically, if you choose.** Turn on "Apply automatically to new matches" and each search (every 2 hours) hands its best new jobs to Autopilot: at or above the match score you pick, at most two roles per company a week, with an optional daily limit. For jobs found on LinkedIn, Naukri, Indeed or Internshala, Hirivo applies on the company's own Greenhouse, Lever or Ashby page when the same job is there; otherwise it emails the people, prepares LinkedIn notes and leaves that portal's Apply button to you. Applications go out one to three minutes apart.
+
 **Autopilot, when you want it.** Turn it on, hand it the jobs you choose, and it does the rest: reads each posting, checks the job is real and safe, finds the company's website and the people there, emails everyone with a verified address (listed, or in the company's email format proven by real addresses) from your own Gmail, prepares LinkedIn notes for you to send (with your resume attached and every claim backed by it), fills the application and submits it. It stops and notifies you only when a form needs your consent tick or a CAPTCHA, and it never emails a guessed address or touches LinkedIn.
 
 **Safe for your LinkedIn account.** Hirivo never uses your LinkedIn session for searching: it reads LinkedIn's public job listings, the ones anyone sees without signing in. On LinkedIn pages it reads only what you are viewing when you press Analyze or Save jobs, and it never clicks, connects, messages or applies there.
@@ -43,7 +45,7 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 | File | Caption |
 |---|---|
 | `store/screenshot-1-now.png` | Every job gets four answers: is it real, do you fit, who to ask, is it safe. |
-| `store/screenshot-2-radar.png` | One search across LinkedIn, Naukri, Indeed, Internshala and more: posted time, distance and reasons. |
+| `store/screenshot-2-radar.png` | One search across LinkedIn, Naukri, Indeed, Internshala and more, by city, radius and date. |
 | `store/screenshot-3-pipeline.png` | Follow-ups on day 4 and day 9, stopped when someone replies. |
 | `store/screenshot-4-you.png` | Your resume becomes facts, and Hirivo only claims what they say. |
 

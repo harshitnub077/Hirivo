@@ -26,7 +26,7 @@ const SHOTS = [
   {
     file: 'screenshot-2-radar.png',
     view: 'radar',
-    caption: 'One search across LinkedIn, Naukri, Indeed, Internshala and more: posted time, distance and reasons.',
+    caption: 'One search across LinkedIn, Naukri, Indeed, Internshala and more, by city, radius and date.',
     ready: `d.body.innerText.includes('Search now') && !d.body.innerText.includes('Searching')`,
     prepare: `[...d.querySelectorAll('.h2')].find((e) => e.textContent.trim() === 'Search')?.closest('.card')?.scrollIntoView({ block: 'start' })`,
   },

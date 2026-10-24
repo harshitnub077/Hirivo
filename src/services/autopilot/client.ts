@@ -3,8 +3,13 @@ import { enqueue } from './queue';
 
 export async function handToAutopilot(jobs: { url: string; title: string; company: string }[], opts: { force?: boolean } = {}) {
   const added = await enqueue(jobs, opts);
-  if (typeof chrome !== 'undefined' && chrome.runtime?.id) await chrome.runtime.sendMessage({ action: 'AP_START' }).catch(() => undefined);
+  await startAutopilot();
   return added;
+}
+
+/** Wakes the runner in the offscreen document. */
+export async function startAutopilot() {
+  if (typeof chrome !== 'undefined' && chrome.runtime?.id) await chrome.runtime.sendMessage({ action: 'AP_START' }).catch(() => undefined);
 }
 
 /** One-time grant: read any website (company sites, careers pages, job pages). */

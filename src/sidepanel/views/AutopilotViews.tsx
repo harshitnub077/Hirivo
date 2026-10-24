@@ -3,12 +3,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Bot, CheckCircle2, Circle, ExternalLink, Play, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
 import { db, type AutopilotJob, type UserSettings } from '../../db';
 import { patchSettings } from '../../db/settings';
-import { allowAnySite, canReadAnySite, handToAutopilot } from '../../services/autopilot/client';
+import { allowAnySite, canReadAnySite, handToAutopilot, startAutopilot } from '../../services/autopilot/client';
+import { AUTO_DEFAULTS, pickAutoMatches } from '../../services/autopilot/auto';
 import { gmailConnected } from '../../services/gmail';
 import { openUrl } from '../../services/outreach';
 import { Callout, Pill, timeAgo } from '../ui';
 
-const DEFAULTS = { enabled: false, sendEmails: true, submitForms: true, peoplePerCompany: 3, linkedinNotes: true };
+const DEFAULTS = { enabled: false, sendEmails: true, submitForms: true, peoplePerCompany: 3, linkedinNotes: true, autoApply: false, minScore: AUTO_DEFAULTS.minScore };
 
 /** You → Autopilot: what it does, what it needs, and its switches. */
 export function AutopilotSettings({ settings }: { settings: UserSettings }) {
@@ -76,10 +77,61 @@ export function AutopilotSettings({ settings }: { settings: UserSettings }) {
           ))}
         </select>
       </label>
+      <AutoApply settings={settings} ap={ap} set={set} />
       <p className="small muted">
         Emails count against your daily limit in You → Profile (Gmail's own limit for personal accounts is about 500 a day). Follow-ups on day 4 and day 9 go out in the same
         thread and stop when someone replies.
       </p>
+    </div>
+  );
+}
+
+/** "Apply automatically to new matches": each search hands its best new jobs to Autopilot. */
+function AutoApply({ settings, ap, set }: { settings: UserSettings; ap: typeof DEFAULTS & UserSettings['autopilot']; set: (p: Partial<typeof DEFAULTS>) => void }) {
+  const matches = useLiveQuery(async () => pickAutoMatches(await db.discovered.where('status').equals('new').toArray(), await db.autopilot.toArray(), { autopilot: { ...ap, enabled: true, autoApply: true } }), [ap.minScore, ap.dailyLimit]) ?? [];
+  const [handed, setHanded] = useState<number | null>(null);
+  const handOverNow = async () => {
+    setHanded(await handToAutopilot(matches.map((j) => ({ url: j.url, title: j.title, company: j.company }))));
+    await startAutopilot();
+  };
+  return (
+    <div className="stack" style={{ gap: 6, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+      <label className="row small">
+        <input type="checkbox" checked={!!ap.autoApply} disabled={!ap.enabled} onChange={(e) => set({ autoApply: e.target.checked })} />
+        <b>Apply automatically to new matches</b>
+      </label>
+      <p className="small muted">
+        After each search (every 2 hours), new jobs at or above the score go to Autopilot by themselves, best first, at most {AUTO_DEFAULTS.perCompanyPerWeek} roles per company a week. On LinkedIn,
+        Naukri, Indeed and Internshala jobs, Hirivo applies on the company's own board when the same job is there; otherwise it emails and prepares notes, and leaves the portal's Apply button to you.
+      </p>
+      <div className="row wrap" style={{ gap: 10 }}>
+        <label className="row small">
+          Lowest match score
+          <select value={ap.minScore ?? AUTO_DEFAULTS.minScore} onChange={(e) => set({ minScore: Number(e.target.value) })} style={{ width: 70 }}>
+            {[40, 50, 60, 70, 80, 90].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <label className="row small">
+          Most per day
+          <input
+            type="number"
+            min={1}
+            max={200}
+            style={{ width: 70 }}
+            placeholder="No limit"
+            defaultValue={settings.autopilot?.dailyLimit || ''}
+            onBlur={(e) => set({ dailyLimit: Number(e.target.value) || undefined } as Partial<typeof DEFAULTS>)}
+          />
+        </label>
+      </div>
+      {ap.enabled && matches.length > 0 && (
+        <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={handOverNow}>
+          <Play size={12} /> Hand over {matches.length} current {matches.length === 1 ? 'match' : 'matches'} now
+        </button>
+      )}
+      {handed !== null && <span className="small muted">{handed ? `Autopilot took ${handed}. Follow it in Pipeline.` : 'Those jobs are already with Autopilot.'}</span>}
     </div>
   );
 }

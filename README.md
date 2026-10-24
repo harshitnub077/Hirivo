@@ -3,7 +3,7 @@
 </p>
 
 <p align="center"><b>Get noticed. Get connected. Get hired.</b><br>
-A free Chrome extension that finds real jobs that fit you, tells you honestly whether to apply, and helps you reach the right person, without ever risking your LinkedIn account.</p>
+A free Chrome extension for students and job seekers: it finds the freshest internships and jobs near you across LinkedIn, Naukri, Indeed, Internshala and startup boards, researches the company and its people, emails them, prepares your LinkedIn notes and fills the application, without ever risking your LinkedIn account.</p>
 
 ---
 
@@ -25,6 +25,8 @@ A free Chrome extension that finds real jobs that fit you, tells you honestly wh
 11. **Optional Gmail power mode.** Connect your own free Google app (step-by-step guide in You → Gmail) and Hirivo saves real Gmail drafts, keeps follow-ups in the same thread, and notices replies on its own, stopping follow-ups. You still press Send, unless you turn on Autopilot. Your email never passes through anyone else's app.
 
 12. **Autopilot, if you want zero clicks.** Turn it on in You → Autopilot and hand it any jobs you choose (one at a time, or all your saved jobs). For each job it reads the posting, checks the job is real and safe, finds the company's website and the people there, emails everyone with a verified address (listed, from your export, or in the company's confirmed format) from your own Gmail with your resume attached, prepares LinkedIn notes for the founders, HR and hiring manager for you to send, sends day-4 and day-9 follow-ups in the same thread (stopping when someone replies), then fills the application and submits it. It notifies you only when a form needs your consent tick, a CAPTCHA or an answer only you can give, and logs every step in Pipeline. It never emails a guessed address and never touches LinkedIn.
+
+13. **Applies to new matches by itself, if you turn it on.** With "Apply automatically to new matches" (You → Autopilot), every search hands its best new jobs to Autopilot: at or above your minimum match score (default 60), best first, at most two roles per company a week, and within a daily limit if you set one (none by default). Jobs found on LinkedIn, Naukri, Indeed or Internshala are matched to the company's own Greenhouse, Lever or Ashby posting, where Hirivo can fill and submit the form; LinkedIn is read logged-out only. When there's no company copy, Hirivo still emails the people and prepares LinkedIn notes, and leaves the portal's Apply button to you. Applications go out one to three minutes apart, and automatic runs close their tabs when they need you (the form refills when you open it from Pipeline).
 
 Dark by default, with a light theme in You → Appearance. Press **Alt+H** on any page to open Hirivo.
 

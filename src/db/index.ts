@@ -319,6 +319,7 @@ export interface AutopilotJob {
   needs?: string; // what the user has to do, when status is needs-you
   tabId?: number; // the application tab left open for the user
   force?: boolean; // run even if the checks say skip
+  auto?: boolean; // handed over by "Apply automatically to new matches", not by the user
   createdAt: number;
   updatedAt: number;
 }
@@ -394,6 +395,9 @@ export interface UserSettings {
     submitForms: boolean; // press Submit when every required question is answered
     peoplePerCompany: number; // 1-5
     linkedinNotes?: boolean; // prepare LinkedIn notes for the user to send (default on)
+    autoApply?: boolean; // hand new matches from each search to Autopilot
+    minScore?: number; // the lowest match score handed over automatically (default 60)
+    dailyLimit?: number; // most jobs handed over automatically per day; unset = no limit
   };
 }
 

@@ -22,6 +22,8 @@ import { dailyCapStatus, recordOutreach, stripCitations } from '../outreach';
 import { gmailConnected } from '../gmail';
 import { setJobStatus } from '../discover';
 import { companyDomainOf } from '../companyDomain';
+import { linkedInPosting } from '../discover/sources/linkedin';
+import { resolveCompanyPosting } from './resolve';
 
 export interface ApplyReport {
   status: 'submitted' | 'ready' | 'needs-you' | 'failed';
@@ -38,8 +40,11 @@ export interface AutopilotHost {
   readPage(url: string): Promise<ExtractedJobData | null>;
   /** Saves a Gmail draft (resume attached if asked) and sends it. */
   sendEmail(m: { to: string; subject: string; body: string; attachResume: boolean }): Promise<{ draftId: string; threadId: string }>;
-  /** Opens the application in a background tab, fills it, and submits if `submit` and nothing needs the user. */
-  apply(url: string, submit: boolean): Promise<ApplyReport>;
+  /**
+   * Opens the application in a background tab, fills it, and submits if `submit` and nothing needs
+   * the user. Without `keepTab` the tab is closed when the user has to finish (it refills on reopen).
+   */
+  apply(url: string, submit: boolean, keepTab?: boolean): Promise<ApplyReport>;
   notify(title: string, message: string, jobId: string): Promise<void>;
   /** Whether the user let Hirivo read any website (company sites, careers pages). */
   canReadAnySite(): Promise<boolean>;
@@ -51,6 +56,26 @@ const FORM_HOSTS = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|m
 // email format proven by real addresses at that domain. Plain guesses never.
 const VERIFIED = new Set(['listed', 'from-export', 'pattern-confirmed']);
 const words = (s: string) => stripCitations(s).split(/\s+/).filter(Boolean).length;
+// Job portals: read (LinkedIn logged-out only), never applied on. The company's own board is used
+// when the same job is there.
+const PORTALS: [RegExp, string][] = [
+  [/(^|\.)linkedin\.com$/, 'LinkedIn'],
+  [/(^|\.)naukri\.com$/, 'Naukri'],
+  [/(^|\.)indeed\.com$/, 'Indeed'],
+  [/(^|\.)internshala\.com$/, 'Internshala'],
+  [/(^|\.)unstop\.com$/, 'Unstop'],
+  [/(^|\.)(foundit\.in|wellfound\.com|instahyre\.com|cutshort\.io)$/, 'the job site'],
+];
+export const portalOf = (url: string) => {
+  try {
+    const h = new URL(url).hostname;
+    return PORTALS.find(([re]) => re.test(h))?.[1];
+  } catch {
+    return undefined;
+  }
+};
+/** A person doesn't send applications seconds apart: 1-3 minutes between jobs. */
+export const PACE_MS = { min: 60_000, spread: 120_000 };
 
 let running = false;
 
@@ -68,6 +93,7 @@ export async function runQueue(host: AutopilotHost): Promise<void> {
       } catch (err: any) {
         await logStep(job.id, `Stopped: ${err?.message || err}`, 'risk', { status: 'failed', stage: undefined });
       }
+      if (await nextQueued()) await host.sleep(PACE_MS.min + Math.random() * PACE_MS.spread);
     }
   } finally {
     running = false;
@@ -77,7 +103,12 @@ export async function runQueue(host: AutopilotHost): Promise<void> {
 async function readPosting(item: AutopilotJob, host: AutopilotHost, canRead: boolean): Promise<{ details: PostingDetails; hints: string[] } | null> {
   const fromApi = await atsPosting(item.url).catch(() => null);
   if (fromApi) return { details: { ...fromApi, company: fromApi.company || item.company }, hints: [] };
-  if (!canRead && !FORM_HOSTS.test(new URL(item.url).hostname)) return null;
+  if (portalOf(item.url) === 'LinkedIn') {
+    // Logged-out only: never a LinkedIn tab with the user's session.
+    const li = await linkedInPosting(item.url);
+    return li ? { details: { ...li, applyUrl: item.url }, hints: [] } : null;
+  }
+  if (!canRead && !FORM_HOSTS.test(new URL(item.url).hostname) && !portalOf(item.url)) return null;
   const page = await host.readPage(item.url);
   if (!page || page.description.length < 120) return null;
   return {
@@ -92,14 +123,23 @@ export async function processJob(item: AutopilotJob, host: AutopilotHost): Promi
   const settings = await getSettings();
   const ap = settings.autopilot!;
 
-  // LinkedIn is never automated. Use the company's own posting when Hirivo has seen it.
-  if (/(^|\.)linkedin\.com$/.test(new URL(item.url).hostname)) {
-    const known = await db.jobs.get(id);
-    if (!known?.atsUrl) {
-      await logStep(id, 'LinkedIn jobs are never automated. Open the company’s own posting (Greenhouse, Lever, Ashby…) and hand that to Autopilot.', 'caution', { status: 'needs-you', needs: 'Use the company’s own job page', stage: undefined });
-      return;
+  // Portals are never applied on. Use the company's own posting when the same job is there.
+  const portal = portalOf(item.url);
+  if (portal) {
+    const known = (await db.jobs.get(id))?.atsUrl;
+    let target = known && FORM_HOSTS.test(new URL(known).hostname) ? known : undefined;
+    if (!target) {
+      await stage(`Looking for this job on ${item.company}’s own board`);
+      const found = await resolveCompanyPosting(item.company, item.title).catch(() => null);
+      if (found) {
+        target = found.url;
+        await logStep(id, `Found it on ${item.company}’s own ${found.ats[0].toUpperCase()}${found.ats.slice(1)} board, so Hirivo can apply there.`, 'ok');
+      }
     }
-    item = { ...item, url: known.atsUrl };
+    if (target) {
+      item = { ...item, url: target };
+      await setJob(id, { url: target });
+    }
   }
 
   await stage('Reading the job');
@@ -240,12 +280,16 @@ export async function processJob(item: AutopilotJob, host: AutopilotHost): Promi
   // ---- the application ----
   const applyUrl = details.applyUrl;
   if (!FORM_HOSTS.test(new URL(applyUrl).hostname)) {
-    await logStep(id, `Apply on their site: ${applyUrl}`, 'caution', { status: 'needs-you', needs: 'Apply on the company site', stage: undefined });
-    await host.notify(`${details.company}: apply on their site`, emailed.length ? `Emailed ${emailed.length} ${emailed.length === 1 ? 'person' : 'people'}. Their application isn't on a form Hirivo can fill.` : `Their application isn't on a form Hirivo can fill.`, id);
+    const where = portalOf(applyUrl);
+    const needs = where ? `Apply on ${where}` : 'Apply on the company site';
+    await logStep(id, where ? `${needs} yourself (Hirivo doesn’t apply on job portals): ${applyUrl}` : `Apply on their site: ${applyUrl}`, 'caution', { status: 'needs-you', needs, stage: undefined });
+    // Automatic hand-overs are summed up after each search instead of one notification per job.
+    if (!item.auto) await host.notify(`${details.company}: ${needs.toLowerCase()}`, emailed.length ? `Emailed ${emailed.length} ${emailed.length === 1 ? 'person' : 'people'}. The application isn't on a form Hirivo can fill.` : `The application isn't on a form Hirivo can fill.`, id);
     return;
   }
   await stage('Filling the application');
-  const report = await host.apply(applyUrl, ap.submitForms);
+  // Automatic runs close the tab when it needs the user, so tabs don't pile up; it refills on reopen.
+  const report = await host.apply(applyUrl, ap.submitForms, !item.auto);
   const summary = `Filled ${report.filled} answers${report.written ? `, wrote ${report.written} from your resume` : ''}.`;
   if (report.status === 'submitted') {
     await logStep(id, `${summary} Submitted.`, 'ok', { status: 'done', applied: true, stage: undefined, needs: undefined });

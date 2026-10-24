@@ -71,3 +71,46 @@ export async function searchLinkedIn(p: MatchProfile, host: SearchHost): Promise
   }
   return out;
 }
+
+/** The LinkedIn job id in a job URL (/jobs/view/…-4482743503, ?currentJobId=4482743503). */
+export function linkedInJobId(url: string): string | undefined {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)linkedin\.com$/.test(u.hostname)) return undefined;
+    return u.searchParams.get('currentJobId') || u.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d{6,})/)?.[1] || u.pathname.match(/jobPosting\/(\d+)/)?.[1];
+  } catch {
+    return undefined;
+  }
+}
+
+/** Title, company, place and description from LinkedIn's logged-out job page. */
+export function parseLinkedInPosting(html: string, now = Date.now()) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const text = (sel: string) => doc.querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim() || '';
+  const title = text('.top-card-layout__title, .topcard__title');
+  const company = text('.topcard__org-name-link').replace(/[,\s]+$/, '');
+  if (!title || !company) return null;
+  const markup = doc.querySelector('.show-more-less-html__markup');
+  markup?.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  const posted = parsePostedDate(text('.posted-time-ago__text'), now);
+  const criteria = Object.fromEntries(
+    Array.from(doc.querySelectorAll('.description__job-criteria-item')).map((li) => [li.querySelector('h3')?.textContent?.trim().toLowerCase() || '', li.querySelector('span')?.textContent?.trim() || ''])
+  );
+  return {
+    title,
+    company,
+    location: text('.topcard__flavor--bullet'),
+    description: (markup?.textContent || '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, 12000),
+    postedAt: posted ? new Date(posted).toISOString() : undefined,
+    internship: /internship/i.test(criteria['employment type'] || ''),
+  };
+}
+
+/** Reads a LinkedIn job logged-out (credentials omitted): the user's account is never used. */
+export async function linkedInPosting(url: string) {
+  const id = linkedInJobId(url);
+  if (!id) return null;
+  const res = await fetch(`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${id}`, { credentials: 'omit' });
+  if (res.status === 429 || res.status === 999) throw new SourceBlocked('LinkedIn is limiting requests from this connection; try again later.');
+  return res.ok ? parseLinkedInPosting(await res.text()) : null;
+}

@@ -2,7 +2,9 @@
 // done by the background worker (it owns tabs and survives the panel closing).
 import type { SearchHost } from './types';
 
-export function browserSearchHost(): SearchHost {
+/** Undefined outside the extension (the demo panel): job sites can only be read from the extension. */
+export function browserSearchHost(): SearchHost | undefined {
+  if (typeof chrome === 'undefined' || !chrome.runtime?.id) return undefined;
   return {
     async fetchText(url, init) {
       try {
