@@ -17,7 +17,8 @@ A free Chrome extension that finds real jobs that fit you, tells you honestly wh
 6. **Helps you apply.** On Greenhouse, Lever, Ashby and Workable forms, Hirivo fills in your details and attaches your resume. It marks the job as applied when the confirmation page appears. **You always press Submit.**
 7. **Helps you reach the right person.** A ranked contact ladder: people you know there (from your own LinkedIn data export), then staff from the company's own website ranked by how close they are to the hiring decision (investors and quoted customers are filtered out), engineers in its GitHub org, then the careers inbox. Every contact says why it's ranked there. The Hook Finder pulls recent, linked news (company blog, GitHub releases, Hacker News, Google News) for your opening line. Then Hirivo writes a short email where every claim is backed by your resume. It opens the email in Gmail for you to send, then reminds you to follow up on day 4 and day 9.
 
-8. **Answers application questions and writes cover letters** from the same facts, with the same check that nothing is claimed without proof.
+8. **Tailors your resume to each job, honestly.** It puts the work the job cares about first and borrows the job's wording only where your resume already says the same thing. Every reworded line is checked against your original in code: a new number, tool, company, bigger role ("helped" → "led") or puffery ("widely adopted") means Hirivo keeps your words and tells you why. Missing keywords are listed for you to add only if true. Download as .docx or Markdown.
+9. **Answers application questions and writes cover letters** from the same facts, with the same check that nothing is claimed without proof.
 
 Dark by default, with a light theme in You → Appearance. Press **Alt+H** on any page to open Hirivo.
 

@@ -75,7 +75,7 @@ export function ResumePanel({ job, facts, resume, settings, hasKey, onUpdateJob,
             </p>
           </div>
         </div>
-        <button className="btn primary block" onClick={run} disabled={busy}>
+        <button className={`btn block${draft ? '' : ' primary'}`} onClick={run} disabled={busy}>
           {busy ? <RefreshCw size={14} className="spin" /> : <Wand2 size={14} />} {busy ? 'Tailoring…' : draft ? 'Tailor again' : 'Tailor my resume'}
         </button>
         {!hasKey && <p className="small muted">Without an AI key, Hirivo reorders your bullets and skills but doesn't reword them.</p>}
@@ -118,9 +118,9 @@ export function ResumePanel({ job, facts, resume, settings, hasKey, onUpdateJob,
 
           <section className="card">
             <div className="row between" style={{ marginBottom: 8 }}>
-              <div className="h2">Bullets, most relevant first</div>
+              <div className="h2">Bullets</div>
               <span className="small muted num">
-                {reworded} reworded{kept ? ` · ${kept} kept as written` : ''}
+                Most relevant first · {reworded} reworded{kept ? ` · ${kept} kept` : ''}
               </span>
             </div>
             <div className="list">

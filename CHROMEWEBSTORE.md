@@ -1,14 +1,14 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.5.0
+**Version:** 2.6.0
 **Category:** Productivity
 
 ## Short description (≤132 chars)
 Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.
 
 ## Detailed description
-Upload your resume and Hirivo fills your profile, suggests roles that fit, and finds matching jobs from Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, Hacker News "Who is hiring" and YC startups. It ranks every job with clear reasons, and can show only small teams. On Greenhouse, Lever, Ashby and Workable it fills your application and attaches your resume; you press Submit.
+Upload your resume and Hirivo fills your profile, suggests roles that fit, and finds matching jobs from Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, Hacker News "Who is hiring" and YC startups. It ranks every job with clear reasons, and can show only small teams. It tailors your resume to each job without adding a single claim, and fills Greenhouse, Lever, Ashby, Workday and 9 other application forms with your details and resume; you press Submit.
 
 Next to any job posting, press Analyze and it answers four questions:
 

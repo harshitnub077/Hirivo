@@ -43,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.5, built and verified)
+## 3. What exists today (v2.6, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -70,8 +70,9 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Contact ladder: people you know → staff on the company site (investors/testimonials filtered, ranked by closeness to hiring) → GitHub org members → careers inbox; every contact has a why; alumni search the user runs | Done (Phase C) | `src/services/contactLadder.ts`, `src/services/contacts/*`, `views/PeoplePanel.tsx` |
 | Hook Finder: blog feed, GitHub releases, HN, Google News; only linked hooks under 90 days | Done (Phase C) | `src/services/hookFinder.ts`, `views/WritePanel.tsx` |
 | Resume keyword match (deterministic), Answers tab (application questions and cover letters, fact-checked), autofill on 13 ATS incl. Workday and Indian ATS, data import, post-apply nudge, progressive Discover, Getting started, Alt+H | Done (audit) | `keywordMatch.ts`, `answerWriter.ts`, `views/AnswerPanel.tsx`, `content/formFill.ts` |
+| Honest per-job resume tailoring: reorder by what the job needs, AI rewording checked line by line (no new figures, tools, names, ownership, puffery or padding; failing rewrites keep the user's words with the reason), keyword gaps reported not added, .docx/Markdown/text export | Done | `src/services/resumeTailor.ts`, `resumeExport.ts`, `views/ResumePanel.tsx` |
 | Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
-| Tests: 120 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Tests: 145 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
@@ -236,11 +237,13 @@ What competitors had that Hirivo lacked, and what was done. Sources: Jobright's 
 | Resume ↔ job keyword check | Teal (Keyword Scanner), Jobright | Done: deterministic, works without a key, "add only if true" |
 | Answers to application questions, cover letters | Simplify, Jobright | Done: fact-backed, same company-claim guard as emails |
 | Autofill beyond 4 ATS | Simplify (100+) | Partly: 13 ATS incl. Workday, iCIMS, SmartRecruiters, Keka, Darwinbox, Zoho Recruit, Freshteam. Next: multi-step Workday pages, dropdowns |
-| Resume tailoring per job (rewrite) | Teal, Jobright | Open. Do it honestly: reorder and reword existing facts only, never add claims |
+| Resume tailoring per job (rewrite) | Teal, Jobright | Done, honestly: reorder and reword only; every rewrite is checked against its source line in code |
 | Auto-submit | Simplify Autopilot, Jobright agent | Deliberately not built: spam, bans and bad applications. Hirivo fills; the user submits |
 | Silent applications (18% of 1–3★ app reviews) | — | Done: one-week nudge to message the team, contact ladder |
 | Ghost jobs (24% of 1–3★ reviews) | GhostJob-style detectors stop at a warning | Done: company-board check, repost fingerprint, placeholder detection, Scam Shield |
 | Works with no setup | Competitors host AI | Open: free BYOK keys plus no-AI features; Pro hosted AI later |
+
+Found in real-key testing of emails: the model invented a figure ("handles 1.5 M monthly transactions") with a verb the claim check didn't know. Now any figure must come from a resume fact or the linked hook, the model gets one repair round, and "Remove them" deletes flagged sentences.
 
 Found in real-key testing: Groq retired Llama 3.x (registry handles it); the writer invented company news ("recently launched a new checkout UI"), now blocked by the company-claim check; some postings are placeholders ("Job Description Needs to be Added"), now flagged.
 
