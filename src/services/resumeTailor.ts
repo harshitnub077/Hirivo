@@ -2,32 +2,13 @@
 // The model suggests rewrites; code checks each one against its source fact and keeps the
 // original wording whenever a rewrite adds a number, changes a figure, names a new technology,
 // inflates ownership ("contributed" → "led"), names a new organisation, or pads the line.
-import type { FitRequirement, JobSnapshot, ResumeFact } from '../db';
+import type { FitRequirement, JobSnapshot, ResumeFact, TailoredBullet, TailoredResume } from '../db';
 import { routeLLMRequest } from '../llm/router';
 import { parseJsonLoose } from '../llm/json';
 import { keywordMatch, termsIn } from './keywordMatch';
 import { autoPurgeRoboticPhrases } from './phraseLinter';
 
-export interface TailoredBullet {
-  factId: string;
-  original: string;
-  text: string; // what the tailored resume says
-  changed: boolean;
-  keptOriginalBecause?: string; // set when a suggested rewrite failed the honesty check
-  why: string; // why it sits where it does
-}
-
-export interface TailoredResume {
-  jobId: string;
-  summary?: string;
-  summaryDroppedBecause?: string;
-  bullets: TailoredBullet[];
-  skills: string[];
-  covered: string[]; // job keywords the resume already shows
-  missing: string[]; // job keywords it doesn't; add only if true
-  usedAI: boolean;
-  createdAt: number;
-}
+export type { TailoredBullet, TailoredResume } from '../db';
 
 // ---------- Honesty check ----------
 
@@ -35,6 +16,8 @@ const NUMBER = /\d+(?:[.,]\d+)*(?:\s?%|\s?(?:x|k|m|mn|b|bn|l|cr|lakh|lakhs|crore
 const OWNERSHIP = /\b(led|lead|leading|managed|manage|managing|owned|own|owning|architected|headed|directed|spearheaded|mentored|founded|co-?founded|supervised|oversaw)\b/gi;
 const PROPER = /\b[A-Z][a-zA-Z0-9&.'’-]*[a-z][a-zA-Z0-9&.'’-]*\b/g;
 const COMMON_CAPS = new Set(['Built', 'Cut', 'Wrote', 'Reduced', 'Improved', 'Designed', 'Developed', 'Created', 'Shipped', 'Launched', 'Raised', 'Increased', 'Implemented', 'Migrated', 'Automated', 'Optimized', 'Optimised', 'Delivered', 'Added', 'Made', 'Moved', 'Used', 'Grew', 'Saved', 'Won', 'Deployed', 'Trained', 'Analyzed', 'Analysed', 'Refactored', 'Rewrote', 'Scaled', 'Integrated', 'Partnered', 'Worked', 'Contributed', 'Helped', 'The', 'A', 'An', 'In', 'On', 'For', 'With', 'By', 'And', 'To', 'Of', 'As', 'Across', 'From', 'Using', 'Via', 'At']);
+
+const PUFFERY = /\b(?:widely|highly|hugely|massively|significantly|dramatically|substantially|greatly|world-class|cutting-edge|best-in-class|industry-leading|seasoned|expert|extensive|proven|innovative|exceptional|outstanding|robust|seamless|scalable|enterprise-grade|mission-critical|large-scale)\b/gi;
 
 const numbersIn = (s: string) => (s.match(NUMBER) || []).map((n) => n.replace(/\s/g, '').replace(/,/g, '').toLowerCase());
 const ownershipIn = (s: string) => new Set((s.match(OWNERSHIP) || []).map((w) => w.toLowerCase().replace(/ing$|s$|ed$/, '')));
@@ -61,8 +44,11 @@ export function checkRewrite(original: string, rewrite: string, { allowRoleWords
 
   const srcWords = new Set((original.match(PROPER) || []).map((w) => w.toLowerCase()));
   const srcLower = original.toLowerCase();
+  // The first word of a sentence is capitalised by grammar, not because it names something.
+  const sentenceStarts = new Set((rewrite.match(/(?:^|[.!?]\s+)([A-Z][a-z]+)/g) || []).map((m) => m.replace(/^[.!?\s]+/, '')));
   const newNames = (rewrite.match(PROPER) || []).filter(
     (w) =>
+      !sentenceStarts.has(w) &&
       !COMMON_CAPS.has(w) &&
       !srcWords.has(w.toLowerCase()) &&
       !srcLower.includes(w.toLowerCase()) &&
@@ -70,6 +56,10 @@ export function checkRewrite(original: string, rewrite: string, { allowRoleWords
       !(allowRoleWords && ROLE_WORDS.test(w))
   );
   if (newNames.length) problems.push(`names something the original doesn't (${Array.from(new Set(newNames)).join(', ')})`);
+
+  const srcPuff = new Set((original.match(PUFFERY) || []).map((w) => w.toLowerCase()));
+  const newPuff = (rewrite.match(PUFFERY) || []).map((w) => w.toLowerCase()).filter((w) => !srcPuff.has(w));
+  if (newPuff.length) problems.push(`inflates it (“${Array.from(new Set(newPuff)).join('”, “')}”)`);
 
   if (wordCount(rewrite) > Math.round(wordCount(original) * 1.35) + 6) problems.push('is padded well beyond the original');
   if (wordCount(rewrite) < 4) problems.push('drops most of the original');
@@ -98,10 +88,11 @@ export function rankFacts(facts: ResumeFact[], jobText: string, evidence: FitReq
 
 /** Skills the job names come first; nothing is added that the resume doesn't list. */
 export function tailorSkills(resumeSkills: string[], jobText: string, resumeText: string): string[] {
-  const jobFirst = keywordMatch(jobText, resumeText).present;
-  const rest = resumeSkills.filter((s) => !jobFirst.some((j) => j.toLowerCase() === s.toLowerCase()));
-  const pretty = (s: string) => (s.length <= 3 ? s.toUpperCase() : s.replace(/\b[a-z]/g, (c) => c.toUpperCase()));
-  return [...jobFirst, ...rest.map(pretty)];
+  const jobFirst = keywordMatch(jobText, `${resumeText}\n${resumeSkills.join(', ')}`).present;
+  // Canonical names ("TypeScript", "Node.js"); anything the catalogue doesn't know keeps the user's casing.
+  const canonical = (skill: string) => termsIn(skill)[0] || (/[A-Z]/.test(skill) ? skill : skill.charAt(0).toUpperCase() + skill.slice(1));
+  const rest = Array.from(new Set(resumeSkills.map(canonical))).filter((s) => !jobFirst.includes(s));
+  return [...jobFirst, ...rest];
 }
 
 // ---------- Tailoring ----------
@@ -115,9 +106,11 @@ export interface TailorInput {
 }
 
 export async function tailorResume({ job, facts, resumeText, skills, useAI }: TailorInput): Promise<TailoredResume> {
-  if (facts.length === 0) throw new Error('Add your resume first; tailoring only works with what it already says.');
+  // Bullets are achievements; a role line, degree or skills list belongs in its own section.
+  const achievements = facts.filter((f) => !['ROLE', 'EDUCATION', 'SKILL'].includes(f.category) && !/^(?:experience with|skills?\b|b\.?\s?tech|bachelor|master)/i.test(f.claim));
+  if (achievements.length === 0) throw new Error('Add your resume first; tailoring only works with what it already says.');
   const jobText = `${job.title}\n${job.description}`;
-  const ranked = rankFacts(facts, jobText, job.fitEvidence);
+  const ranked = rankFacts(achievements, jobText, job.fitEvidence);
   const km = keywordMatch(jobText, `${resumeText}\n${facts.map((f) => f.claim).join('\n')}`);
 
   let rewrites = new Map<string, string>();

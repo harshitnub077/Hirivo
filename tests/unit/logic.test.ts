@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { locationFits, scoreJob } from '../../src/services/discover/rank';
 import type { MatchProfile, RawJob } from '../../src/services/discover/types';
 import { dueFollowupStage, followupText, gmailComposeUrl, stripCitations } from '../../src/services/outreach';
-import { checkGrounding } from '../../src/services/proofWriter';
+import { autoCite, checkGrounding, removeUnsupported } from '../../src/services/proofWriter';
 import { autoPurgeRoboticPhrases, lintOutreachText } from '../../src/services/phraseLinter';
 import type { OutreachRecord, ResumeFact } from '../../src/db';
 
@@ -118,8 +118,39 @@ describe('grounding', () => {
     expect(noHook.groundedSentences.filter((s) => !s.isGrounded).every((s) => /no source/.test(s.warning || ''))).toBe(true);
     expect(checkGrounding(body, facts, { company: 'Razorpay', hasHook: true }).unverifiedClaimsCount).toBe(0);
   });
+  it('flags any figure the facts never mention, even with an innocent verb', () => {
+    const body = 'I cut load 38% [FACT-01]. The solution now handles 1.5 M monthly transactions without latency spikes. Could we talk for 15 minutes this week?';
+    const g = checkGrounding(body, facts, { company: 'Razorpay' });
+    expect(g.unverifiedClaimsCount).toBe(1);
+    expect(g.groundedSentences.find((s) => !s.isGrounded)?.warning).toBe("Has a figure (1.5m) that isn't in your resume facts.");
+  });
+  it('accepts a figure that comes from the linked hook', () => {
+    expect(checkGrounding('Congrats on crossing 10 million merchants.', facts, { company: 'Razorpay', hasHook: true, hookText: 'Razorpay crosses 10 million merchants. Source: https://x' }).unverifiedClaimsCount).toBe(0);
+  });
+  it('flags invented focus areas of the role', () => {
+    expect(checkGrounding('The focus on React-based payment flows matches my work.', facts, { company: 'Razorpay' }).unverifiedClaimsCount).toBe(1);
+  });
+  it('one click removes exactly the unsupported sentences', () => {
+    const body = 'Hi Priya,\n\nI cut load 38% [FACT-01]. The solution handles 1.5 M transactions. Could we talk this week?\n\nBest,\nAarav';
+    expect(removeUnsupported(body, facts, { company: 'Razorpay' })).toBe('Hi Priya,\n\nI cut load 38% [FACT-01]. Could we talk this week?\n\nBest,\nAarav');
+  });
   it('does not accept citations to facts that do not exist', () => {
     expect(checkGrounding('I built a compiler [FACT-99].', facts).unverifiedClaimsCount).toBe(1);
+  });
+});
+
+describe('autoCite', () => {
+  const facts: ResumeFact[] = [
+    { id: 'FACT-04', category: 'PROJECT', claim: 'Built a Chrome extension that summarises Razorpay settlement reports, used by 300 merchants', sourceSnippet: '', verified: true },
+  ];
+  it('tags a sentence that restates a fact', () => {
+    const out = autoCite("I've built a Chrome extension that summarises Razorpay settlement reports, used by 300 merchants.", facts);
+    expect(out).toBe("I've built a Chrome extension that summarises Razorpay settlement reports, used by 300 merchants [FACT-04].");
+    expect(checkGrounding(out, facts).unverifiedClaimsCount).toBe(0);
+  });
+  it('does not tag a sentence with a different number or a different claim', () => {
+    expect(autoCite('I built a Chrome extension used by 3,000 merchants.', facts)).not.toContain('[FACT');
+    expect(autoCite('I led a team of 12 engineers.', facts)).not.toContain('[FACT');
   });
 });
 

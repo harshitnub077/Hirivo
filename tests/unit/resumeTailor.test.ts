@@ -49,6 +49,12 @@ describe('checkRewrite (the honesty gate)', () => {
   it('rejects new organisations or products', () => {
     expect(checkRewrite(src, 'Cut checkout load time 38% at Zeta and Razorpay by moving to React Server Components')[0]).toMatch(/names something.*Razorpay/);
   });
+  it('rejects puffery the original did not use', () => {
+    expect(checkRewrite(FACTS[0].claim, 'Built a widely adopted open-source UPI payment status tracker with 1.2k GitHub stars using TypeScript and Node.js')[0]).toMatch(/inflates it.*widely/);
+  });
+  it('does not mistake a capitalised first word for a new name', () => {
+    expect(checkRewrite(FACTS[0].claim, 'Earned 1.2k GitHub stars with an open-source UPI payment status tracker built in TypeScript and Node.js')).toEqual([]);
+  });
   it('rejects padding and gutting', () => {
     expect(checkRewrite('Wrote unit tests for the API', 'Wrote comprehensive, rigorous, production-grade unit tests for the API that ensured reliability, maintainability and confidence across every release cycle')).toContain('is padded well beyond the original');
     expect(checkRewrite(src, 'Cut load time')).toContain('drops most of the original');
@@ -60,6 +66,9 @@ describe('ordering', () => {
     const order = rankFacts(FACTS, `${JOB.title}\n${JOB.description}`, JOB.fitEvidence).map((r) => r.fact.id);
     expect(order.slice(0, 2).sort()).toEqual(['FACT-02', 'FACT-04']);
     expect(order.at(-1)).toBe('FACT-03');
+  });
+  it('uses canonical skill names', () => {
+    expect(tailorSkills(['typescript', 'node.js', 'postgresql', 'Figma'], 'Nothing relevant', '')).toEqual(['TypeScript', 'Node.js', 'PostgreSQL', 'Figma']);
   });
   it('orders skills with the job’s first and adds nothing new', () => {
     const skills = tailorSkills(['docker', 'react', 'typescript', 'postgresql'], JOB.description, 'React TypeScript Docker PostgreSQL');
@@ -99,6 +108,17 @@ describe('tailorResume', () => {
     const r = await tailorResume({ job: JOB, facts: FACTS, resumeText: '', skills: [], useAI: true });
     expect(r.summary).toBeUndefined();
     expect(r.summaryDroppedBecause).toMatch(/figure \(5\)|ownership/);
+  });
+
+  it('keeps role lines, degrees and skills lists out of the bullets', async () => {
+    const extra: ResumeFact[] = [
+      ...FACTS,
+      { id: 'FACT-05', category: 'ROLE', claim: 'Frontend Engineer Intern at Zeta (Jan 2025 – Jun 2025)', sourceSnippet: '', verified: true },
+      { id: 'FACT-06', category: 'EDUCATION', claim: 'B.Tech Computer Science, IIT Delhi, 2025', sourceSnippet: '', verified: true },
+      { id: 'FACT-07', category: 'PROJECT', claim: 'Experience with React, TypeScript, Node.js', sourceSnippet: '', verified: true },
+    ];
+    const r = await tailorResume({ job: JOB, facts: extra, resumeText: '', skills: [], useAI: false });
+    expect(r.bullets.map((b) => b.factId).sort()).toEqual(['FACT-01', 'FACT-02', 'FACT-03', 'FACT-04']);
   });
 
   it('without AI it still reorders, and changes no words', async () => {

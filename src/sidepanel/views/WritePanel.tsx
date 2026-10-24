@@ -4,7 +4,7 @@ import { findHooks, Hook, hookForWriter } from '../../services/hookFinder';
 import { getCachedLookup } from '../../services/contacts/siteLookup';
 import { hasSiteAccess } from '../../services/siteAccess';
 import { JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
-import { checkGrounding, generateProofLinkedDraft } from '../../services/proofWriter';
+import { checkGrounding, generateProofLinkedDraft, removeUnsupported } from '../../services/proofWriter';
 import { autoPurgeRoboticPhrases, lintOutreachText } from '../../services/phraseLinter';
 import { gmailComposeUrl, openUrl, recordOutreach, stripCitations } from '../../services/outreach';
 import { Callout, Field, Pill, useCopy } from '../ui';
@@ -86,7 +86,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
   const [copied, copy] = useCopy();
 
   const lint = useMemo(() => lintOutreachText(body), [body]);
-  const grounding = useMemo(() => checkGrounding(body, facts, { company: job.company, hasHook: Boolean(hook.trim()) }), [body, facts, job.company, hook]);
+  const grounding = useMemo(() => checkGrounding(body, facts, { company: job.company, hasHook: Boolean(hook.trim()), hookText: hook }), [body, facts, job.company, hook]);
   const wordCount = stripCitations(body).split(/\s+/).filter(Boolean).length;
   const set = (patch: Partial<Recipient>) => onRecipientChange({ ...recipient, ...patch });
 
@@ -254,10 +254,15 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
                     </li>
                   ))}
               </ul>
-              <label className="row small" style={{ marginTop: 8 }}>
-                <input type="checkbox" checked={claimsReviewed} onChange={(e) => setClaimsReviewed(e.target.checked)} />
-                These are true; send anyway
-              </label>
+              <div className="row wrap" style={{ marginTop: 8, gap: 10 }}>
+                <button className="btn sm" onClick={() => setBody(removeUnsupported(body, facts, { company: job.company, hasHook: Boolean(hook.trim()), hookText: hook }))}>
+                  Remove them
+                </button>
+                <label className="row small">
+                  <input type="checkbox" checked={claimsReviewed} onChange={(e) => setClaimsReviewed(e.target.checked)} />
+                  They're true; send anyway
+                </label>
+              </div>
             </Callout>
           ) : (
             grounding.citedFactIds.length > 0 && (

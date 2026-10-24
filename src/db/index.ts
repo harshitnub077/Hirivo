@@ -61,6 +61,7 @@ export interface JobSnapshot {
   skillGaps?: { skill: string; studyRecommendation: string; timeToAcquire: string }[];
   fitEvidence?: FitRequirement[]; // one row per job requirement; the fit score is computed from these
   proofSprint?: ProofSprint;
+  tailoredResume?: TailoredResume;
   dealbreakers?: string[];
   matchingStrengths?: string[];
   analyzedAt: number;
@@ -89,6 +90,27 @@ export interface ProofSprint {
   completedAt?: number;
   factId?: string;
   link?: string;
+}
+
+export interface TailoredBullet {
+  factId: string;
+  original: string;
+  text: string; // what the tailored resume says
+  changed: boolean;
+  keptOriginalBecause?: string; // set when a suggested rewrite failed the honesty check
+  why: string; // why it sits where it does
+}
+
+export interface TailoredResume {
+  jobId: string;
+  summary?: string;
+  summaryDroppedBecause?: string;
+  bullets: TailoredBullet[];
+  skills: string[];
+  covered: string[]; // job keywords the resume already shows
+  missing: string[]; // job keywords it doesn't; add only if true
+  usedAI: boolean;
+  createdAt: number;
 }
 
 export interface ResumeFile {

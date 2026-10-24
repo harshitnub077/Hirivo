@@ -9,6 +9,7 @@ import { generateProofSprint } from '../../src/services/proofSprint';
 import { checkGrounding, generateProofLinkedDraft } from '../../src/services/proofWriter';
 import { routeLLMRequest } from '../../src/llm/router';
 import { htmlToText } from '../../src/services/discover/hn';
+import { checkRewrite, tailorResume } from '../../src/services/resumeTailor';
 
 const GROQ = process.env.GROQ_API_KEY || '';
 const GEMINI = process.env.GEMINI_API_KEY || '';
@@ -92,6 +93,25 @@ describe.skipIf(!GROQ && !GEMINI)('real AI flows', () => {
     expect(words).toBeLessThan(170);
     expect(d.emailBody).toContain('Aarav Mehta');
   }, 120_000);
+
+  it('tailors the resume to the job without adding claims', async () => {
+    const facts = await db.facts.toArray();
+    const t = await tailorResume({
+      job: { id: 'live', title: jobTitle, company: 'Razorpay', description: jd },
+      facts,
+      resumeText: RESUME,
+      skills: ['react', 'typescript', 'node.js', 'postgresql', 'docker', 'tailwind'],
+      useAI: true,
+    });
+    console.log(
+      `tailored: ${t.bullets.filter((b) => b.changed).length} reworded, ${t.bullets.filter((b) => b.keptOriginalBecause).length} kept\nsummary: ${t.summary ?? `(dropped: ${t.summaryDroppedBecause})`}\n` +
+        t.bullets.map((b) => `  ${b.changed ? '~' : b.keptOriginalBecause ? '!' : '='} ${b.text}${b.keptOriginalBecause ? `   [${b.keptOriginalBecause}]` : ''}`).join('\n') +
+        `\nskills: ${t.skills.join(', ')}\nmissing: ${t.missing.join(', ')}`
+    );
+    expect(t.bullets.length).toBeGreaterThan(0);
+    expect(t.bullets.length).toBeLessThanOrEqual(facts.length);
+    for (const b of t.bullets) expect(checkRewrite(b.original, b.text)).toEqual([]);
+  }, 180_000);
 
   it.skipIf(!GEMINI)('falls back to Gemini when Groq is unavailable', async () => {
     await patchSettings({ groqApiKey: 'gsk_invalid_key_for_fallback_test', activeProvider: 'groq' });

@@ -17,8 +17,9 @@ import { PeoplePanel } from './PeoplePanel';
 import { WritePanel } from './WritePanel';
 import { ResumeImport } from './ResumeImport';
 import { AnswerPanel } from './AnswerPanel';
+import { ResumePanel } from './ResumePanel';
 
-type Panel = 'evidence' | 'people' | 'write' | 'answers';
+type Panel = 'evidence' | 'people' | 'write' | 'resume' | 'answers';
 
 const TONE_RANK: Record<Tone, number> = { neutral: 0, ok: 1, caution: 2, risk: 3 };
 const worstTone = (a: Tone, b: Tone): Tone => (TONE_RANK[a] >= TONE_RANK[b] ? a : b);
@@ -277,6 +278,7 @@ export function NowView(props: Props) {
           { value: 'evidence', label: 'Evidence' },
           { value: 'people', label: 'People' },
           { value: 'write', label: 'Write' },
+          { value: 'resume', label: 'Resume' },
           { value: 'answers', label: 'Answers' },
         ]}
       />
@@ -305,6 +307,9 @@ export function NowView(props: Props) {
             setPanel('write');
           }}
         />
+      </div>
+      <div hidden={panel !== 'resume'}>
+        <ResumePanel job={job} facts={facts} resume={resume} settings={settings} hasKey={hasKey} onUpdateJob={onUpdateJob} goTo={props.goTo} />
       </div>
       <div hidden={panel !== 'answers'}>
         <AnswerPanel job={job} facts={facts} voiceProfile={props.voiceProfile} settings={settings} hasKey={hasKey} goTo={props.goTo} />

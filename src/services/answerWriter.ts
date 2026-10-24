@@ -60,5 +60,5 @@ ${p.facts.map((f) => `[${f.id}]: ${f.claim}`).join('\n')}`,
   });
   const text = autoPurgeRoboticPhrases(String(parseJsonLoose<{ text?: string }>(res.content).text || ''));
   if (!text) throw new Error('The answer came back empty. Try again.');
-  return { text, grounding: checkGrounding(text, p.facts, { company: p.companyName, hasHook: Boolean(p.hook) }) };
+  return { text, grounding: checkGrounding(text, p.facts, { company: p.companyName, hasHook: Boolean(p.hook), hookText: p.hook }) };
 }

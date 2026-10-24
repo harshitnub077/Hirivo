@@ -49,6 +49,20 @@ describe('email writer post-processing', () => {
   });
 });
 
+describe('email repair round', () => {
+  it('sends unsupported sentences back once and keeps the more honest draft', async () => {
+    replies.push(
+      { emailSubject: 'Checkout speed', emailBody: 'Hi Priya,\n\nI cut checkout load time 38% [FACT-01]. It now serves 2 million users.\n\nBest,', linkedInNote: '' },
+      { emailSubject: 'Checkout speed', emailBody: 'Hi Priya,\n\nI cut checkout load time 38% [FACT-01].\n\nBest,', linkedInNote: '' }
+    );
+    const { generateProofLinkedDraft } = await import('../../src/services/proofWriter');
+    const d = await generateProofLinkedDraft({ jobTitle: 'Frontend Engineer', companyName: 'Zeta', recipientName: 'Priya Sharma', facts: FRONTEND_FACTS, senderName: 'Aarav Mehta' });
+    expect(calls).toHaveLength(2);
+    expect(d.unverifiedClaimsCount).toBe(0);
+    expect(d.emailBody).not.toContain('2 million');
+  });
+});
+
 describe('computeFitScore', () => {
   it('counts must-haves twice and nice-to-haves once', () => {
     // musts: 2 met of 3 (weight 4 of 6); nice: 1 met of 2 (1 of 2) → 5/8 = 62.5 → 63

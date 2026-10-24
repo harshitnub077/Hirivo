@@ -80,40 +80,106 @@ ${factList}`;
     temperature: 0.3,
   });
 
-  const parsed: any = parseJsonLoose(res.content);
-
-  let rawEmailBody = autoPurgeRoboticPhrases(parsed.emailBody || '');
-  // Models often greet with the full name; people use first names.
-  if (first && params.recipientName && params.recipientName.trim() !== first) {
-    rawEmailBody = rawEmailBody.replace(new RegExp(`^(\\s*\\w+\\s+)${params.recipientName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `$1${first}`);
-  }
-  // Make sure the email is signed.
-  if (sender && !rawEmailBody.trimEnd().endsWith(sender) && !rawEmailBody.includes(`\n${sender}`)) {
-    rawEmailBody = `${rawEmailBody.trimEnd()}\n${sender}`;
-  }
-  const emailSubject = autoPurgeRoboticPhrases(parsed.emailSubject || `Regarding ${params.jobTitle} at ${params.companyName}`);
-  const linkedInNote = autoPurgeRoboticPhrases(parsed.linkedInNote || '');
-
-  const grounding = checkGrounding(rawEmailBody, effectiveFacts, { company: params.companyName, hasHook: Boolean(params.realSignalHook) });
-
-  return {
-    emailSubject,
-    emailBody: rawEmailBody,
-    linkedInNote,
-    ...grounding,
+  const finish = (raw: any) => {
+    let body = autoPurgeRoboticPhrases(raw.emailBody || '');
+    // Models often greet with the full name; people use first names.
+    if (first && params.recipientName && params.recipientName.trim() !== first) {
+      body = body.replace(new RegExp(`^(\\s*\\w+\\s+)${params.recipientName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `$1${first}`);
+    }
+    // Make sure the email is signed.
+    if (sender && !body.trimEnd().endsWith(sender) && !body.includes(`\n${sender}`)) body = `${body.trimEnd()}\n${sender}`;
+    body = autoCite(body, effectiveFacts);
+    return {
+      emailSubject: autoPurgeRoboticPhrases(raw.emailSubject || `Regarding ${params.jobTitle} at ${params.companyName}`),
+      emailBody: body,
+      linkedInNote: autoPurgeRoboticPhrases(raw.linkedInNote || ''),
+      ...checkGrounding(body, effectiveFacts, { company: params.companyName, hasHook: Boolean(params.realSignalHook), hookText: params.realSignalHook }),
+    };
   };
+
+  let draft = finish(parseJsonLoose(res.content));
+
+  // One repair round: send the unsupported sentences back and keep whichever draft claims less.
+  if (draft.unverifiedClaimsCount > 0) {
+    const flagged = draft.groundedSentences.filter((g) => !g.isGrounded).map((g) => `- "${g.sentence}" (${g.warning})`).join('\n');
+    try {
+      const retry = await routeLLMRequest({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+          { role: 'assistant', content: res.content },
+          { role: 'user', content: `These sentences say things the facts don't support:\n${flagged}\nRewrite the email without them. Do not replace them with other claims. Same JSON.` },
+        ],
+        taskType: 'draft_writing',
+        jsonMode: true,
+        temperature: 0.2,
+        skipCache: true,
+      });
+      const repaired = finish(parseJsonLoose(retry.content));
+      if (repaired.unverifiedClaimsCount < draft.unverifiedClaimsCount && repaired.emailBody.trim()) draft = repaired;
+    } catch {
+      /* keep the first draft; its flags are shown to the user */
+    }
+  }
+
+  return draft;
+}
+
+/** Removes the sentences the grounding check flagged (the user's one-click fix). */
+export function removeUnsupported(body: string, facts: ResumeFact[], opts: Parameters<typeof checkGrounding>[2] = {}): string {
+  const bad = new Set(checkGrounding(body, facts, opts).groundedSentences.filter((g) => !g.isGrounded).map((g) => g.sentence));
+  return body
+    .replace(SENTENCES, (sentence) => (bad.has(sentence.trim()) ? '' : sentence))
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/ {2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+const contentWords = (s: string) => new Set((s.toLowerCase().match(/[a-z0-9%.+#]{3,}/g) || []).map((w) => w.replace(/\.$/, '')));
+
+/** Adds the missing [FACT-xx] tag to a sentence that plainly restates one of the facts.
+ * Only tags; never changes words. A sentence that matches no fact stays untagged and gets flagged. */
+export function autoCite(body: string, facts: ResumeFact[]): string {
+  return body.replace(SENTENCES, (sentence) => {
+    if (/\[FACT-\d+\]/.test(sentence) || !CLAIM_VERBS.test(sentence)) return sentence;
+    const words = contentWords(sentence);
+    let best: { id: string; share: number } | undefined;
+    for (const f of facts) {
+      const fw = contentWords(f.claim);
+      const shared = [...fw].filter((w) => words.has(w)).length;
+      const share = fw.size ? shared / fw.size : 0;
+      // Numbers in the sentence must all come from the fact.
+      const factFigures = new Set(figuresIn(f.claim));
+      if (figuresIn(sentence).some((n) => !factFigures.has(n))) continue;
+      if (share >= 0.55 && (!best || share > best.share)) best = { id: f.id, share };
+    }
+    if (!best) return sentence;
+    return sentence.replace(/(\s*)([.!?]?)$/, ` [${best.id}]$2$1`);
+  });
 }
 
 // Verbs that signal a factual claim about the sender.
 const CLAIM_VERBS =
   /\b(built|designed|developed|scaled|reduced|increased|led|managed|migrated|improved|implemented|architected|shipped|launched|grew|cut|saved|won|proficient|experienced|expert)\b/i;
 
+/** Sentences, without splitting "1.5", "Node.js" or "e.g." apart. */
+export const SENTENCES = /(?:[^.!?\n]|[.!?](?=[0-9A-Za-z]))+[.!?]*/g;
+
+/** Figures in a text, normalised ("1.5 M" → "1.5m"), ignoring fact tags and scheduling ("15-minute chat"). */
+export function figuresIn(text: string): string[] {
+  const cleaned = text.replace(/\[FACT-\d+\]/g, ' ').replace(/\b\d+\s?[-‑–]?\s?(?:minutes?|mins?|hours?|hrs?|days?|weeks?)\b/gi, ' ');
+  return (cleaned.match(/\d+(?:[.,]\d+)*(?:\s?(?:%|x\b|k\b|m\b|mn\b|b\b|bn\b|l\b|cr\b|lakhs?\b|crores?\b|million\b|billion\b))?/gi) || []).map((n) =>
+    n.toLowerCase().replace(/\s+/g, '').replace(/,/g, '').replace(/million$/, 'm').replace(/billion$/, 'b')
+  );
+}
+
 const COMPANY_CLAIM_GENERIC =
-  /\b(?:your|the) team(?:'s|’s)?\s+(?:focus|recent|work on|is building|are building|uses|use of|launch)|\brecently (?:launched|released|announced|raised|shipped|acquired)\b|\b(?:you|you've|you have|your company) (?:launched|released|announced|raised|shipped|acquired)\b/i;
+  /\b(?:your|the|its) (?:team(?:'s|’s)? |role(?:'s|’s)? )?focus on\b|\b(?:your|the) team(?:'s|’s)?\s+(?:focus|recent|work on|is building|are building|uses|use of|launch)|\brecently (?:launched|released|announced|raised|shipped|acquired)\b|\b(?:you|you've|you have|your company) (?:launched|released|announced|raised|shipped|acquired)\b/i;
 
 /** Client-side grounding check. Re-run on every edit so hand-typed claims are caught too.
  * With `company`, statements about the company also need a source (a hook), or they're flagged. */
-export function checkGrounding(body: string, facts: ResumeFact[], opts: { company?: string; hasHook?: boolean } = {}) {
+export function checkGrounding(body: string, facts: ResumeFact[], opts: { company?: string; hasHook?: boolean; hookText?: string } = {}) {
   const companyClaim = opts.company
     ? new RegExp(`${COMPANY_CLAIM_GENERIC.source}|\\b${opts.company.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:'s|’s)?\\s+(?:recently |just |new )?(?:launched|released|announced|raised|shipped|acquired|focus|is building|uses)\\b`, 'i')
     : COMPANY_CLAIM_GENERIC;
@@ -122,13 +188,22 @@ export function checkGrounding(body: string, facts: ResumeFact[], opts: { compan
   const groundedSentences: GroundedSentence[] = [];
   let unverifiedClaimsCount = 0;
 
-  for (const raw of body.match(/[^.!?\n]+[.!?]*/g) || []) {
+  const sourceFigures = new Set(figuresIn(`${facts.map((f) => f.claim).join(' ')} ${opts.hookText || ''}`));
+  for (const raw of body.match(SENTENCES) || []) {
     const s = raw.trim();
     if (!s) continue;
     const valid = Array.from(s.matchAll(/\[(FACT-\d+)\]/g))
       .map((m) => m[1])
       .filter((id) => validFactIds.has(id));
     valid.forEach((id) => citedFactIds.add(id));
+
+    // A figure the facts (and the linked hook) never mention is an invented claim, whatever the verb.
+    const strayFigure = figuresIn(s).find((n) => !sourceFigures.has(n));
+    if (strayFigure) {
+      unverifiedClaimsCount++;
+      groundedSentences.push({ sentence: s, factIds: valid, isGrounded: false, warning: `Has a figure (${strayFigure}) that isn't in your resume facts.` });
+      continue;
+    }
 
     if (opts.company !== undefined && companyClaim.test(s)) {
       // About the company, not the sender: it needs the hook as its source, not a resume fact.
