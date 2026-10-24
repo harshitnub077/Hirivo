@@ -1,5 +1,6 @@
 // Scores a job against the user without AI, so every number has plain reasons behind it.
 import type { MatchProfile, RawJob } from './types';
+import { titleHasTarget } from '../targets';
 
 const INDIA = /india|bengaluru|bangalore|mumbai|delhi|ncr|gurgaon|gurugram|noida|hyderabad|pune|chennai|kolkata|ahmedabad|kochi|jaipur/i;
 const WORLDWIDE = /worldwide|anywhere|global|apac|asia|emea\s*&?\s*apac|remote\s*\(?any/i;
@@ -24,7 +25,7 @@ export function scoreJob(job: RawJob, p: MatchProfile, now = Date.now()): { scor
   const reasons: string[] = [];
   let score = 0;
 
-  const titleHit = p.targets.find((t) => title.includes(t));
+  const titleHit = p.targets.find((t) => titleHasTarget(title, t));
   if (job.kind === 'company') score += 25; // a small team that is hiring, worth a direct note
   else if (p.targets.length === 0) score += 20;
   else if (titleHit) {

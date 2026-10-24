@@ -22,8 +22,11 @@ interface Props {
 }
 
 function Section({ icon, title, meta, children, open }: { icon: React.ReactNode; title: string; meta?: React.ReactNode; children: React.ReactNode; open?: boolean }) {
+  // `open` only sets the starting state. Passing it live closed "AI keys" the moment the first key
+  // was saved, hiding the Test button and the Gemini field.
+  const [startOpen] = useState(open);
   return (
-    <details className="card section" open={open}>
+    <details className="card section" open={startOpen}>
       <summary>
         {icon}
         <span className="h2">{title}</span>

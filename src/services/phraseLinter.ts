@@ -18,6 +18,8 @@ interface Rule {
   category: LinterIssue['category'];
   explanation: string;
   suggestedReplacement?: string;
+  /** The phrase sits mid-sentence and can't be cut on its own: Fix removes the whole filler sentence. */
+  wholeSentence?: boolean;
 }
 
 const BANNED_RULES: Rule[] = [
@@ -140,16 +142,20 @@ const BANNED_RULES: Rule[] = [
     pattern: /\b(?:accelerate|drive|support) (?:your|the team's|[A-Z]\w+['’]s) (?:engineering |business |growth )?(?:goals|mission|vision)\b/gi,
     category: 'VAGUE_FLATTERY',
     explanation: 'Says nothing specific about them. Name the actual product or problem.',
+    wholeSentence: true,
   },
   {
-    pattern: /\b(?:caught my eye|(?:I think )?my background (?:fits|aligns)(?: well)?)\b/gi,
+    // "my background fits", "my recent work aligns with", "my experience matches"
+    pattern: /\b(?:caught my eye|(?:I think )?my (?:\w+ ){0,2}(?:background|experience|work|skills?|profile|skill ?set) (?:fits|aligns?|matches)(?: well| nicely| closely)?(?: with)?)\b/gi,
     category: 'VAGUE_FLATTERY',
     explanation: 'Filler. Say what specifically about the role matches one of your results.',
+    wholeSentence: true,
   },
   {
     pattern: /\bI specialize in\b/gi,
     category: 'AI_BUZZWORD',
     explanation: 'Reads like a resume line. Show one result instead.',
+    wholeSentence: true,
   },
   {
     pattern: /\bthank you for your time and consideration\b\.?/gi,
@@ -229,6 +235,14 @@ export function lintOutreachText(text: string): LinterResult {
 export function autoPurgeRoboticPhrases(text: string): string {
   let result = text;
   for (const rule of BANNED_RULES) {
+    if (rule.wholeSentence) {
+      // Cutting "my work aligns with" out of a sentence leaves broken grammar, so drop the filler
+      // sentence instead. A sentence that carries a resume fact stays (and stays flagged).
+      const re = new RegExp(rule.pattern.source, rule.pattern.flags.replace('g', ''));
+      // Same sentence rule as the grounding check: "1.5" and "Node.js" don't end a sentence.
+      result = result.replace(/(?:[^.!?\n]|[.!?](?=[0-9A-Za-z]))+[.!?]*[ \t]*/g, (sentence) => (re.test(sentence) && !/\[FACT-\d+\]/.test(sentence) ? '' : sentence));
+      continue;
+    }
     result = result.replace(rule.pattern, rule.suggestedReplacement ?? '');
   }
   // Clean up double spaces or orphan punctuation

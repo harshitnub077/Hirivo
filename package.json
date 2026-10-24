@@ -1,7 +1,7 @@
 {
   "name": "hirivo",
   "displayName": "Hirivo: Real Jobs, Right People",
-  "version": "2.9.1",
+  "version": "2.9.2",
   "private": true,
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "type": "module",
@@ -14,6 +14,7 @@
     "verify-seeds": "node scripts/verify-seeds.js",
     "store:screenshots": "node scripts/store-screenshots.js",
     "test": "vitest run",
+    "test:e2e": "node tests/e2e/run.mjs",
     "test:live": "vitest run --config vitest.live.config.ts"
   },
   "dependencies": {

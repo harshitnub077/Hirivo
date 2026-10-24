@@ -11,7 +11,7 @@ import { daysSince } from '../../services/atsFeeds';
 import { checkScam } from '../../services/scamShield';
 import { realVerdict, safetyVerdict } from '../../services/verdicts';
 import { recordFingerprint } from '../../services/repostFingerprint';
-import { Callout, Empty, Meter, Pill, Segmented, toneForScore } from '../ui';
+import { Callout, Empty, loadSession, Meter, Pill, saveSession, Segmented, toneForScore } from '../ui';
 import type { ActivePage } from '../page';
 import type { ViewId } from '../App';
 import { EvidencePanel } from './EvidencePanel';
@@ -23,6 +23,8 @@ import { ResumePanel } from './ResumePanel';
 
 type Panel = 'evidence' | 'people' | 'write' | 'resume' | 'answers';
 
+
+const EMPTY_RECIPIENT: Recipient = { name: '', role: '', email: '', contactType: 'COLD_HIRING_MGR' };
 
 export interface Recipient {
   name: string;
@@ -91,14 +93,18 @@ export function NowView(props: Props) {
   const [panel, setPanel] = useState<Panel>('evidence');
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
-  const [recipient, setRecipient] = useState<Recipient>({ name: '', role: '', email: '', contactType: 'COLD_HIRING_MGR' });
+  const [recipient, setRecipientState] = useState<Recipient>(EMPTY_RECIPIENT);
+  const setRecipient = (r: Recipient) => {
+    setRecipientState(r);
+    if (job) saveSession(`recipient:${job.id}`, r);
+  };
 
   const warmCount = useLiveQuery(async () => (job?.company ? (await findWarmPaths(job.company)).length : 0), [job?.company]) ?? 0;
 
   useEffect(() => {
     setPanel('evidence');
     setCheckError(null);
-    setRecipient({ name: '', role: '', email: '', contactType: 'COLD_HIRING_MGR' });
+    setRecipientState((job && loadSession<Recipient>(`recipient:${job.id}`)) || EMPTY_RECIPIENT);
   }, [job?.id]);
 
   const hasKey = Boolean(settings.groqApiKey || settings.geminiApiKey || settings.openrouterApiKey);

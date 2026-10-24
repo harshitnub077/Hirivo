@@ -1,6 +1,7 @@
 // Resume import: read a PDF, DOCX or text file, pull out contact details without AI,
 // then (if a key is set) let the model structure facts, skills and role suggestions.
 // Every fact the model returns must be traceable to the resume text, or it is dropped.
+import { isGenericTarget } from './targets';
 import { unzipSync, strFromU8 } from 'fflate';
 import { db, ResumeFact, UserSettings } from '../db';
 import { getSettings, patchSettings } from '../db/settings';
@@ -215,7 +216,7 @@ Return ONLY this JSON:
  "fullName": string|null, "location": string|null, "college": string|null, "yearsExperience": number,
  "skills": string[] (max 25, lowercase, only ones written in the resume),
  "facts": [{"claim": string, "category": "METRIC"|"PROJECT"|"ROLE"|"SKILL"|"EDUCATION"}] (8-20 strongest achievement lines, copied nearly word for word, keep numbers exactly),
- "roles": [{"title": string, "keywords": string[] (3-5 lowercase words that appear in matching job titles), "level": "intern"|"entry"|"mid"|"senior", "why": string (one short sentence citing the resume)}] (3-5 realistic roles for this person right now)
+ "roles": [{"title": string, "keywords": string[] (2-4 lowercase phrases of 1-3 words that appear in matching job titles, like "backend" or "site reliability"; never a lone generic word such as "engineer", "senior" or "developer", and never a phrase split into single words), "level": "intern"|"entry"|"mid"|"senior", "why": string (one short sentence citing the resume)}] (3-5 realistic roles for this person right now)
 }
 yearsExperience counts paid work and internships only (internships count as a quarter). Students with no work: 0.`,
       },
@@ -246,11 +247,23 @@ yearsExperience counts paid work and internships only (internships count as a qu
       .slice(0, 5)
       .map((r: any) => ({
         title: r.title,
-        keywords: (Array.isArray(r.keywords) ? r.keywords : [r.title]).map((k: any) => String(k).toLowerCase()).slice(0, 5),
+        keywords: roleKeywords(r.title, Array.isArray(r.keywords) ? r.keywords.map(String) : []),
         level: ['intern', 'entry', 'mid', 'senior'].includes(r.level) ? r.level : 'entry',
         why: String(r.why || ''),
       })),
   };
+}
+
+/** Title keywords for a suggested role: the role title itself ("Senior Site Reliability Engineer" →
+ * "site reliability engineer") plus the model's specific phrases. Generic words like "engineer" are
+ * dropped. A single word taken from a multi-word role name ("site", "reliability") is dropped too:
+ * alone it matches unrelated jobs ("Site Manager"). Words like "backend", "devops" or "sre" stay. */
+export function roleKeywords(title: string, keywords: string[]): string[] {
+  const base = title.toLowerCase().replace(/\b(?:senior|sr\.?|junior|jr\.?|lead|staff|principal)\s*/g, '').replace(/\s+/g, ' ').trim();
+  const nameWords = base.split(' ').filter((w) => !isGenericTarget(w));
+  const fragment = (k: string) => !k.includes(' ') && nameWords.length > 1 && nameWords.includes(k);
+  const phrases = [base, ...keywords.map((k) => k.trim().toLowerCase())].filter((k) => k && !isGenericTarget(k) && !fragment(k));
+  return Array.from(new Set(phrases)).slice(0, 5);
 }
 
 export async function buildProfile(text: string): Promise<ResumeProfile> {

@@ -3,6 +3,9 @@
 import { db, WatchedRole, WatchlistCompany } from '../db';
 import { AtsRef, fetchRoles, parseAtsUrl } from './atsFeeds';
 import seeds from './watchlistSeeds.json';
+import { cleanTargets, titleHasTarget } from './targets';
+
+export { cleanTargets, titleHasTarget } from './targets';
 
 export interface SeedCompany extends AtsRef {
   name: string;
@@ -93,10 +96,9 @@ export async function removeCompany(id: string) {
 }
 
 export function matchesTargets(title: string, targets: string[] | undefined): boolean {
-  const words = (targets || []).map((t) => t.trim().toLowerCase()).filter(Boolean);
+  const words = cleanTargets(targets);
   if (words.length === 0) return true;
-  const t = title.toLowerCase();
-  return words.some((w) => t.includes(w));
+  return words.some((w) => titleHasTarget(title, w));
 }
 
 /** Hiring pulse: compares today's open-role count with the oldest one in the last 30 days. */

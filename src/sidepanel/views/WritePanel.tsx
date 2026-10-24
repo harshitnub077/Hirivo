@@ -1,14 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Copy, Mail, Newspaper, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
 import { findHooks, Hook, hookForWriter } from '../../services/hookFinder';
 import { getCachedLookup } from '../../services/contacts/siteLookup';
 import { hasSiteAccess } from '../../services/siteAccess';
-import { JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
+import { db, JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
 import { checkGrounding, generateProofLinkedDraft, removeUnsupported } from '../../services/proofWriter';
 import { autoPurgeRoboticPhrases, lintOutreachText } from '../../services/phraseLinter';
 import { dailyCapStatus, gmailComposeUrl, openUrl, recordOutreach, stripCitations } from '../../services/outreach';
 import { createDraft, draftOpenUrl, gmailConnected, GmailNeedsReconnect } from '../../services/gmail';
-import { Callout, Field, Pill, useCopy } from '../ui';
+import { Callout, Field, loadSession, Pill, saveSession, timeAgo, useCopy } from '../ui';
 import type { Recipient } from './NowView';
 import type { ViewId } from '../App';
 
@@ -77,14 +78,24 @@ function HookFinder({ job, onUse }: { job: JobSnapshot; onUse: (hook: string) =>
 }
 
 export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipient, onRecipientChange, goTo }: Props) {
-  const [hook, setHook] = useState('');
+  // Opening Gmail or checking another tab unmounts this panel; the draft comes back with the job.
+  const saved = useMemo(() => loadSession<{ hook: string; subject: string; body: string; note: string; claimsReviewed: boolean }>(`draft:${job.id}`), [job.id]);
+  const [hook, setHook] = useState(saved?.hook ?? '');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [note, setNote] = useState('');
-  const [claimsReviewed, setClaimsReviewed] = useState(false);
+  const [subject, setSubject] = useState(saved?.subject ?? '');
+  const [body, setBody] = useState(saved?.body ?? '');
+  const [note, setNote] = useState(saved?.note ?? '');
+  const [claimsReviewed, setClaimsReviewed] = useState(saved?.claimsReviewed ?? false);
   const [logged, setLogged] = useState<string | null>(null);
+  useEffect(() => saveSession(`draft:${job.id}`, { hook, subject, body, note, claimsReviewed }), [job.id, hook, subject, body, note, claimsReviewed]);
+
+  // What was already sent for this job, from the database, so a second send is caught even after
+  // the panel was closed and reopened.
+  const sentForJob = useLiveQuery(() => db.outreach.where('jobId').equals(job.id).toArray(), [job.id]) ?? [];
+  const sameEmail = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const emailedBefore = recipient.email ? sentForJob.find((o) => o.channel === 'email' && sameEmail(o.recipientEmail, recipient.email)) : undefined;
+  const notedBefore = sentForJob.find((o) => o.channel === 'linkedin' && (recipient.name ? o.recipientName === recipient.name : o.recipientName === 'LinkedIn contact'));
   const [copied, copy] = useCopy();
 
   const lint = useMemo(() => lintOutreachText(body), [body]);
@@ -133,8 +144,6 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
   };
 
   const blocked = grounding.unverifiedClaimsCount > 0 && !claimsReviewed;
-  // One logged send per version: a second click would double the follow-up reminders.
-  const sent = logged !== null;
 
   const sendEmail = async () => {
     setError(null);
@@ -302,9 +311,14 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
             )
           )}
 
+          {emailedBefore && (
+            <Callout>
+              You emailed {emailedBefore.recipientName} about this job {timeAgo(emailedBefore.createdAt)}. Follow-ups for that message are in Pipeline.
+            </Callout>
+          )}
           <div className="row">
-            <button className="btn primary" style={{ flex: 1 }} onClick={sendEmail} disabled={blocked || sent}>
-              <Mail size={14} /> {sent ? 'Logged in Pipeline' : 'Open in Gmail'}
+            <button className="btn primary" style={{ flex: 1 }} onClick={sendEmail} disabled={blocked || !!emailedBefore}>
+              <Mail size={14} /> {emailedBefore ? 'Already sent' : 'Open in Gmail'}
             </button>
             <button className="btn icon" title="Copy email" onClick={() => copy('email', `Subject: ${subject}\n\n${stripCitations(body)}`)}>
               {copied === 'email' ? <Check size={14} /> : <Copy size={14} />}
@@ -327,7 +341,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
             <button className="btn" style={{ flex: 1 }} onClick={() => copy('note', stripCitations(note))}>
               {copied === 'note' ? <Check size={14} /> : <Copy size={14} />} Copy note
             </button>
-            <button className="btn" style={{ flex: 1 }} onClick={logLinkedIn} disabled={blocked || sent}>
+            <button className="btn" style={{ flex: 1 }} onClick={logLinkedIn} disabled={blocked || !!notedBefore}>
               I sent it
             </button>
           </div>

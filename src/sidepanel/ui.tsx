@@ -129,3 +129,22 @@ export function timeAgo(ms: number): string {
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return `${Math.floor(s / 86400)} d ago`;
 }
+
+/** Per-job scratch state that survives switching tabs (the Now view unmounts on a non-job tab)
+ * but not closing the panel. Session storage, so nothing about a draft lingers on disk. */
+export function loadSession<T>(key: string): T | undefined {
+  try {
+    const raw = sessionStorage.getItem(`hirivo:${key}`);
+    return raw ? (JSON.parse(raw) as T) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function saveSession(key: string, value: unknown) {
+  try {
+    sessionStorage.setItem(`hirivo:${key}`, JSON.stringify(value));
+  } catch {
+    /* storage full or blocked: the draft just won't survive a tab switch */
+  }
+}

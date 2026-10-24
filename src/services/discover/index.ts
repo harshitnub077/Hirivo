@@ -3,6 +3,7 @@
 import { db, DiscoveredJob, JobSource } from '../../db';
 import { getSettings } from '../../db/settings';
 import { matchesTargets } from '../watchlist';
+import { cleanTargets } from '../targets';
 import { fetchArbeitnow, fetchHimalayas, fetchJobicy, fetchRemoteOk, fetchRemotive } from './boards';
 import { fetchHn } from './hn';
 import { fetchYc } from './yc';
@@ -48,7 +49,7 @@ export async function getMatchProfile(): Promise<MatchProfile> {
   const chosen = new Set(s.chosenRoles || []);
   const level = (s.suggestedRoles || []).find((r) => chosen.has(r.title))?.level;
   return {
-    targets: (s.targetRoles || []).map((t) => t.toLowerCase().trim()).filter(Boolean),
+    targets: cleanTargets(s.targetRoles),
     skills: (s.skills || []).map((x) => x.toLowerCase()),
     level,
     locationPreference: s.locationPreference || 'india',

@@ -51,6 +51,7 @@ Optional: add a free [Groq key](https://console.groq.com/keys) under **You → A
 npm run preview:panel   # dev server; open http://localhost:5199/sidepanel.html?demo for sample data
 npm test                # unit tests (form filling against a real Greenhouse form, parsing, ranking, Discover end-to-end)
 npm run test:live       # checks every live job source still answers in the expected shape
+npm run test:e2e        # full flow in real Chrome with your keys (GROQ_API_KEY, GEMINI_API_KEY), after npm run build
 npm run verify-seeds    # re-checks the watchlist suggestion list against live boards
 npm run generate-icons  # brand SVGs → PNG icons and store tile
 npm run store:screenshots  # Chrome Web Store screenshots from the demo panel (needs Chrome)

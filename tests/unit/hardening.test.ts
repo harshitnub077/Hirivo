@@ -15,6 +15,10 @@ import { savePageJobs } from '../../src/services/discover';
 import { htmlToText } from '../../src/services/discover/hn';
 import { routeLLMRequest } from '../../src/llm/router';
 import { forgetModels } from '../../src/llm/registry';
+import { autoPurgeRoboticPhrases, lintOutreachText } from '../../src/services/phraseLinter';
+import { cleanTargets, titleHasTarget } from '../../src/services/targets';
+import { matchesTargets } from '../../src/services/watchlist';
+import { roleKeywords } from '../../src/services/resumeImport';
 
 const DAY = 86_400_000;
 
@@ -200,5 +204,35 @@ describe('AI replies in JSON mode', () => {
     reply = '{"ok": true}';
     expect((await routeLLMRequest(req)).content).toBe('{"ok": true}');
     expect(await db.llmCache.count()).toBe(1);
+  });
+});
+
+describe('role targets (found in the end-to-end run: Daily 5 picked "Mechanical Engineering Expert" for a backend engineer)', () => {
+  it('drops targets made only of generic title words', () => {
+    expect(cleanTargets(['engineer', 'Senior', 'backend', 'site reliability'])).toEqual(['backend', 'site reliability']);
+    expect(cleanTargets(['engineer'])).toEqual(['engineer']); // never empties the list ("match everything")
+  });
+  it('matches whole words only', () => {
+    expect(matchesTargets('Mechanical Engineering Expert (MSc. or PhD)', ['engineer', 'backend'])).toBe(false);
+    expect(matchesTargets('Senior Backend Engineer', ['engineer', 'backend'])).toBe(true);
+    expect(titleHasTarget('SDET II', 'sde')).toBe(false);
+    expect(titleHasTarget('SDE III - Engineering', 'sde')).toBe(true);
+    expect(titleHasTarget('HTML Email Developer', 'ml')).toBe(false);
+  });
+  it('suggested roles keep specific keywords, or fall back to the role title', () => {
+    expect(roleKeywords('Senior Backend Engineer', ['backend', 'engineer', 'senior'])).toEqual(['backend engineer', 'backend']);
+    expect(roleKeywords('Site Reliability Engineer', ['site', 'reliability', 'engineer', 'sre'])).toEqual(['site reliability engineer', 'sre']);
+    expect(roleKeywords('DevOps Engineer', ['devops', 'engineer', 'platform engineer'])).toEqual(['devops engineer', 'devops', 'platform engineer']);
+  });
+});
+
+describe('writer filler (found in the end-to-end run: "my recent work aligns with" got through)', () => {
+  const draft = 'Hi Neha,\nI saw the SDE III opening and thought my recent work aligns with the backend focus you need. I cut p99 latency from 480 ms to 120 ms on Node.js services [FACT-02].\nBest,';
+  it('flags it', () => expect(lintOutreachText(draft).issues.map((i) => i.phrase)).toContain('my recent work aligns with'));
+  it('removes the whole filler sentence, keeps cited ones and "Node.js" intact', () => {
+    const fixed = autoPurgeRoboticPhrases(draft);
+    expect(fixed).not.toMatch(/aligns/);
+    expect(fixed).toContain('I cut p99 latency from 480 ms to 120 ms on Node.js services [FACT-02].');
+    expect(fixed).toMatch(/^Hi Neha,\n/);
   });
 });
