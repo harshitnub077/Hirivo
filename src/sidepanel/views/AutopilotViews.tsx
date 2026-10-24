@@ -8,7 +8,7 @@ import { gmailConnected } from '../../services/gmail';
 import { openUrl } from '../../services/outreach';
 import { Callout, Pill, timeAgo } from '../ui';
 
-const DEFAULTS = { enabled: false, sendEmails: true, submitForms: true, peoplePerCompany: 3 };
+const DEFAULTS = { enabled: false, sendEmails: true, submitForms: true, peoplePerCompany: 3, linkedinNotes: true };
 
 /** You → Autopilot: what it does, what it needs, and its switches. */
 export function AutopilotSettings({ settings }: { settings: UserSettings }) {
@@ -58,7 +58,11 @@ export function AutopilotSettings({ settings }: { settings: UserSettings }) {
       </label>
       <label className="row small">
         <input type="checkbox" checked={ap.sendEmails} onChange={(e) => set({ sendEmails: e.target.checked })} />
-        Send emails automatically (verified addresses only: listed on their site, your LinkedIn export, their hiring inbox; your resume attached)
+        Send emails automatically (verified addresses only: listed on their site, your LinkedIn export, their hiring inbox, or the company's email format proven by real addresses; your resume attached)
+      </label>
+      <label className="row small">
+        <input type="checkbox" checked={ap.linkedinNotes} onChange={(e) => set({ linkedinNotes: e.target.checked })} />
+        Prepare LinkedIn notes for founders, HR and the hiring manager (you press Send on LinkedIn)
       </label>
       <label className="row small">
         <input type="checkbox" checked={ap.submitForms} onChange={(e) => set({ submitForms: e.target.checked })} />

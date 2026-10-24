@@ -25,7 +25,7 @@ const PROBES_PER_RUN = 24;
 
 const shortBatch = (b: string) => b.replace(/^(Winter|Summer|Fall|Spring|X)\s+(\d{2})(\d{2})$/, (_, s, __, y) => `${s[0]}${y}`);
 
-async function loadList(): Promise<YcCompany[]> {
+export async function loadYcList(): Promise<YcCompany[]> {
   const cached = typeof chrome !== 'undefined' && chrome.storage?.local ? (await chrome.storage.local.get(LIST_KEY))[LIST_KEY] : undefined;
   if (cached && Date.now() - cached.at < LIST_TTL) return cached.companies;
   const res = await fetch('https://yc-oss.github.io/api/companies/hiring.json');
@@ -79,7 +79,7 @@ async function pool<T>(items: T[], limit: number, fn: (t: T) => Promise<void>) {
 }
 
 export async function fetchYc(profile: MatchProfile): Promise<RawJob[]> {
-  const all = await loadList();
+  const all = await loadYcList();
   const fit = all.filter((c) => ycLocationFit(c, profile.locationPreference)).sort((a, b) => a.teamSize - b.teamSize);
 
   // Find boards for companies we haven't checked recently, a few per run so we stay polite.

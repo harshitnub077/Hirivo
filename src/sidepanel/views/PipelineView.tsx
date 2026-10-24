@@ -17,6 +17,7 @@ import {
 import { Empty, Meter, Pill, timeAgo, useCopy } from '../ui';
 import { draftFollowupInThread, draftOpenUrl, pollGmailReplies } from '../../services/gmail';
 import { AutopilotQueue } from './AutopilotViews';
+import { LinkedInTasks } from './LinkedInTasks';
 
 export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[]; settings: UserSettings }) {
   const [copied, copy] = useCopy();
@@ -126,6 +127,8 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
       </section>
 
       <AutopilotQueue />
+
+      <LinkedInTasks />
 
       {applications.length > 0 && (
         <section className="card">

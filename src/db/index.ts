@@ -383,7 +383,25 @@ export interface UserSettings {
     sendEmails: boolean; // to verified addresses only, through the user's Gmail
     submitForms: boolean; // press Submit when every required question is answered
     peoplePerCompany: number; // 1-5
+    linkedinNotes?: boolean; // prepare LinkedIn notes for the user to send (default on)
   };
+}
+
+/** A LinkedIn note Hirivo prepared; the user opens the profile, pastes it and presses Send. */
+export interface LinkedInTask {
+  id: string; // `${jobId}|${profileUrl}`
+  jobId: string;
+  company: string;
+  jobTitle: string;
+  name: string;
+  role?: string;
+  profileUrl: string;
+  note: string;
+  audience: string;
+  status: 'todo' | 'sent' | 'skipped';
+  createdAt: number;
+  doneAt?: number;
+  autopilot?: boolean;
 }
 
 export class HirivoDatabase extends Dexie {
@@ -403,6 +421,7 @@ export class HirivoDatabase extends Dexie {
   llmCache!: EntityTable<LLMCacheItem, 'hashKey'>;
   settings!: EntityTable<UserSettings, 'id'>;
   autopilot!: EntityTable<AutopilotJob, 'id'>;
+  linkedinTasks!: EntityTable<LinkedInTask, 'id'>;
 
   constructor() {
     super('HirivoDB');
@@ -440,6 +459,10 @@ export class HirivoDatabase extends Dexie {
     // v7: Autopilot queue.
     this.version(7).stores({
       autopilot: 'id, status, createdAt',
+    });
+    // v8: LinkedIn notes waiting for the user to send.
+    this.version(8).stores({
+      linkedinTasks: 'id, status, jobId, profileUrl, createdAt',
     });
   }
 }

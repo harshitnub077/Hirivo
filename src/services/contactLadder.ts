@@ -8,8 +8,10 @@
 import type { LinkedInConnection } from '../db';
 import { generateEmailPermutations } from './contactInference';
 import type { SiteLookup } from './contacts/siteLookup';
+import type { Founder } from './people/yc';
+import { applyPattern, patternProof, type LearnedPattern } from './people/emailPattern';
 
-export type EmailStatus = 'listed' | 'from-export' | 'guessed';
+export type EmailStatus = 'listed' | 'from-export' | 'pattern-confirmed' | 'guessed';
 
 export interface LadderContact {
   id: string;
@@ -87,6 +89,8 @@ export interface LadderInput {
   connections: LinkedInConnection[];
   lookup?: SiteLookup;
   domainHasMx?: boolean;
+  founders?: Founder[]; // from the company's YC page
+  pattern?: LearnedPattern; // the company's email format, proven by real addresses
 }
 
 export function buildLadder(input: LadderInput): LadderContact[] {
@@ -109,22 +113,51 @@ export function buildLadder(input: LadderInput): LadderContact[] {
     });
   }
 
+  // A person's address: listed, then in the company's proven format, then a labelled guess.
+  const addressFor = (name: string, listed?: string): Pick<LadderContact, 'email' | 'emailStatus'> & { note?: string } => {
+    if (listed) return { email: listed, emailStatus: 'listed' };
+    const known = input.pattern && applyPattern(input.pattern, name);
+    if (known) return { email: known, emailStatus: 'pattern-confirmed', note: ` Email in ${input.company}'s format (${patternProof(input.pattern!)}).` };
+    const guess = input.domain ? generateEmailPermutations(name, input.domain)[0]?.email : undefined;
+    return guess ? { email: guess, emailStatus: 'guessed' } : {};
+  };
+
   const people = input.lookup?.people || [];
   for (const p of people) {
     const rel = p.role ? roleRelevance(p.role, input.jobTitle) : { score: 30, label: 'At the company' };
-    const listed = p.email;
-    const guess = !listed && input.domain ? generateEmailPermutations(p.name, input.domain)[0]?.email : undefined;
+    const { note, ...address } = addressFor(p.name, p.email);
+    const where = p.page === 'LinkedIn' ? 'On LinkedIn (the page you read)' : `Listed on ${input.domain}${p.page === '/' ? '' : p.page}`;
     out.push({
       id: `site:${p.name}`,
       tier: 3,
       name: p.name,
       role: p.role || undefined,
-      why: `${rel.label}${p.role ? `: ${p.role}` : ''}. Listed on ${input.domain}${p.page === '/' ? '' : p.page}.`,
-      email: listed || guess,
-      emailStatus: listed ? 'listed' : guess ? 'guessed' : undefined,
+      why: `${rel.label}${p.role ? `: ${p.role}` : ''}. ${where}.${note || ''}`,
+      ...address,
       profileUrl: p.profileUrl,
       contactType: 'COLD_HIRING_MGR',
       relevance: rel.score,
+    });
+  }
+
+  for (const f of input.founders || []) {
+    const existing = out.find((c) => c.tier === 3 && norm(c.name) === norm(f.name));
+    if (existing) {
+      existing.profileUrl ||= f.linkedinUrl;
+      continue;
+    }
+    const rel = roleRelevance(f.title, input.jobTitle);
+    const { note, ...address } = addressFor(f.name);
+    out.push({
+      id: `yc:${f.name}`,
+      tier: 3,
+      name: f.name,
+      role: f.title,
+      why: `${rel.label === 'Likely hiring manager' ? rel.label : 'Founder'}: ${f.title}. Listed on ${input.company}'s YC page.${note || ''}`,
+      ...address,
+      profileUrl: f.linkedinUrl,
+      contactType: 'COLD_HIRING_MGR',
+      relevance: Math.max(rel.score, 70),
     });
   }
 

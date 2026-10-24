@@ -37,7 +37,7 @@ export interface Recipient {
   name: string;
   role?: string;
   email: string;
-  emailStatus?: 'listed' | 'from-export' | 'guessed' | 'typed';
+  emailStatus?: 'listed' | 'from-export' | 'pattern-confirmed' | 'guessed' | 'typed';
   audience: Audience;
   contactType: 'WARM_CONNECTION' | 'ALUMNI' | 'COLD_HIRING_MGR';
 }

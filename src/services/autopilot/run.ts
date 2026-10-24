@@ -14,8 +14,8 @@ import type { ExtractedJobData } from '../../content/extractJob';
 import { atsPosting, findCompanyDomain, type PostingDetails } from './details';
 import { jobIdOf, logStep, nextQueued, requeueStale, setJob } from './queue';
 import { runJobChecks } from '../jobChecks';
-import { lookupCompanySite } from '../contacts/siteLookup';
-import { buildLadder } from '../contactLadder';
+import { addLinkedInTasks, pickLinkedInPeople, researchPeople } from '../people';
+import { patternProof } from '../people/emailPattern';
 import { AUDIENCE_LABEL, pickRecipients, writeDrafts } from '../multiOutreach';
 import { findHooks, hookForWriter } from '../hookFinder';
 import { dailyCapStatus, recordOutreach, stripCitations } from '../outreach';
@@ -47,7 +47,9 @@ export interface AutopilotHost {
 }
 
 const FORM_HOSTS = /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|myworkdayjobs\.com|smartrecruiters\.com|icims\.com|recruitee\.com|bamboohr\.com|keka\.com|darwinbox\.in|zohorecruit\.(com|in)|freshteam\.com)$/;
-const VERIFIED = new Set(['listed', 'from-export']);
+// Addresses Autopilot may email: listed publicly, in the user's own export, or in the company's
+// email format proven by real addresses at that domain. Plain guesses never.
+const VERIFIED = new Set(['listed', 'from-export', 'pattern-confirmed']);
 const words = (s: string) => stripCitations(s).split(/\s+/).filter(Boolean).length;
 
 let running = false;
@@ -156,16 +158,35 @@ export async function processJob(item: AutopilotJob, host: AutopilotHost): Promi
     return;
   }
 
-  // ---- people and emails ----
+  // ---- people, emails and LinkedIn notes ----
   const emailed: string[] = [...item.emailed];
-  if (ap.sendEmails) {
+  const wantNotes = ap.linkedinNotes !== false;
+  if (ap.sendEmails || wantNotes) {
     await stage('Researching people');
-    const gmail = await gmailConnected();
-    if (!gmail) {
+    const { lookup, ladder, founders, pattern } = await researchPeople({
+      company: details.company,
+      jobTitle: details.title,
+      domain,
+      college: settings.userCollege,
+      connections,
+      hasMx: checked.legitDetails?.hasMx,
+      canRead,
+    });
+    const people = ladder.filter((c) => c.tier <= 3);
+    await logStep(
+      id,
+      [
+        people.length ? `Found ${people.length} ${people.length === 1 ? 'person' : 'people'}${founders.length ? ` (${founders.length} from ${details.company}'s YC page)` : ''}.` : 'No people found on the company’s site.',
+        pattern ? `Email format: ${patternProof(pattern)}.` : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      'neutral'
+    );
+    const gmail = ap.sendEmails && (await gmailConnected());
+    if (ap.sendEmails && !gmail) {
       await logStep(id, 'Emails skipped: connect Gmail in You → Gmail so Autopilot can send them.', 'caution');
-    } else {
-      const lookup = domain && canRead ? await lookupCompanySite(domain, details.company).catch(() => undefined) : undefined;
-      const ladder = buildLadder({ jobTitle: details.title, company: details.company, domain, college: settings.userCollege, connections, lookup, domainHasMx: checked.legitDetails?.hasMx });
+    } else if (ap.sendEmails) {
       const sentBefore = new Set((await db.outreach.toArray()).filter((o) => Date.now() - o.createdAt < 60 * 86_400_000).map((o) => o.recipientEmail.toLowerCase()));
       const recipients = pickRecipients(
         ladder.filter((c) => c.emailStatus && VERIFIED.has(c.emailStatus) && !sentBefore.has((c.email || '').toLowerCase())),
@@ -209,6 +230,10 @@ export async function processJob(item: AutopilotJob, host: AutopilotHost): Promi
           await logStep(id, `Sent to ${d.recipient.name || 'the hiring team'} <${d.recipient.email}>.`, 'ok', { emailed: [...emailed] });
         }
       }
+    }
+    if (wantNotes) {
+      const tasks = await addLinkedInTasks(pickLinkedInPeople(ladder), { id, company: details.company, title: details.title, description: details.description }, facts, { autopilot: true });
+      if (tasks.length) await logStep(id, `Prepared ${tasks.length} LinkedIn ${tasks.length === 1 ? 'note' : 'notes'} in Pipeline (${tasks.map((t) => t.name).join(', ')}). Open each and press Send.`, 'neutral');
     }
   }
 

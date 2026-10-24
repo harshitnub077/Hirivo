@@ -43,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.12.0, built and verified)
+## 3. What exists today (v2.13.0, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -74,6 +74,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Daily 5: 8:00 local shortlist from Discover + analyzed jobs, ranked by fit, freshness, warm path; never a Doubtful or Risky role (shared verdict logic with the Verdict Strip); max 2 per company; one notification | Done (Phase E) | `src/services/daily5.ts`, `services/verdicts.ts`, `views/Daily5Card.tsx` |
 | Interview Pack | Removed in v2.12 ("Got a reply" still stops follow-ups) | |
 | v3 M1 Search: one saved search (internship/job/both, city + 10–100 km radius or India or remote, posted within 1–30 days, work mode, experience, minimum ₹/month); LinkedIn guest search, Naukri and Indeed (background tab), Internshala and Unstop; posted time, distance and internship labels; dedupe across sites by company + title + city; per-site health with blocks shown; search every 2 h with notifications | Done (v2.12) | `src/services/discover/sources/*`, `discover/geo.ts`, `discover/rank.ts`, `views/SearchCard.tsx`, `tests/unit/sources.test.ts` |
+| v3 M2 People: YC founders (company's YC page, matched by website), people from a LinkedIn people search the user opens and reads (current staff only), email format learned from real addresses at the domain (site, export, public GitHub commits) and confirmed only with agreement + MX; Autopilot emails listed, exported and format-confirmed addresses; LinkedIn notes ≤200 characters from resume facts, saved in Pipeline for the user to send (60-day no-repeat, monthly free-note warning). Search-engine LinkedIn discovery was tested live and dropped: Google ignores `site:` and hides result links, Bing and DuckDuckGo show checks | Done (v2.13) | `src/services/people/*`, `contacts/linkedinPeople.ts`, `views/LinkedInTasks.tsx`, `tests/unit/people.test.ts` |
 | Gmail power mode (optional, user's own OAuth client): code + PKCE via launchWebAuthFlow, real drafts, follow-ups in-thread, replies detected every 3 h or on Check now, follow-ups stop on reply; permissions requested only on Connect | Done (Phase F) | `src/services/gmail.ts`, `views/GmailSection.tsx` |
 | Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
 | Store launch kit: listing with every permission justified, data-use answers, privacy policy, four 1280×800 screenshots rendered from the demo panel; a unit test fails if any manifest permission is unused in code or missing from the listing | Done (Phase G) | `CHROMEWEBSTORE.md`, `docs/privacy.md`, `scripts/store-screenshots.js`, `tests/unit/manifest.test.ts` |

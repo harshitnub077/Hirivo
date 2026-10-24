@@ -44,7 +44,7 @@ Hirivo sends data off your computer only in these cases, and only directly from 
 
 **Gmail.** By default, Hirivo opens a Gmail compose window with your draft filled in, and you press Send. If you choose to connect Gmail power mode with your own Google OAuth client, Hirivo talks to the Gmail API directly from your browser to save drafts in your account (with your resume attached, if you choose) and to read the threads it started, so it can tell when someone has replied. It does not read other email. You can disconnect at any time from **You → Gmail**, and you can revoke access from your Google account's security settings.
 
-**Autopilot (only if you turn it on).** For each job you hand it, Autopilot reads the posting and the company's public website, writes to people at the company whose work address is listed publicly, in your own LinkedIn export, or the company's hiring inbox, and sends those emails from your Gmail with your resume attached. It then fills and submits the application on the job's own application form. It never emails a guessed address, never ticks consent boxes, never solves CAPTCHAs, and never acts on LinkedIn. Everything it does is logged in Hirivo → Pipeline.
+**Autopilot (only if you turn it on).** For each job you hand it, Autopilot reads the posting and the company's public website, writes to people at the company whose work address is listed publicly, in your own LinkedIn export, in the company's email format proven by real addresses there, or the company's hiring inbox, and sends those emails from your Gmail with your resume attached. It then fills and submits the application on the job's own application form. It also writes LinkedIn notes for you to send yourself. It never emails a guessed address, never ticks consent boxes, never solves CAPTCHAs, and never acts on LinkedIn. Everything it does is logged in Hirivo → Pipeline.
 
 Hirivo does not sell, rent or share your data with anyone, does not use it for advertising, and does not use it for any purpose other than helping you find and apply for jobs.
 
@@ -54,7 +54,7 @@ Hirivo helps you find the right person to contact at a company. It follows stric
 
 - **Business details only.** Hirivo looks for work email addresses at the company's own domain and the company's published hiring inboxes. It never looks up personal email addresses or phone numbers.
 - **Guesses are labelled.** When Hirivo suggests an address from a common pattern (like `first.last@company.com`), it marks it as a guess, and only suggests it if the company's domain receives mail.
-- **Public, work-related sources only.** Names and roles come from the company's own team page and its public GitHub organisation, or from your own LinkedIn connections export. Hirivo leaves out investors, customers quoted in testimonials and people who work elsewhere.
+- **Public, work-related sources only.** Names and roles come from the company's own team page, its public GitHub organisation, its public YC company page (founders), your own LinkedIn connections export, or a LinkedIn page you open and ask Hirivo to read. Hirivo learns a company's email format (for example first.last@) only from real addresses at that company: ones listed on its site, in your export, or in its public GitHub commits. Those commit addresses are used only to learn the format; Hirivo doesn't store them or write to those people. Hirivo leaves out investors, customers quoted in testimonials and people who work elsewhere.
 - **Nothing is collected in bulk.** Hirivo looks up one company at a time, when you ask, and keeps the result only on your computer.
 
 ## Your keys and Gmail tokens
@@ -63,7 +63,7 @@ Your AI keys, your Google OAuth client secret and your Gmail tokens are stored o
 
 ## LinkedIn
 
-Hirivo never uses your LinkedIn session to search. Your saved search reads LinkedIn's public job listings, the same ones anyone sees without signing in, and sends no LinkedIn cookies. On LinkedIn pages, Hirivo reads the job or search results you are looking at only when you press Analyze or Save jobs, and it never clicks, connects, messages or applies on LinkedIn for you.
+Hirivo never uses your LinkedIn session to search. Your saved search reads LinkedIn's public job listings, the same ones anyone sees without signing in, and sends no LinkedIn cookies. On LinkedIn pages, Hirivo reads the job, search results or people you are looking at only when you press Analyze, Save jobs or Read people on this page. It writes connection notes for you to paste, and it never clicks, connects, messages or applies on LinkedIn for you.
 
 ## Export and delete
 

@@ -29,3 +29,24 @@ usually clears it.
 **Markup changes.** If a site's page changes and an adapter finds nothing, its fixture test still
 passes but Sources shows 0 jobs. Save a fresh page into `tests/fixtures/sources/`, update the
 selectors, and rerun `npm test`.
+
+## People
+
+| Source | What it gives | How |
+|---|---|---|
+| Company website | Names, roles, listed addresses, hiring inboxes | Home, /about, /team and similar pages, with the user's OK for that site |
+| YC company page | Founders, titles, the LinkedIn links they published | `ycombinator.com/companies/<slug>`, `data-page` JSON; matched by website |
+| LinkedIn (user-opened) | Current staff on a people search or a company's People tab | The user opens the page (Find them on LinkedIn) and presses Read people on this page; Hirivo reads the visible cards once |
+| LinkedIn export | People the user knows, sometimes with emails | `Connections.csv` the user imports |
+| GitHub | Engineers in the org; commit addresses as email-format evidence only | Public API, 3 calls at most per company |
+
+**Email format.** A format (first.last, flast, first…) is confirmed only when at least one real
+address at the domain fits it, no other real address contradicts it, and the domain has MX
+records. Shared inboxes and nicknames are ignored. Confirmed addresses are labelled with the
+proof ("seen in priya.sharma@acme.in"); everything else stays a labelled guess and is never
+emailed automatically.
+
+**Not used.** Search-engine LinkedIn discovery (`site:linkedin.com/in`): checked live in October
+2026, Google ignores the operator and wraps result links, and Bing and DuckDuckGo answer with a
+check. Wellfound's people pages sit behind a Cloudflare check. LinkedIn company pages need a
+sign-in.

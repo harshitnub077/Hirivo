@@ -30,7 +30,7 @@ interface Props {
   goTo: (v: ViewId) => void;
 }
 
-const STATUS_LABEL = { listed: 'listed on their site', 'from-export': 'from your export', guessed: 'guessed, may bounce', typed: 'you added' } as const;
+const STATUS_LABEL = { listed: 'listed on their site', 'from-export': 'from your export', 'pattern-confirmed': 'company format, confirmed', guessed: 'guessed, may bounce', typed: 'you added' } as const;
 
 /** Write to up to five people at the company: one email each, for their role, sent by the user. */
 export function ReachOutCard({ job, ladder, facts, voiceProfile, settings, hasKey, goTo }: Props) {

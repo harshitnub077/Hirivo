@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.12.0
+**Version:** 2.13.0
 **Category:** Productivity
 **Language:** English (India), English
 **Privacy policy:** [docs/privacy.md](docs/privacy.md). Publish it at a public URL (GitHub Pages, or the file's GitHub link) and paste that link into the dashboard.
@@ -32,7 +32,7 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 
 **Follow up on time.** The email opens in Gmail for you to send. Hirivo reminds you on day 4 and day 9 and stops when you get a reply. Optional Gmail power mode, with your own Google app, saves real drafts (with your resume attached if you like), keeps follow-ups in the same thread and spots replies by itself.
 
-**Autopilot, when you want it.** Turn it on, hand it the jobs you choose, and it does the rest: reads each posting, checks the job is real and safe, finds the company's website and the people there, emails everyone with a verified address from your own Gmail (with your resume attached and every claim backed by it), fills the application and submits it. It stops and notifies you only when a form needs your consent tick or a CAPTCHA, and it never emails a guessed address or touches LinkedIn.
+**Autopilot, when you want it.** Turn it on, hand it the jobs you choose, and it does the rest: reads each posting, checks the job is real and safe, finds the company's website and the people there, emails everyone with a verified address (listed, or in the company's email format proven by real addresses) from your own Gmail, prepares LinkedIn notes for you to send (with your resume attached and every claim backed by it), fills the application and submits it. It stops and notifies you only when a form needs your consent tick or a CAPTCHA, and it never emails a guessed address or touches LinkedIn.
 
 **Safe for your LinkedIn account.** Hirivo never uses your LinkedIn session for searching: it reads LinkedIn's public job listings, the ones anyone sees without signing in. On LinkedIn pages it reads only what you are viewing when you press Analyze or Save jobs, and it never clicks, connects, messages or applies there.
 
@@ -69,6 +69,7 @@ Help a job seeker decide which jobs are worth applying to and reach the right pe
 | Host: `boards-api.greenhouse.io`, `api.lever.co`, `api.ashbyhq.com` | Reads public job-board feeds to confirm a role is live, read its posting date and power Radar. |
 | Host: `*.linkedin.com`, `*.naukri.com`, `*.indeed.com`, `*.wellfound.com`, `*.instahyre.com`, `*.cutshort.io`, `*.foundit.in` | Reads the job or the visible search results when the user presses Analyze or Save jobs. The saved search also reads public job listings: LinkedIn's logged-out job search (never with the user's LinkedIn session), and Naukri and Indeed results pages opened in a background tab and closed after reading. Nothing is clicked or posted on these sites. |
 | Host: `*.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com` | Reads job pages on Analyze, and fills application forms with the user's details and resume. The user always submits. |
+| Host: `www.ycombinator.com` | For YC companies, reads the company's public YC page for its founders' names, titles and the LinkedIn links they published, so the user can write to them. |
 | Host: `internshala.com`, `unstop.com` | The saved search reads public internship and job listings on Internshala and Unstop, filtered to the user's roles, city and dates. Each listing links back to its source. |
 | Host: `remotive.com`, `remoteok.com`, `himalayas.app`, `jobicy.com`, `www.arbeitnow.com`, `hn.algolia.com`, `yc-oss.github.io` | Public job APIs and open datasets for Discover. Each listing is credited and links to its source. Hacker News search also finds recent company news for opening lines. |
 | Host: `api.github.com`, `news.google.com` | Public GitHub org members and releases, and Google News headlines, for the contact ladder and opening-line suggestions. |
