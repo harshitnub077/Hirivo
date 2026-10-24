@@ -15,7 +15,9 @@ export async function callGemini(
       temperature: options.temperature ?? 0.2,
       // Flash models think before answering and that counts against this limit, so leave room
       // (only the tokens actually used are billed against the free quota).
-      maxOutputTokens: Math.max(2048, (options.maxTokens ?? 1024) * 3),
+      maxOutputTokens: Math.max(8192, (options.maxTokens ?? 1024) * 4),
+      // 2.5 models think freely unless capped; a capped budget keeps answers fast and complete.
+      ...(/2\.5/.test(options.model) ? { thinkingConfig: { thinkingBudget: 1024 } } : {}),
       ...(options.jsonMode ? { responseMimeType: 'application/json' } : {}),
     },
   };
@@ -45,6 +47,8 @@ export async function callGemini(
     .join('')
     .trim();
   if (!content) throw new ProviderError(`Gemini returned no text (${candidate?.finishReason || 'empty'}).`);
+  // A reply cut off at the token limit is half an answer (and broken JSON); let the router move on.
+  if (candidate?.finishReason === 'MAX_TOKENS') throw new ProviderError('Gemini ran out of room before finishing.');
   return { content, model: options.model, totalTokens: data.usageMetadata?.totalTokenCount ?? 0 };
 }
 

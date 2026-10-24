@@ -308,11 +308,26 @@ export interface UserSettings {
     refreshToken?: string;
     connectedAt: number;
     needsReconnect?: boolean;
-  }; // fill ATS forms as soon as they open (the user still submits)
+  };
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
   targetRoles?: string[];
+  // Saved answers for application forms. Empty means "ask me": Fill leaves that question for the user.
+  currentCompany?: string;
+  currentTitle?: string;
+  degree?: string;
+  graduationYear?: string;
+  country?: string; // country of residence
+  authorizedCountries?: string; // comma-separated countries the user may work in without sponsorship
+  noticePeriod?: string;
+  currentCtc?: string;
+  expectedCtc?: string;
+  earliestStart?: string;
+  willingToRelocate?: 'yes' | 'no';
+  howDidYouHear?: string;
+  languages?: string; // comma-separated
+  eeoDecline?: boolean; // answer diversity questions with "decline to self-identify"
 }
 
 export class HirivoDatabase extends Dexie {

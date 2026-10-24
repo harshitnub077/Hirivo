@@ -1,6 +1,6 @@
 import { getSettings } from '../db/settings';
 import { computePromptHash, getCachedResponse, setCachedResponse } from './cache';
-import { pickModel } from './registry';
+import { pickModels } from './registry';
 import { recordUsage } from './usage';
 import { parseJsonLoose } from './json';
 import { LLMMessage, ModelRole, ProviderId } from './types';
@@ -82,9 +82,22 @@ export async function routeLLMRequest(req: RouteRequest): Promise<RouteResult> {
       } else {
         const key = keys[provider];
         if (!key) continue;
-        const model = await pickModel(provider, key, role);
         const call = provider === 'groq' ? callGroq : provider === 'gemini' ? callGemini : callOpenRouter;
-        result = await call(key, req.messages, { ...base, model });
+        // Rate limits, daily caps and "high demand" are per model: try the next model of the
+        // same provider before moving to another provider.
+        let lastErr: any;
+        for (const model of await pickModels(provider, key, role)) {
+          try {
+            result = await call(key, req.messages, { ...base, model });
+            if (req.jsonMode && !usable(result.content)) throw new Error(`${model} returned malformed JSON`);
+            break;
+          } catch (err: any) {
+            lastErr = err;
+            const status = err?.status ?? 0;
+            if (!(status === 429 || status === 404 || status >= 500 || /malformed JSON|ran out of room|empty reply|no text/i.test(err?.message || ''))) break;
+          }
+        }
+        if (!result) throw lastErr;
       }
       await recordUsage(provider, result.totalTokens);
       if (!usable(result.content)) throw new Error(`${result.model} returned malformed JSON`);

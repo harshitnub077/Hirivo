@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Copy, ExternalLink, GraduationCap, RefreshCw, ScanSearch, Search, Users } from 'lucide-react';
-import { db, JobSnapshot, UserSettings } from '../../db';
+import { db, JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
+import { ReachOutCard } from './ReachOutCard';
 import { alumniSearchUrl, buildLadder, LadderContact, TIER_LABELS } from '../../services/contactLadder';
 import { addRenderedPage, getCachedLookup, lookupCompanySite, saveLookup, SiteLookup } from '../../services/contacts/siteLookup';
 import { ensureSiteAccess } from '../../services/siteAccess';
@@ -16,6 +17,9 @@ import type { ViewId } from '../App';
 interface Props {
   job: JobSnapshot;
   settings: UserSettings;
+  facts: ResumeFact[];
+  voiceProfile?: VoiceProfile;
+  hasKey: boolean;
   onUpdateJob: (job: JobSnapshot) => Promise<void>;
   onPick: (r: Recipient) => void;
   goTo: (v: ViewId) => void;
@@ -23,7 +27,7 @@ interface Props {
 
 const EMAIL_LABEL = { listed: 'listed on their site', 'from-export': 'from your export', guessed: 'guessed' } as const;
 
-export function PeoplePanel({ job, settings, onUpdateJob, onPick, goTo }: Props) {
+export function PeoplePanel({ job, settings, facts, voiceProfile, hasKey, onUpdateJob, onPick, goTo }: Props) {
   const [copied, copy] = useCopy();
   const [domain, setDomain] = useState(job.companyDomain || '');
   const [lookup, setLookup] = useState<SiteLookup | undefined>();
@@ -127,6 +131,8 @@ export function PeoplePanel({ job, settings, onUpdateJob, onPick, goTo }: Props)
         </button>
         {message && <Callout tone={message.tone}>{message.text}</Callout>}
       </section>
+
+      <ReachOutCard job={job} ladder={ladder} facts={facts} voiceProfile={voiceProfile} settings={settings} hasKey={hasKey} goTo={goTo} />
 
       {connections.length === 0 && (
         <Callout>

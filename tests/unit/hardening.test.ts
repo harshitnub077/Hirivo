@@ -15,6 +15,7 @@ import { savePageJobs } from '../../src/services/discover';
 import { htmlToText } from '../../src/services/discover/hn';
 import { routeLLMRequest } from '../../src/llm/router';
 import { forgetModels } from '../../src/llm/registry';
+import { checkGrounding } from '../../src/services/proofWriter';
 import { autoPurgeRoboticPhrases, lintOutreachText } from '../../src/services/phraseLinter';
 import { cleanTargets, titleHasTarget } from '../../src/services/targets';
 import { matchesTargets } from '../../src/services/watchlist';
@@ -234,5 +235,40 @@ describe('writer filler (found in the end-to-end run: "my recent work aligns wit
     expect(fixed).not.toMatch(/aligns/);
     expect(fixed).toContain('I cut p99 latency from 480 ms to 120 ms on Node.js services [FACT-02].');
     expect(fixed).toMatch(/^Hi Neha,\n/);
+  });
+});
+
+describe('found in the live runs (v2.10)', () => {
+  it('a model that hit its daily cap falls back to another model of the same provider', async () => {
+    forgetModels();
+    await patchSettings({ groqApiKey: 'k', geminiApiKey: '', openrouterApiKey: '' });
+    const used: string[] = [];
+    vi.stubGlobal('fetch', async (u: string, init?: RequestInit) => {
+      if (/\/models/.test(String(u))) return new Response(JSON.stringify({ data: [{ id: 'openai/gpt-oss-120b' }, { id: 'qwen/qwen3.8-27b' }] }));
+      const model = JSON.parse(String(init?.body)).model;
+      used.push(model);
+      if (model === 'openai/gpt-oss-120b')
+        return new Response(JSON.stringify({ error: { message: 'Rate limit reached on tokens per day (TPD). Please try again in 2m46.32s.' } }), { status: 429 });
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":1}' } }], usage: { total_tokens: 3 } }));
+    });
+    const r = await routeLLMRequest({ messages: [{ role: 'user', content: 'write' }], taskType: 'draft_writing', jsonMode: true });
+    expect(r.model).toBe('qwen/qwen3.8-27b');
+    expect(used).toEqual(['openai/gpt-oss-120b', 'qwen/qwen3.8-27b']);
+  });
+
+  it('a sentence restating the job posting needs no outside source', () => {
+    const facts = [{ id: 'FACT-01', claim: 'Built a Go service.', category: 'PROJECT' as const, sourceSnippet: '', verified: true }];
+    const jobText = 'Account Executive, France. You will own SaaS sales to mid-market customers and run outbound prospecting.';
+    const s = 'The focus on SaaS sales and outbound prospecting stood out.';
+    expect(checkGrounding(s, facts, { company: 'GitLab', hasHook: false }).unverifiedClaimsCount).toBe(1);
+    expect(checkGrounding(s, facts, { company: 'GitLab', hasHook: false, jobText }).unverifiedClaimsCount).toBe(0);
+    // Describing what the job needs, even with "manage" in it, isn't a claim about the sender…
+    const needs = 'I noticed the team needs strong SaaS sales experience and fluent French to manage a broad mid-market territory.';
+    const jobText2 = `${jobText} Strong SaaS sales experience and fluent French needed to manage a broad mid-market territory.`;
+    expect(checkGrounding(needs, facts, { company: 'GitLab', hasHook: false, jobText: jobText2 }).unverifiedClaimsCount).toBe(0);
+    // …but "I have managed a mid-market territory" still is.
+    expect(checkGrounding('I have managed a broad mid-market territory in SaaS sales.', facts, { company: 'GitLab', hasHook: false, jobText: jobText2 }).unverifiedClaimsCount).toBe(1);
+    // A company claim that isn't in the posting still needs a source.
+    expect(checkGrounding('GitLab recently raised a huge round.', facts, { company: 'GitLab', hasHook: false, jobText }).unverifiedClaimsCount).toBe(1);
   });
 });

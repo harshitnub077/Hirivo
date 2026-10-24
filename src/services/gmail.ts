@@ -64,6 +64,10 @@ export function hasRequiredScopes(scope: string | undefined): boolean {
   return GMAIL_SCOPES.every((s) => granted.has(s));
 }
 
+export function draftsFolderUrl(email: string): string {
+  return `https://mail.google.com/mail/?authuser=${encodeURIComponent(email)}#drafts`;
+}
+
 export function draftOpenUrl(email: string, messageId: string): string {
   return `https://mail.google.com/mail/?authuser=${encodeURIComponent(email)}#drafts?compose=${encodeURIComponent(messageId)}`;
 }
@@ -72,17 +76,47 @@ export function draftOpenUrl(email: string, messageId: string): string {
 
 const utf8B64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
-export function buildRawMessage(m: { to: string; subject: string; body: string; inReplyTo?: string; references?: string }): string {
+export interface MailAttachment {
+  name: string;
+  type: string;
+  base64: string;
+}
+
+const wrap76 = (b64: string) => b64.replace(/.{76}/g, '$&\r\n');
+
+export function buildRawMessage(m: { to: string; subject: string; body: string; inReplyTo?: string; references?: string; attachment?: MailAttachment }): string {
   const headers = [
     `To: ${m.to}`,
     `Subject: =?UTF-8?B?${utf8B64(m.subject)}?=`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: base64',
     ...(m.inReplyTo ? [`In-Reply-To: ${m.inReplyTo}`, `References: ${m.references || m.inReplyTo}`] : []),
   ];
-  const body = utf8B64(m.body.replace(/\r?\n/g, '\r\n')).replace(/.{76}/g, '$&\r\n');
-  return `${headers.join('\r\n')}\r\n\r\n${body}`;
+  const body = wrap76(utf8B64(m.body.replace(/\r?\n/g, '\r\n')));
+  if (!m.attachment) {
+    return `${[...headers, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64'].join('\r\n')}\r\n\r\n${body}`;
+  }
+  // multipart/mixed: the text, then the resume as a file.
+  const boundary = `hirivo-${Math.random().toString(36).slice(2)}`;
+  const file = m.attachment.name.replace(/["\r\n]/g, '');
+  const encodedName = /^[\x20-\x7e]+$/.test(file) ? `"${file}"` : `"=?UTF-8?B?${utf8B64(file)}?="`;
+  return [
+    ...headers,
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    body,
+    `--${boundary}`,
+    `Content-Type: ${m.attachment.type || 'application/octet-stream'}; name=${encodedName}`,
+    `Content-Disposition: attachment; filename=${encodedName}`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap76(m.attachment.base64),
+    `--${boundary}--`,
+    '',
+  ].join('\r\n');
 }
 
 export const toBase64Url = (raw: string) => btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -248,7 +282,7 @@ export async function gmailConnected(): Promise<GmailState | undefined> {
 
 // ---------- Drafts and threads ----------
 
-export async function createDraft(m: { to: string; subject: string; body: string; threadId?: string; inReplyTo?: string; references?: string }, deps?: AuthDeps) {
+export async function createDraft(m: { to: string; subject: string; body: string; threadId?: string; inReplyTo?: string; references?: string; attachment?: MailAttachment }, deps?: AuthDeps) {
   const raw = toBase64Url(buildRawMessage(m));
   const draft = await api<{ id: string; message: { id: string; threadId: string } }>(
     '/drafts',

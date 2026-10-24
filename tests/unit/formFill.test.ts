@@ -2,32 +2,42 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { attachResume, fillFields, Profile, SUCCESS_TEXT } from '../../src/content/formFill';
+import { attachResume, SUCCESS_TEXT } from '../../src/content/formFill';
+import { decide, fillQuestion, findQuestions } from '../../src/content/formEngine';
+import { buildFillProfile } from '../../src/services/formAutofill';
 
 const form = readFileSync(resolve(__dirname, '../fixtures/greenhouse-application-form.html'), 'utf8');
 
-const profile: Profile = {
-  fullName: 'Aarav Mehta',
-  firstName: 'Aarav',
-  lastName: 'Mehta',
-  email: 'aarav@example.com',
-  phone: '+91 98765 43210',
-  location: 'Bengaluru',
-  college: 'IIT Delhi',
+const profile = buildFillProfile({
+  userFullName: 'Aarav Mehta',
+  userEmail: 'aarav@example.com',
+  userPhone: '+91 98765 43210',
+  preferredLocation: 'Bengaluru',
+  userCollege: 'IIT Delhi',
   linkedinUrl: 'https://linkedin.com/in/aarav',
   githubUrl: 'https://github.com/aarav',
   portfolioUrl: 'https://aarav.dev',
-};
+} as any);
 
 const value = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
+
+/** Fills every question the profile settles, like Fill with Hirivo does before any AI step. */
+async function fillFields(p = profile) {
+  let filled = 0;
+  for (const q of findQuestions()) {
+    const d = decide(q, p, { company: 'Acme' });
+    if ('fill' in d && (await fillQuestion(q, d.fill, 'profile'))) filled++;
+  }
+  return filled;
+}
 
 describe('fillFields on a real Greenhouse application form', () => {
   beforeEach(() => {
     document.body.innerHTML = form;
   });
 
-  it('fills name, email, phone and the LinkedIn question', () => {
-    const filled = fillFields(profile);
+  it('fills name, email, phone and the LinkedIn question', async () => {
+    const filled = await fillFields();
     expect(value('first_name')).toBe('Aarav');
     expect(value('last_name')).toBe('Mehta');
     expect(value('email')).toBe('aarav@example.com');
@@ -37,16 +47,15 @@ describe('fillFields on a real Greenhouse application form', () => {
     expect(filled).toBeGreaterThanOrEqual(5);
   });
 
-  it('leaves dropdowns and unrelated fields alone', () => {
-    fillFields(profile);
-    expect(value('country')).toBe('');
+  it('leaves unrelated fields alone', async () => {
+    await fillFields();
     expect(value('company-name-0')).toBe('');
     expect(value('title-0')).toBe('');
   });
 
-  it('never overwrites what the user already typed', () => {
+  it('never overwrites what the user already typed', async () => {
     (document.getElementById('email') as HTMLInputElement).value = 'mine@work.com';
-    fillFields(profile);
+    await fillFields();
     expect(value('email')).toBe('mine@work.com');
   });
 
@@ -79,13 +88,13 @@ describe('SUCCESS_TEXT', () => {
 });
 
 describe('Workday-style fields', () => {
-  it('reads data-automation-id labels', () => {
+  it('reads data-automation-id labels', async () => {
     document.body.innerHTML = `
       <input data-automation-id="legalNameSection_firstName" type="text">
       <input data-automation-id="legalNameSection_lastName" type="text">
       <input data-automation-id="email" type="text">
       <input data-automation-id="phone-number" type="text">`;
-    fillFields(profile);
+    await fillFields();
     const v = (id: string) => (document.querySelector(`[data-automation-id="${id}"]`) as HTMLInputElement).value;
     expect([v('legalNameSection_firstName'), v('legalNameSection_lastName'), v('email'), v('phone-number')]).toEqual(['Aarav', 'Mehta', 'aarav@example.com', '+91 98765 43210']);
   });

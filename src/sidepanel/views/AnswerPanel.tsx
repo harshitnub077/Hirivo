@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Check, Copy, RefreshCw, Sparkles } from 'lucide-react';
 import { JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
 import { AnswerMode, QUESTION_PRESETS, writeAnswer } from '../../services/answerWriter';
-import { checkGrounding } from '../../services/proofWriter';
+import { checkGrounding, removeUnsupported } from '../../services/proofWriter';
 import { lintOutreachText } from '../../services/phraseLinter';
 import { stripCitations } from '../../services/outreach';
 import { Callout, Field, Pill, Segmented, useCopy } from '../ui';
@@ -26,7 +26,7 @@ export function AnswerPanel({ job, facts, voiceProfile, settings, hasKey, goTo }
   const [error, setError] = useState<string | null>(null);
   const [copied, copy] = useCopy();
 
-  const grounding = useMemo(() => checkGrounding(text, facts, { company: job.company, hasHook: false }), [text, facts, job.company]);
+  const grounding = useMemo(() => checkGrounding(text, facts, { company: job.company, hasHook: false, jobText: job.description }), [text, facts, job.company, job.description]);
   const lint = useMemo(() => lintOutreachText(text), [text]);
   const words = stripCitations(text).split(/\s+/).filter(Boolean).length;
 
@@ -53,6 +53,7 @@ export function AnswerPanel({ job, facts, voiceProfile, settings, hasKey, goTo }
         facts,
         voiceProfile,
         senderName: settings.userFullName,
+        jobText: job.description,
         requirements: [...(job.fitEvidence || [])].sort((a, b) => Number(b.met) - Number(a.met)).map((r) => r.text),
       });
       setText(r.text);
@@ -120,6 +121,9 @@ export function AnswerPanel({ job, facts, voiceProfile, settings, hasKey, goTo }
                     </li>
                   ))}
               </ul>
+              <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setText(removeUnsupported(text, facts, { company: job.company, hasHook: false, jobText: job.description }))}>
+                Remove them
+              </button>
             </Callout>
           )}
           <button className="btn" onClick={() => copy('answer', stripCitations(text))}>

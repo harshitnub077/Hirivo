@@ -284,7 +284,13 @@ try {
     await shot('08-answer');
     const answer = await ev(P, `[...document.querySelectorAll('textarea')].filter(e => e.offsetParent).map(e => e.value).pop()`);
     const t = await text();
-    if (/Check before using/.test(t)) throw new Error(`unsupported claims in answer:\n${answer}`);
+    if (/Check before using/.test(t)) {
+      // The user's path when the answer stretches the resume: Remove them, and what's left is clean.
+      await click('Remove them');
+      const left = await ev(P, `[...document.querySelectorAll('textarea')].filter(e => e.offsetParent).map(e => e.value).pop()`);
+      if (/Check before using/.test(await text()) || left.trim().split(/\s+/).length < 15) throw new Error(`still flagged or gutted after Remove them:\n${left}`);
+      return `flagged, then cleaned with Remove them:\n${left}`;
+    }
     return answer;
   });
 
@@ -300,6 +306,95 @@ try {
     const qs = (t.split('Likely questions')[1] || '').split('Your strongest proof')[0].trim().split('\n').filter(Boolean);
     const proof = (t.split('Your strongest proof')[1] || '').split('Ask them')[0].trim().split('\n').filter(Boolean);
     return `${qs.length} questions (e.g. "${qs[0]}"); proof: ${proof.slice(0, 3).join(' / ')}`;
+  });
+
+  await step('Application answers saved in You', async () => {
+    await tab('You');
+    await click('Application answers');
+    await sleep(400);
+    const set = async (label, value) => {
+      const sel = await ev(P, `(() => { const f = [...document.querySelectorAll('.field, label')].find(x => x.offsetParent && x.innerText.trim().startsWith(${JSON.stringify(label)})); const i = f && f.querySelector('input'); if (!i) return ''; i.id ||= 'e2e-' + Math.random().toString(36).slice(2); return '#' + i.id; })()`);
+      if (!sel) throw new Error(`no field ${label}`);
+      await type(sel, value);
+    };
+    await set('Country you live in', 'India');
+    await set('Can work without a visa in', 'India');
+    await set('Notice period', '30 days');
+    await set('Earliest start', 'Within 30 days');
+    await set('Current CTC', '24 LPA');
+    await set('Expected CTC', '32 LPA');
+    await set('Languages you speak', 'English, Hindi');
+    await click('Save answers');
+    await sleep(600);
+    const saved = await ev(P, `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('settings').objectStore('settings').get('config'); q.onsuccess = () => { const s = q.result; res({ company: s.currentCompany, title: s.currentTitle, degree: s.degree, year: s.graduationYear, notice: s.noticePeriod, ctc: s.currentCtc, auth: s.authorizedCountries, langs: s.languages }); }; }; })`);
+    if (saved.notice !== '30 days' || saved.auth !== 'India') throw new Error(JSON.stringify(saved));
+    return JSON.stringify(saved);
+  });
+
+  await step('Fill with Hirivo completes the live application form', async () => {
+    const applyUrl = /lever\.co/.test(JOB) ? JOB.replace(/\/$/, '') + '/apply' : /ashbyhq\.com/.test(JOB) ? JOB.replace(/\/$/, '') + '/application' : JOB + (JOB.includes('?') ? '&' : '?') + 'hirivo_e2e=fill';
+    await ev(BG, `chrome.tabs.create({ url: ${JSON.stringify(applyUrl)}, active: true }).then(() => true)`);
+    let t;
+    for (let i = 0; i < 30 && !t; i++) { await sleep(500); t = (await targets()).find((x) => x.type === 'page' && x.url.startsWith(applyUrl.split('?')[0]) && x.url !== JOB); }
+    if (!t) t = (await targets()).filter((x) => x.type === 'page' && x.url.startsWith(applyUrl.split('?')[0])).pop();
+    const F = await connect(t.webSocketDebuggerUrl);
+    await F.send('Runtime.enable'); await F.send('Page.enable');
+    await F.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false });
+    const card = (expr) => ev(F, `(() => { const r = document.getElementById('hirivo-fill-report')?.shadowRoot; if (!r) return null; return (${expr}); })()`);
+    for (let i = 0; i < 40 && !(await card('true')); i++) await sleep(500);
+    if (!(await card('true'))) throw new Error('the results card never appeared (autofill on open)');
+    const before = await card(String.raw`r.querySelector('.sum').textContent`);
+    const writeBtn = await card(String.raw`[...r.querySelectorAll('button.primary')].map(b => b.textContent)[0] || ''`);
+    if (writeBtn) {
+      await ev(F, String.raw`document.getElementById('hirivo-fill-report').shadowRoot.querySelector('button.primary').click()`, true);
+      for (let i = 0; i < 240; i++) { await sleep(500); if (!(await card(String.raw`!!r.querySelector('.status')`))) break; }
+    }
+    await sleep(800);
+    const { data } = await F.send('Page.captureScreenshot', { format: 'png' });
+    fs.writeFileSync(path.join(SHOTS, '12-filled-form.png'), Buffer.from(data, 'base64'));
+    const report = await card(String.raw`({ sum: r.querySelector('.sum').textContent, err: r.querySelector('.err')?.textContent || '', sections: [...r.querySelectorAll('h4')].map(h => h.textContent), items: [...r.querySelectorAll('li')].map(li => li.innerText.replace(/\n/g, ' — ')) })`);
+    const values = await ev(F, String.raw`[...document.querySelectorAll('input:not([type=hidden]):not([type=file]), textarea, select')].filter(e => e.offsetParent && ((e.type !== 'radio' && e.type !== 'checkbox' && e.value) || e.checked)).map(e => { const id = e.id && document.querySelector('label[for="' + CSS.escape(e.id) + '"]'); return ((id && id.innerText) || e.name || e.id).replace(/\s+/g, ' ').slice(0, 50) + ' = ' + (e.type === 'radio' || e.type === 'checkbox' ? (e.closest('label')?.innerText || e.value) : e.tagName === 'SELECT' ? e.selectedOptions[0]?.text : e.value).replace(/\s+/g, ' ').slice(0, 120); })`);
+    const chosen = await ev(F, String.raw`[...document.querySelectorAll('[class*="single-value"], button[aria-pressed="true"]')].map(e => e.innerText).slice(0, 20)`);
+    const submitted = await ev(F, String.raw`/thank you for applying|application (?:has been )?submitted/i.test(document.body.innerText)`);
+    if (submitted) throw new Error('the form was submitted, which must never happen');
+    if (report.err) throw new Error(report.err);
+    return `before AI: ${before}; button: "${writeBtn}"; after: ${report.sum}\nSECTIONS: ${report.sections.join(' | ')}\nCARD:\n  ${report.items.join('\n  ')}\nFORM VALUES:\n  ${values.join('\n  ')}\nDROPDOWNS/BUTTONS: ${chosen.join(', ')}`;
+  });
+
+  await step('Write to several people: one email each, opened in Gmail one at a time', async () => {
+    await ev(BG, String.raw`chrome.tabs.query({ url: ${JSON.stringify(JOB.replace(/\?.*$/, '') + '*')} }).then(t => chrome.tabs.update(t.find(x => !/\/(apply|application)/.test(x.url)).id, { active: true })).then(() => true)`);
+    await sleep(1500);
+    await tab('Now');
+    await click('People', { exact: true, within: '.seg' });
+    await sleep(600);
+    const add = async (name, role, email) => {
+      await ev(P, String.raw`(() => { const d = [...document.querySelectorAll('details')].find(x => x.innerText.startsWith('Add someone')); if (d) d.open = true; })()`);
+      await type('input[placeholder="Neha Kapoor"]', name);
+      await type('input[placeholder="Talent Partner"]', role);
+      const sel = await ev(P, String.raw`(() => { const i = [...document.querySelectorAll('input[type=email]')].find(x => x.offsetParent && /^neha@/.test(x.placeholder)); i.id ||= 'e2e-mail'; return '#' + i.id; })()`);
+      await type(sel, email);
+      await click('Add', { exact: true });
+    };
+    await add('Riya Sen', 'Talent Acquisition Partner', 'riya.sen@example.com');
+    await add('Arjun Rao', 'Co-founder & CEO', 'arjun@example.com');
+    await add('Kabir Shah', 'Engineering Manager', 'kabir.shah@example.com');
+    const picked = await ev(P, String.raw`[...document.querySelectorAll('.reach-row')].filter(r => r.querySelector('input').checked).map(r => r.innerText.replace(/\n/g, ' '))`);
+    const btn = await ev(P, String.raw`[...document.querySelectorAll('button')].filter(b => b.offsetParent).map(b => b.innerText.trim()).find(b => /^Write \d+ emails?$/.test(b))`);
+    if (!btn) throw new Error(`no write button; picked=${picked}`);
+    await click(btn);
+    await waitFor(String.raw`/Open in Gmail \(1 of|Save \d+ drafts/.test(t) || /couldn|failed|error/i.test(t.slice(-500))`, 300000, 'drafts');
+    await sleep(800);
+    await shot('13-reach-out');
+    const drafts = await ev(P, String.raw`[...document.querySelectorAll('.reach-draft')].map(d => ({ to: d.querySelector('.small').innerText, subject: d.querySelector('input').value, body: d.querySelector('textarea').value, flagged: !!d.querySelector('.callout') }))`);
+    const flagged = drafts.filter((d) => d.flagged);
+    const before = await ev(P, String.raw`new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('outreach').objectStore('outreach').count(); q.onsuccess = () => res(q.result); }; })`);
+    await click('Open in Gmail (1 of');
+    await sleep(2000);
+    const after = await ev(P, String.raw`new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('outreach').objectStore('outreach').getAll(); q.onsuccess = () => res(q.result.map(o => o.recipientEmail)); }; })`);
+    const compose = (await targets()).filter((x) => x.type === 'page' && /mail\.google|accounts\.google/.test(x.url)).length;
+    if (after.length !== before + 1) throw new Error(`expected one more logged message, got ${before} -> ${after.length}`);
+    if (flagged.length) throw new Error(`unsupported claims in: ${flagged.map((d) => d.to).join(', ')}`);
+    return `picked: ${picked.join(' || ')}\nlogged after first open: ${after.join(', ')}; gmail tabs: ${compose}\n` + drafts.map((d) => `--- ${d.to}\nSubject: ${d.subject}\n${d.body}`).join('\n');
   });
 
   await step('Discover finds real jobs for the chosen roles', async () => {

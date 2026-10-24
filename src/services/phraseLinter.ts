@@ -146,7 +146,7 @@ const BANNED_RULES: Rule[] = [
   },
   {
     // "my background fits", "my recent work aligns with", "my experience matches"
-    pattern: /\b(?:caught my eye|(?:I think )?my (?:\w+ ){0,2}(?:background|experience|work|skills?|profile|skill ?set) (?:fits|aligns?|matches)(?: well| nicely| closely)?(?: with)?)\b/gi,
+    pattern: /\b(?:caught my (?:eye|attention)|(?:I think )?my (?:\w+ ){0,2}(?:background|experience|work|skills?|profile|skill ?set) (?:fits|aligns?|matches|could help)(?: well| nicely| closely)?(?: with)?|(?:a )?(?:strong |good |great |natural )?fit for my (?:\w+ ){0,2}(?:background|experience|skills?)|(?:aligns?|fits|matches) (?:well |nicely |closely )?with my (?:\w+ ){0,2}(?:background|experience|work|skills?|profile|skill ?set))\b/gi,
     category: 'VAGUE_FLATTERY',
     explanation: 'Filler. Say what specifically about the role matches one of your results.',
     wholeSentence: true,

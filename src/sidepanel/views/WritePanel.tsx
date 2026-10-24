@@ -99,7 +99,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
   const [copied, copy] = useCopy();
 
   const lint = useMemo(() => lintOutreachText(body), [body]);
-  const grounding = useMemo(() => checkGrounding(body, facts, { company: job.company, hasHook: Boolean(hook.trim()), hookText: hook }), [body, facts, job.company, hook]);
+  const grounding = useMemo(() => checkGrounding(body, facts, { company: job.company, hasHook: Boolean(hook.trim()), hookText: hook, jobText: job.description }), [body, facts, job.description, job.company, hook]);
   const wordCount = stripCitations(body).split(/\s+/).filter(Boolean).length;
   const set = (patch: Partial<Recipient>) => onRecipientChange({ ...recipient, ...patch });
 
@@ -131,6 +131,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
         realSignalHook: hook.trim() || undefined,
         requirements: [...(job.fitEvidence || [])].sort((a, b) => Number(b.met) - Number(a.met)).map((r) => r.text),
         senderName: settings.userFullName,
+        jobText: job.description,
       });
       setSubject(draft.emailSubject);
       setBody(draft.emailBody);
@@ -289,7 +290,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
                   ))}
               </ul>
               <div className="row wrap" style={{ marginTop: 8, gap: 10 }}>
-                <button className="btn sm" onClick={() => setBody(removeUnsupported(body, facts, { company: job.company, hasHook: Boolean(hook.trim()), hookText: hook }))}>
+                <button className="btn sm" onClick={() => setBody(removeUnsupported(body, facts, { company: job.company, hasHook: Boolean(hook.trim()), hookText: hook, jobText: job.description }))}>
                   Remove them
                 </button>
                 <label className="row small">

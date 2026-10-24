@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.9.2
+**Version:** 2.10.0
 **Category:** Productivity
 **Language:** English (India), English
 **Privacy policy:** [docs/privacy.md](docs/privacy.md). Publish it at a public URL (GitHub Pages, or the file's GitHub link) and paste that link into the dashboard.
@@ -26,9 +26,11 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 
 **Write like a person.** Hirivo drafts a short email, a LinkedIn note and a referral ask. Every claim must point to a line on your resume, and lines it can't back up are flagged before you send. The opening line uses something real and recent from the company, with a link. Robotic phrases ("kindly do the needful", "I hope this finds you well") are caught. A reply meter shows which simple checks the draft fails, such as too long or more than one ask.
 
-**Apply without retyping.** Hirivo tailors your resume to each job by reordering and rewording what is already there, never by adding claims. On Greenhouse, Lever, Ashby, Workable, Workday and other application forms, it fills your details and attaches your resume. You check everything and press Submit.
+**Fill the whole application.** On Greenhouse, Lever, Ashby, Workable, Workday and other application forms, Fill with Hirivo answers every question it honestly can: contact details, current role, education, notice period, salary, languages, work authorization, dropdowns, radio buttons and Yes/No questions. Open questions like "Why do you want to work here?" get answers written from your resume, in your voice. It attaches your resume, leaves consent boxes and diversity questions to you, lists anything it couldn't answer, and never presses Submit. Hirivo also tailors your resume to each job by reordering and rewording what is already there, never by adding claims.
 
-**Follow up on time.** The email opens in Gmail for you to send. Hirivo reminds you on day 4 and day 9 and stops when you get a reply. When someone replies, the Interview Pack collects what the company does, likely questions and your strongest points for the role. Optional Gmail power mode, with your own Google app, saves real drafts, keeps follow-ups in the same thread and spots replies by itself.
+**Write to several people.** Pick up to five people at the company (the hiring manager, a recruiter, a founder, the hiring inbox, someone you know) and Hirivo writes each one their own email for their role. Sentences your resume doesn't back are cut before you see them.
+
+**Follow up on time.** The email opens in Gmail for you to send. Hirivo reminds you on day 4 and day 9 and stops when you get a reply. When someone replies, the Interview Pack collects what the company does, likely questions and your strongest points for the role. Optional Gmail power mode, with your own Google app, saves real drafts (with your resume attached if you like), keeps follow-ups in the same thread and spots replies by itself.
 
 **Safe for your LinkedIn account.** Hirivo runs no script on LinkedIn by itself. It reads the page you are viewing only when you press Analyze or Save jobs, and it never clicks, connects, messages or applies there.
 
@@ -69,7 +71,7 @@ Help a job seeker decide which jobs are worth applying to and reach the right pe
 | Optional `identity` | Asked only when the user connects Gmail with their own Google OAuth client, to run Google's sign-in window. |
 | Optional host: `gmail.googleapis.com`, `oauth2.googleapis.com` | Asked only on Connect Gmail: saving drafts in the user's Gmail and reading their own threads to spot replies. |
 | Optional host: `https://*/*` | Requested one site at a time, only when the user presses Analyze, Look up or Read people on this page on a site not listed above, such as a company careers page. |
-| Content scripts: `boards.greenhouse.io`, `job-boards.greenhouse.io`, `job-boards.eu.greenhouse.io`, `boards.eu.greenhouse.io`, `jobs.lever.co`, `jobs.eu.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com`, `*.myworkdayjobs.com`, `*.smartrecruiters.com`, `*.icims.com`, `*.recruitee.com`, `*.bamboohr.com`, `*.keka.com`, `*.darwinbox.in`, `*.zohorecruit.com`, `*.zohorecruit.in`, `*.freshteam.com` | Application-form pages only. Fills empty fields with the user's saved details and attaches their resume, if they turned autofill on. It never presses Submit. |
+| Content scripts: `boards.greenhouse.io`, `job-boards.greenhouse.io`, `job-boards.eu.greenhouse.io`, `boards.eu.greenhouse.io`, `jobs.lever.co`, `jobs.eu.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com`, `*.myworkdayjobs.com`, `*.smartrecruiters.com`, `*.icims.com`, `*.recruitee.com`, `*.bamboohr.com`, `*.keka.com`, `*.darwinbox.in`, `*.zohorecruit.com`, `*.zohorecruit.in`, `*.freshteam.com` | Application-form pages only. Fills empty fields with the user's saved answers, writes answers to open questions from their resume when they press Fill with Hirivo, and attaches their resume. It never ticks consent boxes or presses Submit. |
 
 Hirivo uses no remote code. Everything it runs ships in the package. It has no `web_accessible_resources`.
 

@@ -1,7 +1,8 @@
 // Background service worker (MV3). It holds no state between wake-ups: everything lives in IndexedDB.
 import { db } from '../db';
 import { getSettings } from '../db/settings';
-import { buildAutofillProfile } from '../services/formAutofill';
+import { buildFillProfile, sourceForUrl } from '../services/formAutofill';
+import { answerFormQuestions } from '../services/formAnswers';
 import { matchesTargets, refreshAll } from '../services/watchlist';
 import { dueFollowupStage } from '../services/outreach';
 import { runDiscover } from '../services/discover';
@@ -210,10 +211,16 @@ chrome.notifications.onClicked.addListener(async (id) => {
 });
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  if (request.action === 'GET_AUTOFILL_PROFILE') {
-    getSettings()
-      .then((settings) => sendResponse({ success: true, profile: buildAutofillProfile(settings) }))
+  if (request.action === 'GET_FILL_PROFILE') {
+    Promise.all([getSettings(), db.resumes.get('primary'), sourceForUrl(String(request.url || ''))])
+      .then(([settings, resume, source]) => sendResponse({ success: true, profile: buildFillProfile(settings, resume?.rawText), source }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+  if (request.action === 'FORM_ANSWERS') {
+    answerFormQuestions(request.request)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ answers: {}, error: err.message }));
     return true;
   }
   if (request.action === 'GET_AUTOFILL_SETTINGS') {

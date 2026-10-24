@@ -294,6 +294,9 @@ export function NowView(props: Props) {
           key={job.id}
           job={job}
           settings={settings}
+          facts={facts}
+          voiceProfile={props.voiceProfile}
+          hasKey={hasKey}
           onUpdateJob={onUpdateJob}
           goTo={props.goTo}
           onPick={(r) => {

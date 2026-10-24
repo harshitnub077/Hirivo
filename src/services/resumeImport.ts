@@ -26,7 +26,12 @@ export interface SuggestedRole {
 
 export interface ResumeProfile extends ContactInfo {
   location?: string;
+  country?: string;
   college?: string;
+  degree?: string;
+  graduationYear?: string;
+  currentCompany?: string;
+  currentTitle?: string;
   yearsExperience?: number;
   skills: string[];
   facts: ResumeFact[];
@@ -213,7 +218,8 @@ async function structureWithAI(text: string): Promise<Omit<ResumeProfile, 'usedA
         content: `You turn a resume into JSON for a job-search tool. Copy text; never invent.
 Return ONLY this JSON:
 {
- "fullName": string|null, "location": string|null, "college": string|null, "yearsExperience": number,
+ "fullName": string|null, "location": string|null (city), "country": string|null, "college": string|null, "degree": string|null (as written, e.g. "B.Tech, Computer Science"), "graduationYear": string|null (4 digits),
+ "currentCompany": string|null (most recent employer, null if a student), "currentTitle": string|null (most recent job title), "yearsExperience": number,
  "skills": string[] (max 25, lowercase, only ones written in the resume),
  "facts": [{"claim": string, "category": "METRIC"|"PROJECT"|"ROLE"|"SKILL"|"EDUCATION"}] (8-20 strongest achievement lines, copied nearly word for word, keep numbers exactly),
  "roles": [{"title": string, "keywords": string[] (2-4 lowercase phrases of 1-3 words that appear in matching job titles, like "backend" or "site reliability"; never a lone generic word such as "engineer", "senior" or "developer", and never a phrase split into single words), "level": "intern"|"entry"|"mid"|"senior", "why": string (one short sentence citing the resume)}] (3-5 realistic roles for this person right now)
@@ -235,10 +241,17 @@ yearsExperience counts paid work and internships only (internships count as a qu
       verified: true,
     }));
   const lowerText = text.toLowerCase();
+  // Short details are kept only when they appear in the resume as written.
+  const copied = (v: unknown) => (typeof v === 'string' && v.trim() && lowerText.includes(v.trim().toLowerCase()) ? v.trim() : undefined);
   return {
     fullName: typeof p.fullName === 'string' ? p.fullName : undefined,
     location: typeof p.location === 'string' ? p.location : undefined,
+    country: copied(p.country),
     college: typeof p.college === 'string' ? p.college : undefined,
+    degree: copied(p.degree) || copied(String(p.degree || '').split(',')[0]),
+    graduationYear: /^(19|20)\d{2}$/.test(String(p.graduationYear)) && lowerText.includes(String(p.graduationYear)) ? String(p.graduationYear) : undefined,
+    currentCompany: copied(p.currentCompany),
+    currentTitle: copied(p.currentTitle),
     yearsExperience: Number.isFinite(Number(p.yearsExperience)) ? Number(p.yearsExperience) : undefined,
     skills: (Array.isArray(p.skills) ? p.skills : []).map(String).filter((s: string) => lowerText.includes(s.toLowerCase())).slice(0, 25),
     facts,
@@ -321,6 +334,11 @@ export async function saveProfile(file: File | null, text: string, profile: Resu
     ...fill('portfolioUrl', profile.portfolioUrl),
     ...fill('preferredLocation', profile.location),
     ...fill('userCollege', profile.college),
+    ...fill('country', profile.country),
+    ...fill('degree', profile.degree),
+    ...fill('graduationYear', profile.graduationYear),
+    ...fill('currentCompany', profile.currentCompany),
+    ...fill('currentTitle', profile.currentTitle),
     skills: profile.skills,
     yearsExperience: profile.yearsExperience,
     suggestedRoles: profile.roles,

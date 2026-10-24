@@ -23,6 +23,14 @@ export async function callGroq(
   if (options.jsonMode) payload.response_format = { type: 'json_object' };
 
   let res = await post(apiKey, payload);
+  // Free tiers limit tokens per minute; Groq says how long to wait. Wait once if it's short.
+  if (res.status === 429) {
+    const wait = retryAfterSeconds(res.headers.get('retry-after'), await res.clone().text());
+    if (wait !== undefined && wait <= 20) {
+      await new Promise((r) => setTimeout(r, (wait + 0.5) * 1000));
+      res = await post(apiKey, payload);
+    }
+  }
   // Not every model accepts JSON mode; retry once without it (callers parse JSON loosely).
   if (res.status === 400 && options.jsonMode) {
     delete payload.response_format;
@@ -35,6 +43,16 @@ export async function callGroq(
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new ProviderError('Groq returned an empty reply.');
   return { content, model: options.model, totalTokens: data.usage?.total_tokens ?? 0 };
+}
+
+/** Seconds to wait from a Retry-After header or "Please try again in 3.675s" in the body. */
+export function retryAfterSeconds(header: string | null, body: string): number | undefined {
+  const fromHeader = Number(header);
+  if (header && Number.isFinite(fromHeader)) return fromHeader;
+  const m = body.match(/try again in (?:(\d+)m)?(\d+(?:\.\d+)?)(m?s)/i);
+  if (!m) return undefined;
+  const secs = m[3].toLowerCase() === 'ms' ? Number(m[2]) / 1000 : Number(m[2]);
+  return (Number(m[1]) || 0) * 60 + secs;
 }
 
 function post(apiKey: string, payload: Record<string, unknown>) {

@@ -61,6 +61,21 @@ export async function listModels(provider: Exclude<ProviderId, 'nano'>, apiKey: 
   return ids;
 }
 
+/** Up to `max` usable models for a role, best first. Free tiers limit each model separately
+ * (Groq's per-model daily token cap), so a second model often works when the first is spent. */
+export async function pickModels(provider: Exclude<ProviderId, 'nano'>, apiKey: string, role: ModelRole, max = 3): Promise<string[]> {
+  let available: string[] = [];
+  try {
+    available = await listModels(provider, apiKey);
+  } catch {
+    return PREFERENCES[provider][role].slice(0, max);
+  }
+  const preferred = PREFERENCES[provider][role].filter((id) => available.includes(id));
+  const list = preferred.length ? preferred : available.slice(0, 1);
+  if (!list.length) throw new Error(`No chat models are available to this ${provider} key.`);
+  return list.slice(0, max);
+}
+
 export async function pickModel(provider: Exclude<ProviderId, 'nano'>, apiKey: string, role: ModelRole): Promise<string> {
   let available: string[] = [];
   try {

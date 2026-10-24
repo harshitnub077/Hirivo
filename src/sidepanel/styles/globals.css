@@ -1104,3 +1104,22 @@ details.section[open] > summary {
   border: 1px solid var(--line);
   overflow-wrap: anywhere;
 }
+
+/* Write to several people: selectable rows and one draft block per person. */
+.reach-row {
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.reach-row input[type='checkbox'] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.reach-draft {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.reach-draft:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}

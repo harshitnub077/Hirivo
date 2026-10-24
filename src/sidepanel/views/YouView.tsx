@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CheckCircle2, Cpu, Download, FileText, KeyRound, Mail, Mic, Palette, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
+import { CheckCircle2, ClipboardList, Cpu, Download, FileText, KeyRound, Mail, Mic, Palette, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
 import { db, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
 import { patchSettings } from '../../db/settings';
 import { testGroqConnection } from '../../llm/providers/groq';
@@ -75,6 +75,27 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
     const profile = await buildProfile(resumeText);
     await saveResumeProfile(null, resumeText, profile);
     flash(`Saved. ${profile.facts.length} facts found. Delete any that aren't true or useful.`);
+  };
+
+  const saveAnswers = async () => {
+    const t = (k: keyof UserSettings) => String(profile[k] ?? '').trim() || undefined;
+    await patchSettings({
+      currentCompany: t('currentCompany'),
+      currentTitle: t('currentTitle'),
+      degree: t('degree'),
+      graduationYear: t('graduationYear'),
+      country: t('country'),
+      authorizedCountries: t('authorizedCountries'),
+      noticePeriod: t('noticePeriod'),
+      earliestStart: t('earliestStart'),
+      currentCtc: t('currentCtc'),
+      expectedCtc: t('expectedCtc'),
+      languages: t('languages'),
+      howDidYouHear: t('howDidYouHear'),
+      willingToRelocate: profile.willingToRelocate || undefined,
+      eeoDecline: Boolean(profile.eeoDecline),
+    });
+    flash('Answers saved. Fill uses them on every application.');
   };
 
   const addFact = async () => {
@@ -291,6 +312,44 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
           Fill Greenhouse, Lever, Ashby and Workable forms as soon as they open, and attach my resume
         </label>
         <button className="btn primary" onClick={saveProfile}>Save profile</button>
+      </Section>
+
+      <Section
+        icon={<ClipboardList size={16} />}
+        title="Application answers"
+        meta={settings.noticePeriod || settings.authorizedCountries ? <Pill tone="ok">Saved</Pill> : <Pill>For Fill</Pill>}
+      >
+        <p className="small muted">
+          Saved once, used on every application form. Leave anything blank and Fill leaves that question for you; it never guesses a salary, a date or your visa status.
+        </p>
+        <div className="grid-2">
+          <Field label="Current company"><input {...p('currentCompany')} /></Field>
+          <Field label="Current title"><input {...p('currentTitle')} /></Field>
+          <Field label="Degree"><input {...p('degree')} placeholder="B.Tech, Computer Science" /></Field>
+          <Field label="Graduation year"><input {...p('graduationYear')} placeholder="2021" /></Field>
+          <Field label="Country you live in"><input {...p('country')} placeholder="India" /></Field>
+          <Field label="Can work without a visa in" hint="Comma-separated"><input {...p('authorizedCountries')} placeholder="India" /></Field>
+          <Field label="Notice period"><input {...p('noticePeriod')} placeholder="30 days" /></Field>
+          <Field label="Earliest start"><input {...p('earliestStart')} placeholder="Within 30 days" /></Field>
+          <Field label="Current CTC"><input {...p('currentCtc')} placeholder="18 LPA" /></Field>
+          <Field label="Expected CTC"><input {...p('expectedCtc')} placeholder="26 LPA" /></Field>
+          <Field label="Languages you speak" hint="Comma-separated"><input {...p('languages')} placeholder="English, Hindi" /></Field>
+          <Field label="Open to relocating">
+            <select value={profile.willingToRelocate || ''} onChange={(e) => setProfile({ ...profile, willingToRelocate: (e.target.value || undefined) as UserSettings['willingToRelocate'] })}>
+              <option value="">Ask me each time</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </Field>
+        </div>
+        <Field label="How you usually find jobs" hint="Used for “How did you hear about us?” when Hirivo doesn't know where you found this one.">
+          <input {...p('howDidYouHear')} placeholder="LinkedIn" />
+        </Field>
+        <label className="row small">
+          <input type="checkbox" checked={!!profile.eeoDecline} onChange={(e) => setProfile({ ...profile, eeoDecline: e.target.checked })} />
+          Answer diversity questions (gender, race, veteran, disability) with “Decline to self-identify”. Off: Fill leaves them for you.
+        </label>
+        <button className="btn primary" onClick={saveAnswers}>Save answers</button>
       </Section>
 
       <Section icon={<Users size={16} />} title="LinkedIn connections" meta={<Pill tone={connectionCount ? 'ok' : 'neutral'}>{connectionCount}</Pill>}>
