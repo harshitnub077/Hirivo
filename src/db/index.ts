@@ -377,6 +377,16 @@ export interface UserSettings {
   howDidYouHear?: string;
   languages?: string; // comma-separated
   eeoDecline?: boolean; // answer diversity questions with "decline to self-identify"
+  // Campus and Indian-portal answers. Blank = derive from the resume where possible, else ask.
+  major?: string; // branch / specialisation
+  cgpa?: string; // "8.6/10"
+  tenthPercent?: string;
+  twelfthPercent?: string;
+  state?: string;
+  postalCode?: string;
+  address?: string;
+  expectedStipend?: string; // ₹ per month
+  availableMonths?: number; // internship availability
   search?: SearchProfile;
   autopilot?: {
     enabled: boolean;

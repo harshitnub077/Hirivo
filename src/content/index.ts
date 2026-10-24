@@ -8,7 +8,7 @@
 
 import { attachResume, base64ToFile, SUCCESS_TEXT } from './formFill';
 import { countryOf, decide, fillQuestion, findQuestions, findSubmitButton, readComboboxOptions, type FillContext, type Question } from './formEngine';
-import type { AskRequest, AskResponse, FillProfile } from './profileTypes';
+import type { AskRequest, AskResponse, FillJobContext, FillProfile } from './profileTypes';
 
 const send = <T = any>(message: Record<string, unknown>) =>
   new Promise<T>((resolve) => {
@@ -194,15 +194,16 @@ async function fillAll({ withAi }: { withAi: boolean }): Promise<Report | undefi
   if (running) return;
   running = true;
   try {
-    const res = await send<{ profile?: FillProfile; source?: string }>({ action: 'GET_FILL_PROFILE', url: location.href });
+    const page = jobContext();
+    const res = await send<{ profile?: FillProfile; source?: string; context?: FillJobContext }>({ action: 'GET_FILL_PROFILE', url: location.href, jobLocation: page.location });
     if (!res?.profile) return;
     if (!res.profile.email && !res.profile.fullName) {
       // Nothing to fill with yet: say so once instead of listing every field as missing.
       render({ profile: [], ai: [], left: [], pendingAi: [], error: 'Set up Hirivo first: upload your resume in the Hirivo side panel, then press “Fill this page again”.' }, () => undefined);
       return;
     }
-    const job = jobContext();
-    const ctx: FillContext = { company: job.company, jobCountry: countryOf(job.location), source: res.source };
+    const job = page;
+    const ctx: FillContext = { ...res.context, company: job.company, jobCountry: res.context?.jobCountry || countryOf(job.location), source: res.source };
     const report: Report = { profile: [], ai: [], left: [], pendingAi: [] };
 
     for (const q of findQuestions()) {

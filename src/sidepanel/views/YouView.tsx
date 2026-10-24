@@ -93,6 +93,15 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
       expectedCtc: t('expectedCtc'),
       languages: t('languages'),
       howDidYouHear: t('howDidYouHear'),
+      major: t('major'),
+      cgpa: t('cgpa'),
+      tenthPercent: t('tenthPercent'),
+      twelfthPercent: t('twelfthPercent'),
+      state: t('state'),
+      postalCode: t('postalCode'),
+      address: t('address'),
+      expectedStipend: t('expectedStipend'),
+      availableMonths: Number(profile.availableMonths) || undefined,
       willingToRelocate: profile.willingToRelocate || undefined,
       eeoDecline: Boolean(profile.eeoDecline),
     });
@@ -343,6 +352,17 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
             </select>
           </Field>
         </div>
+        <div className="grid-2">
+          <Field label="Branch / major" hint="Blank: taken from your degree"><input {...p('major')} placeholder="Computer Science" /></Field>
+          <Field label="CGPA" hint="Blank: read from your resume"><input {...p('cgpa')} placeholder="8.6/10" /></Field>
+          <Field label="10th %"><input {...p('tenthPercent')} placeholder="92%" /></Field>
+          <Field label="12th %"><input {...p('twelfthPercent')} placeholder="88%" /></Field>
+          <Field label="State" hint="Blank: from your city"><input {...p('state')} placeholder="Karnataka" /></Field>
+          <Field label="PIN code"><input inputMode="numeric" {...p('postalCode')} placeholder="560034" /></Field>
+          <Field label="Expected stipend (₹/month)" hint="Blank: your minimum in Radar → Search"><input inputMode="numeric" {...p('expectedStipend')} placeholder="15000" /></Field>
+          <Field label="Can intern for (months)"><input type="number" min={1} max={24} {...p('availableMonths')} placeholder="6" /></Field>
+        </div>
+        <Field label="Address" hint="Only for forms that ask for it."><input {...p('address')} placeholder="Flat, street, area, city" /></Field>
         <Field label="How you usually find jobs" hint="Used for “How did you hear about us?” when Hirivo doesn't know where you found this one.">
           <input {...p('howDidYouHear')} placeholder="LinkedIn" />
         </Field>

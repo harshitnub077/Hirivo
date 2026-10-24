@@ -9,7 +9,7 @@
 // - never overwrites anything already filled or chosen.
 // Imported only by the content script, so it must not import from src/services (keeps content.js
 // a single self-contained file).
-import type { FillProfile } from './profileTypes';
+import type { FillJobContext, FillProfile } from './profileTypes';
 import { describe as describeField } from './formFill';
 
 export type QuestionKind = 'text' | 'textarea' | 'select' | 'combobox' | 'typeahead' | 'radio' | 'checkboxes' | 'checkbox' | 'yesno';
@@ -29,7 +29,7 @@ export interface Question {
 /** What the engine decided for a question. `value` is an option text for choices, text otherwise. */
 export type Decision = { fill: string | string[]; source: 'profile' | 'ai' } | { leave: string } | { ask: true };
 
-export interface FillContext {
+export interface FillContext extends Partial<FillJobContext> {
   company: string;
   jobCountry?: string;
   source?: string; // where the user found the job, e.g. "LinkedIn", "Company website"
@@ -202,6 +202,30 @@ const SHORT_FORMS: [RegExp, string][] = [
 ];
 const norm = (s: string) => SHORT_FORMS.reduce((t, [re, long]) => t.replace(re, long), s.toLowerCase().replace(/[^a-z0-9+#]+/g, ' ')).replace(/\s+/g, ' ').trim();
 
+const UNIT_DAYS: Record<string, number> = { day: 1, week: 7, month: 30, year: 365 };
+/** "30 days" → 30, "1 month" → 30, "Immediately" → 0; undefined when it isn't a duration. */
+export function daysOf(text: string): number | undefined {
+  const t = text.toLowerCase().trim();
+  if (/^(?:immediate(?:ly)?|asap|right away|now|0 days?|no notice|already serving|currently not working)$/.test(t)) return 0;
+  const m = t.match(/^(?:within |in )?(\d+(?:\.\d+)?)\s*(day|week|month|year)s?$/);
+  return m ? Math.round(Number(m[1]) * UNIT_DAYS[m[2]]) : undefined;
+}
+/** A duration option: exactly N days, a window up to N days, or more than N days. */
+function optionDays(option: string): { exact?: number; upTo?: number; over?: number } | undefined {
+  const t = option.toLowerCase().replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(?:immediate(?:ly)?|immediate joiner|asap|0 days?)\b/.test(t)) return { exact: 0, upTo: 0 };
+  const unit = (n: string, u: string) => Math.round(Number(n) * UNIT_DAYS[u.replace(/s$/, '')]);
+  let m = t.match(/(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)\s*(day|week|month|year)s?/);
+  if (m) return { upTo: unit(m[2], m[3]) };
+  m = t.match(/(?:more than|over|above|greater than|beyond|>)\s*(\d+(?:\.\d+)?)\s*(day|week|month|year)s?|(\d+(?:\.\d+)?)\s*\+\s*(day|week|month|year)s?/);
+  if (m) return { over: unit(m[1] || m[3], m[2] || m[4]) };
+  m = t.match(/(?:within|less than|under|up ?to|upto|<|by)\s*(\d+(?:\.\d+)?)\s*(day|week|month|year)s?/);
+  if (m) return { upTo: unit(m[1], m[2]) };
+  m = t.match(/^(\d+(?:\.\d+)?)\s*(day|week|month|year)s?$/);
+  if (m) return { exact: unit(m[1], m[2]), upTo: unit(m[1], m[2]) };
+  return undefined;
+}
+
 /** The option that best matches an answer, or -1. Handles yes/no, number ranges and loose text. */
 export function pickOption(options: string[], answer: string): number {
   const a = norm(answer);
@@ -230,6 +254,17 @@ export function pickOption(options: string[], answer: string): number {
       if (under) return n < Number(under[1]);
       return Number(o.match(/^\s*(\d+(?:\.\d+)?)\b/)?.[1]) === n;
     });
+    if (i >= 0) return i;
+  }
+  const days = daysOf(answer);
+  if (days !== undefined) {
+    const optDays = options.map(optionDays);
+    i = optDays.findIndex((d) => d?.exact === days);
+    if (i >= 0) return i;
+    // "Within 30 days" for 15 days: the tightest window that still holds the answer.
+    const windows = optDays.map((d, k) => ({ d, k })).filter((x) => x.d?.upTo !== undefined && days <= x.d.upTo!).sort((x, y) => x.d!.upTo! - y.d!.upTo!);
+    if (windows.length) return windows[0].k;
+    i = optDays.findIndex((d) => d?.over !== undefined && days > d.over);
     if (i >= 0) return i;
   }
   i = opts.findIndex((o) => o.length > 1 && (o.startsWith(a) || a.startsWith(o)));
@@ -270,19 +305,76 @@ export function countryOf(text: string): string | undefined {
 
 const has = (v: string | undefined | null): v is string => !!v && !!v.trim();
 
+const yesNo = (v: boolean | undefined) => (v === undefined ? undefined : v ? 'Yes' : 'No');
+
+/** For choice questions, the first candidate that matches an option (as that option's text). */
+function choose(q: Question, ...candidates: (string | undefined)[]): string | undefined {
+  const cands = candidates.filter(has);
+  if (!q.options.length) return cands[0];
+  for (const c of cands) {
+    const i = pickOption(q.options, c);
+    if (i >= 0) return q.options[i];
+  }
+  return undefined;
+}
+
+// Working from the company's office: anchor days, hybrid weeks, "willing to work from Pune".
+const OFFICE = /anchor days?|in[- ]office|commit to (?:working|work)|days? (?:a|per|each) week (?:in|at|from)|work(?:ing)? (?:from|at|out of) (?:our|the|one of our|their|your) [\w\s,-]*office|hybrid (?:model|work|setup|arrangement|schedule|policy|role)|work(?:ing)? (?:on[- ]?site|onsite|from (?:the )?office)|return to office|come (?:in)?to (?:the|our) office|willing to work from|comfortable (?:working|commuting)/i;
+function officeAnswer(ctx: FillContext, q: Question) {
+  const label = ` ${q.label.toLowerCase().replace(/[^a-z ]+/g, ' ')} `;
+  const named = (ctx.knownCities || []).filter((c) => label.includes(` ${c} `));
+  if (ctx.officeOk === 'no') return 'No';
+  if (named.length) {
+    if (named.some((c) => (ctx.reachCities || []).includes(c)) || ctx.relocate) return 'Yes';
+    return { leave: `Is ${named[0].replace(/\b\w/g, (m) => m.toUpperCase())} too far for you? Answer this one yourself.` };
+  }
+  if (ctx.officeOk === 'yes') return 'Yes';
+  if (ctx.jobCity && ctx.homeCity) return { leave: `This office is in ${ctx.jobCity}, outside your area around ${ctx.homeCity}. Answer it yourself, or set “Open to relocating” in You.` };
+  return { leave: 'Hirivo doesn’t know where this office is. Set your city and work modes in Radar → Search, or answer it yourself.' };
+}
+
+function experienceAnswer(p: FillProfile, q: Question) {
+  if (p.yearsExperience === undefined) return undefined;
+  const years = Math.round(p.yearsExperience);
+  if (years === 0 && q.options.length) {
+    const fresher = q.options.find((o) => /fresher|no (?:prior )?experience|^none$|entry|student|0\s*years?$/i.test(o.trim()));
+    if (fresher) return fresher;
+  }
+  return String(years);
+}
+
+function internshipAnswer(p: FillProfile, q: Question) {
+  if (!p.availableMonths) return { leave: 'Add how many months you can intern in You → Application answers.' };
+  const asked = Number(q.label.match(/(\d+)[- ]?months?/i)?.[1]);
+  if (asked && (q.kind === 'yesno' || q.kind === 'radio' || q.kind === 'select' || q.kind === 'combobox')) return p.availableMonths >= asked ? 'Yes' : 'No';
+  return choose(q, `${p.availableMonths} months`, String(p.availableMonths));
+}
+
+// Answers that are true for anyone who found the job online, in order of preference.
+const HEARD_FALLBACK = ['Job board', 'Online job board', 'Job portal', 'Job site', 'Online', 'Internet', 'Job search', 'Other'];
+function heardAnswer(p: FillProfile, ctx: FillContext, q: Question) {
+  const known = [ctx.source, p.howDidYouHear].filter(has);
+  if (!q.options.length) return known[0] || 'Online job board';
+  // Applying on the company's own careers page is itself true when nothing better is known.
+  const own = ctx.company ? [`${ctx.company} website`, `${ctx.company} careers`, `${ctx.company} careers page`] : [];
+  return choose(q, ...known, ...known.map((k) => k.replace(/\s*\(job board\)$/i, '')), ...HEARD_FALLBACK.slice(0, -1), ...own, 'Company website', 'Careers page', 'Other');
+}
+
 /** Rules that map a question to the user's saved profile. Order matters: first match wins. */
 const TEXT_KINDS: QuestionKind[] = ['text', 'textarea', 'typeahead', 'combobox'];
 
 const RULES: { test: RegExp; not?: RegExp; kinds?: QuestionKind[]; answer: (p: FillProfile, ctx: FillContext, q: Question) => string | string[] | undefined | { leave: string } }[] = [
   { test: /pronounc|phonetic/i, answer: () => ({ leave: 'Only you know how to say your name.' }) },
   { test: /\b(citizen|citizenship|permanent resident|nationality|passport)\b/i, answer: () => ({ leave: 'Answer this one yourself.' }) },
-  { test: /accommodat\w*|adjustments?\b|anchor days?|in[- ]office|commit to (?:working|work)|days? (?:a|per) week in/i, answer: () => ({ leave: 'Your call: only you know what you need here.' }) },
+  { test: OFFICE, answer: (p, ctx, q) => officeAnswer(ctx, q) },
+  { test: /accommodat\w*|adjustments?\b/i, answer: () => ({ leave: 'Your call: only you know what you need here.' }) },
   { test: /\b(?:employment|non[- ]?compete|non[- ]?solicit\w*|post[- ]employment) (?:agreements?|restrictions?|obligations?)\b|\bbound by\b/i, answer: () => ({ leave: 'Only you know your contract terms.' }) },
   { test: /\b(preferred|nick) ?name|name (?:you'?d|you would) (?:prefer|like)|what (?:should|would you like) (?:we|us to) call you\b/i, answer: (p) => p.firstName },
   { test: /\bfirst[\s_-]?name|given[\s_-]?name\b/i, answer: (p) => p.firstName },
   { test: /\b(last|family)[\s_-]?name|surname\b/i, answer: (p) => p.lastName },
   { test: /^(?:full )?name\??$|\bfull[\s_-]?name\b|^your (?:full )?name\b|legal name/i, not: /company|employer|school|reference|referr/i, answer: (p) => p.fullName },
   { test: /\be-?mail\b/i, not: /referr|reference/i, answer: (p) => p.email },
+  { test: /country code|dial(?:l?ing)? code|calling code|phone code|\bisd\b/i, answer: (p, _c, q) => choose(q, p.dialCode, p.country) },
   { test: /^(?:mobile|phone|telephone|contact)(?: number| no\.?)?$|\bphone\b|\b(?:mobile|whatsapp|contact) (?:number|no)\b/i, not: /referr|reference|country code|app\b/i, kinds: ['text'], answer: (p) => p.phone },
   { test: /linkedin/i, kinds: ['text'], answer: (p) => p.linkedinUrl },
   { test: /github/i, kinds: ['text'], answer: (p) => p.githubUrl },
@@ -290,10 +382,20 @@ const RULES: { test: RegExp; not?: RegExp; kinds?: QuestionKind[]; answer: (p: F
   { test: /\b(?:previously|ever|formerly|before)\b.*\b(?:work(?:ed)?|employ\w*|consult\w*|intern\w*)\b.*\b(?:at|for|with|by)\b/i, answer: (p, ctx) => (ctx.company && p.resumeText ? (p.resumeText.includes(ctx.company.toLowerCase()) ? 'Yes' : 'No') : undefined) },
   { test: /^(?:your )?(?:current|present|most recent|latest) (?:company|employer|organi[sz]ation)(?: name)?\??$|^(?:company|employer)(?: name)?$/i, kinds: TEXT_KINDS, answer: (p) => p.currentCompany },
   { test: /^(?:your )?(?:current|present|most recent|latest) (?:job )?(?:title|role|designation|position)\??$|^(?:job )?(?:title|designation)$/i, kinds: TEXT_KINDS, answer: (p) => p.currentTitle },
+  { test: /\b(?:10th|tenth|class (?:x|10)|ssc|secondary school|matric\w*)\b/i, not: /12th|xii|hsc|senior secondary/i, answer: (p) => p.tenthPercent },
+  { test: /\b(?:12th|twelfth|class (?:xii|12)|hsc|senior secondary|higher secondary|intermediate|puc)\b/i, answer: (p) => p.twelfthPercent },
+  { test: /\b(?:c\.?g\.?p\.?a|gpa|cpi|sgpa|grade point|aggregate|academic score|percentage|marks)\b/i, answer: (p) => p.cgpa },
+  { test: /currently (?:pursuing|enrolled|studying)|are you (?:a )?(?:current |currently )?(?:student|enrolled)|still (?:in college|studying)|pursuing (?:a|your) degree/i, answer: (p) => yesNo(p.studying) },
+  { test: /\b(?:current )?year of (?:study|studies|degree)|which year (?:are you|of)|current (?:academic )?year|\bsemester\b/i, not: /graduat|passing|completion/i, answer: (p, _c, q) => choose(q, p.yearOfStudy, p.studying === false ? 'Graduated' : '') },
+  { test: /\b(branch|major|specialization|specialisation|discipline|stream|field of study|area of study|course name)\b/i, answer: (p) => p.major },
   { test: /\b(university|college|school|institution|alma mater)\b/i, not: /high school|degree|major|discipline|year|gpa|grade/i, answer: (p) => p.college },
-  { test: /\b(highest )?(degree|qualification|education level)\b/i, not: /year|gpa|grade|university|college/i, answer: (p) => p.degree },
+  { test: /highest (?:qualification|education|degree|level)|education(?:al)? (?:level|qualification)|level of education/i, answer: (p, _c, q) => choose(q, p.degree, p.degreeLevel, p.degreeLevel.replace("'s", ''), p.degreeLevel === "Bachelor's" ? 'Graduate' : p.degreeLevel === "Master's" ? 'Post Graduate' : '') },
+  { test: /\b(highest )?(degree|qualification)\b/i, not: /year|gpa|grade|university|college|pursu|enrol|currently|level/i, answer: (p, _c, q) => choose(q, p.degree, p.degreeLevel) },
   { test: /\b(graduation|graduating|passing|completion) (?:year|date)|year of (?:graduation|passing)\b/i, answer: (p) => p.graduationYear },
-  { test: /\b(total |overall |relevant )?(?:years? of|yrs? of) (?:professional |work |relevant |industry )?experience\b|how many years/i, not: /\b(with|in|using) [A-Za-z]/, answer: (p) => (p.yearsExperience !== undefined ? String(Math.round(p.yearsExperience)) : undefined) },
+  { test: /\b(total |overall |relevant )?(?:years? of|yrs? of) (?:professional |work |relevant |industry )?experience\b|how many years|\b(?:total|overall|work|professional|relevant|industry) experience\b|\bexperience \(?in years\)?/i, not: /\b(with|in|using) (?!years?\b|months?\b)[A-Za-z]/, answer: (p, _c, q) => experienceAnswer(p, q) },
+  { test: /available for (?:a |an |the )?(\d+)[- ]?months?|(\d+)[- ]?months? (?:internship|duration|commitment)|internship duration|duration of (?:the )?internship|how long can you intern/i, answer: (p, _c, q) => internshipAnswer(p, q) },
+  { test: /\b(?:18|eighteen) years|at least 18|over 18|above 18|of legal (?:working )?age/i, answer: (p) => (p.adult ? 'Yes' : undefined) },
+  { test: /\bstipend\b/i, not: /current|last|previous/i, answer: (p) => p.expectedStipend },
   { test: /\bnotice period|serving notice|last working day\b/i, answer: (p) => p.noticePeriod },
   { test: /\b(expected|desired|expectation|target)\b.*\b(ctc|salary|compensation|pay)\b|\bsalary expectations?\b/i, answer: (p) => p.expectedCtc },
   { test: /\b(current|present|existing)\b.*\b(ctc|salary|compensation|pay)\b|^ctc$/i, answer: (p) => p.currentCtc },
@@ -316,13 +418,36 @@ const RULES: { test: RegExp; not?: RegExp; kinds?: QuestionKind[]; answer: (p: F
     },
   },
   { test: /\b(country of residence|country you (?:live|reside)|current country|which country)\b|^country$/i, answer: (p) => p.country },
+  { test: /^(?:current |home |your )?city\b|city of residence|^town\/city|^city\/town/i, not: /relocat|willing|preferred|office/i, kinds: TEXT_KINDS, answer: (p) => p.city },
+  { test: /^(?:current )?state\b|state ?\/ ?(?:province|region)|^province|^region$/i, not: /statement/i, answer: (p, _c, q) => choose(q, p.state) },
+  { test: /\b(?:pin ?code|postal ?code|zip(?: ?code)?|post ?code)\b/i, answer: (p) => p.postalCode },
+  { test: /\b(?:current |permanent |residential |home |full |postal |mailing )?address\b/i, not: /e-?mail|web|url|ip address|address(?:ing|ed) /i, answer: (p) => p.address },
+  { test: /preferred (?:work |job |office )?(?:location|city)|location preference|which (?:office|location) (?:would you|do you) prefer/i, answer: (p, _c, q) => choose(q, p.city) },
+  { test: /\btwitter\b|\bx\.com\b/i, answer: () => undefined },
   { test: /\b(current )?(location|city)\b|where are you (?:based|located)|based out of/i, not: /relocat|willing|preferred|office|hub|work from/i, kinds: TEXT_KINDS, answer: (p) => p.location },
-  { test: /\bhow (?:did )?you (?:hear|heard|find|found|learn|learned|come across|came across)|where did you (?:hear|find|see)|^(?:lead |candidate |application |referral )?source$/i, answer: (p, ctx) => ctx.source || p.howDidYouHear },
+  { test: /\bhow (?:did )?you (?:hear|heard|find|found|learn|learned|come across|came across)|where did you (?:hear|find|see)|^(?:lead |candidate |application |referral )?source$/i, answer: (p, ctx, q) => heardAnswer(p, ctx, q) },
   { test: /\blanguages?\b/i, not: /programming|coding|scripting|framework|tech|stack|query/i, answer: (p) => (p.languages.length ? p.languages : undefined) },
   { test: /\breferr(?:ed|al)\b.*\b(by|name|employee)\b|employee who referred/i, answer: () => ({ leave: 'Only if someone really referred you.' }) },
 ];
 
 const isChoice = (q: Question) => q.kind !== 'text' && q.kind !== 'textarea' && q.kind !== 'typeahead';
+
+/**
+ * Text boxes that name a unit get just the number: "Notice period (in days)" → "30",
+ * "Expected CTC (in LPA)" → "6", "Stipend (per month)" → "10000".
+ */
+export function inUnits(q: Pick<Question, 'label' | 'inputType'>, value: string): string {
+  const label = q.label.toLowerCase();
+  const numeric = q.inputType === 'number';
+  const days = daysOf(value);
+  if (days !== undefined && (/\bin days\b|\(days\)|no\.? of days|number of days/.test(label) || numeric)) return String(days);
+  if (days !== undefined && /\bin months\b|\(months\)/.test(label)) return String(Math.round(days / 30));
+  const lakhs = value.match(/^\s*(\d+(?:\.\d+)?)\s*(?:lpa|lakhs?|lacs?|l)\b/i);
+  if (lakhs && (/\bin lpa\b|\(lpa\)|in lakhs?|\(lakhs?\)/.test(label) || numeric)) return lakhs[1];
+  if (lakhs && /per annum|annual|\(inr\)|in inr|in rupees|₹/.test(label)) return String(Math.round(Number(lakhs[1]) * 100000));
+  if (numeric && /^\s*[\d.,]+\s*\S*$/.test(value)) return value.replace(/[^\d.]/g, '');
+  return value;
+}
 
 /** Decides one question from the profile. `{ ask: true }` means "let the AI try from the resume". */
 export function decide(q: Question, p: FillProfile, ctx: FillContext): Decision {
@@ -339,7 +464,7 @@ export function decide(q: Question, p: FillProfile, ctx: FillContext): Decision 
     if (!rule.test.test(q.label) || rule.not?.test(q.label) || (rule.kinds && !rule.kinds.includes(q.kind))) continue;
     const a = rule.answer(p, ctx, q);
     if (a && typeof a === 'object' && !Array.isArray(a)) return a;
-    if (Array.isArray(a) ? a.length : has(a)) return { fill: a!, source: 'profile' };
+    if (Array.isArray(a) ? a.length : has(a)) return { fill: typeof a === 'string' && !isChoice(q) ? inUnits(q, a) : a!, source: 'profile' };
     // The rule knew what was asked but there's no saved answer: don't let the AI guess personal data.
     return { leave: 'Not saved in Hirivo yet (You → Profile or Application answers).' };
   }

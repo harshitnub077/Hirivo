@@ -1,7 +1,7 @@
 // Background service worker (MV3). It holds no state between wake-ups: everything lives in IndexedDB.
 import { db } from '../db';
 import { getSettings } from '../db/settings';
-import { buildFillProfile, sourceForUrl } from '../services/formAutofill';
+import { buildFillProfile, sourceForUrl, fillJobContext, jobForPage } from '../services/formAutofill';
 import { answerFormQuestions } from '../services/formAnswers';
 import { matchesTargets, refreshAll } from '../services/watchlist';
 import { dueFollowupStage } from '../services/outreach';
@@ -362,8 +362,10 @@ chrome.notifications.onClicked.addListener(async (id) => {
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'GET_FILL_PROFILE') {
-    Promise.all([getSettings(), db.resumes.get('primary'), sourceForUrl(String(request.url || ''))])
-      .then(([settings, resume, source]) => sendResponse({ success: true, profile: buildFillProfile(settings, resume?.rawText), source }))
+    Promise.all([getSettings(), db.resumes.get('primary'), sourceForUrl(String(request.url || '')), jobForPage(String(request.url || ''))])
+      .then(([settings, resume, source, job]) =>
+        sendResponse({ success: true, profile: buildFillProfile(settings, resume?.rawText), source, context: fillJobContext(settings, job?.location || String(request.jobLocation || '')) })
+      )
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
   }
