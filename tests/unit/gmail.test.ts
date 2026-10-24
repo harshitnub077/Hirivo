@@ -11,6 +11,7 @@ import {
   findReplies,
   getAccessToken,
   GmailNeedsReconnect,
+  signInHelp,
   hasRequiredScopes,
   parseAuthRedirect,
   pkceChallenge,
@@ -219,5 +220,14 @@ describe('drafts', () => {
     const raw = fromB64Url(draft.message.raw);
     expect(raw).toContain('In-Reply-To: <m1@x>');
     expect(utf8(raw.match(/=\?UTF-8\?B\?(.+?)\?=/)![1])).toBe('Re: Checkout speed');
+  });
+});
+
+describe('sign-in errors', () => {
+  it('turns Google\'s "access blocked" dead end into the fix', () => {
+    expect(signInHelp('The user did not approve access.')).toMatch(/Audience → Test users/);
+    expect(signInHelp('Gmail access was not granted.')).toMatch(/exact Gmail address/);
+    expect(signInHelp('Google sign-in failed (redirect_uri_mismatch).')).toMatch(/redirect address/);
+    expect(signInHelp('Network error')).toBe('Network error');
   });
 });

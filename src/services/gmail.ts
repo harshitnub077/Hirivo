@@ -231,6 +231,17 @@ async function api<T>(path: string, init: RequestInit = {}, deps: AuthDeps = def
 
 // ---------- Connect / disconnect (side panel, from a click) ----------
 
+/** Google's "Access blocked: … has not completed the Google verification process" page ends in a
+ * closed window with no detail. The usual cause is a Testing-mode app whose test users don't include
+ * the account the user signed in with, so say exactly that. */
+export function signInHelp(message: string): string {
+  if (/did not approve|was closed|not granted|access_denied|canceled|cancelled/i.test(message)) {
+    return 'Google didn’t let this account in. If it said “has not completed the Google verification process”, open Google Auth Platform → Audience → Test users and add the exact Gmail address you are signing in with (or press “Publish app”), then press Connect again.';
+  }
+  if (/redirect_uri_mismatch/i.test(message)) return 'Google rejected the redirect address. Copy the exact address from step 4 into your client’s Authorized redirect URIs.';
+  return message;
+}
+
 export async function connectGmail(clientId: string, clientSecret: string, override: Partial<AuthDeps> = {}): Promise<GmailState> {
   if (!/\.apps\.googleusercontent\.com$/.test(clientId.trim())) throw new Error('That doesn’t look like a Google OAuth client ID (it ends in .apps.googleusercontent.com).');
   if (!clientSecret.trim()) throw new Error('Paste the client secret too. It stays on this computer.');
@@ -241,7 +252,9 @@ export async function connectGmail(clientId: string, clientSecret: string, overr
   }
   // chrome.identity exists only once the permission is granted, so build the helpers now.
   const deps: AuthDeps = { ...defaultDeps(), ...override };
-  const t = await codeFlow({ clientId: clientId.trim(), clientSecret: clientSecret.trim() }, deps, false);
+  const t = await codeFlow({ clientId: clientId.trim(), clientSecret: clientSecret.trim() }, deps, false).catch((err: Error) => {
+    throw new Error(signInHelp(err.message));
+  });
   if (!hasRequiredScopes(t.scope)) throw new Error('Google didn’t grant both Gmail permissions (compose and read). Connect again and tick both boxes.');
   const now = (deps.now || Date.now)();
   const profile = await (

@@ -73,7 +73,8 @@ export function GmailSection({ settings }: { settings: UserSettings }) {
             Turn on the {link('Gmail API', '/apis/library/gmail.googleapis.com')} for that project.
           </li>
           <li>
-            Open {link('Google Auth Platform', '/auth/overview')}: choose <b>External</b>, add your own email under <b>Audience → Test users</b>, and under{' '}
+            Open {link('Google Auth Platform', '/auth/overview')}: choose <b>External</b>, add the <b>exact Gmail address you will sign in with</b> under{' '}
+            {link('Audience → Test users', '/auth/audience')} (otherwise Google shows “Access blocked … has not completed the verification process”), and under{' '}
             <b>Data access</b> add the scopes <span className="mono">gmail.compose</span> and <span className="mono">gmail.readonly</span>.
             <span className="muted"> In Testing mode Google signs you out every 7 days; press “Publish app” to avoid that. Google will call it unverified, which is expected for an app only you use.</span>
           </li>
