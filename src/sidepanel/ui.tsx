@@ -45,7 +45,7 @@ export function Meter({ value, tone = 'ok', label }: { value: number; tone?: Ton
   const pct = Math.max(0, Math.min(100, value));
   return (
     <div className={clsx('meter', tone !== 'ok' && tone)} role="meter" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-      <i style={{ width: `${pct}%` }} />
+      <i style={{ transform: `scaleX(${pct / 100})` }} />
     </div>
   );
 }

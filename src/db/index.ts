@@ -245,7 +245,8 @@ export interface UserSettings {
   chosenRoles?: string[]; // titles the user picked from suggestedRoles
   locationPreference?: 'india' | 'remote' | 'anywhere';
   smallTeamsOnly?: boolean;
-  autoFillForms?: boolean; // fill ATS forms as soon as they open (the user still submits)
+  autoFillForms?: boolean;
+  theme?: 'dark' | 'light' | 'system'; // dark is the default // fill ATS forms as soon as they open (the user still submits)
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;

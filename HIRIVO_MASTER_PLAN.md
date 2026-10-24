@@ -32,8 +32,10 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Files | `public/brand/`: `hirivo-mark.svg`, `-dark`, `-mono`, `hirivo-icon.svg` (app tile), `hirivo-icon-small.svg` (heavier stroke for 16–32 px), `hirivo-wordmark.svg`, `-dark` (outlined, no font needed) |
 | Icons | `npm run generate-icons` renders `public/icons/*.png` and `store/promo-small-440x280.png` from the SVGs |
 | Type | **Geist** (UI) and **Geist Mono** (fact tags, numbers). Bundled locally via `@fontsource-variable`, never loaded from Google Fonts. |
-| Colour (light) | ink `#0E1116`, paper `#FAFAF7`, surface `#FFFFFF`, line `#E7E5DF`, **Verified Green `#0F7A55`**, caution `#A15C00`, risk `#B42318` |
-| Colour (dark) | ink `#ECEDEE`, paper `#0D0F12`, surface `#15181D`, line `#262A31`, green `#3FD69B`, caution `#F2B84B`, risk `#F97066` |
+| Theme | **Dark-first** (graphite with a faint green undertone), light and "match system" as opt-in themes in You → Appearance |
+| Colour (dark, default) | paper `#0B0E0D`, surface `#121715`, surface-2 `#171D1A`, well (inputs) `#0E1211`, line `#222B27`, ink `#E6ECE8`, ink-2 `#B9C4BE`, muted `#8D9A93`, **jade `#4BC994`** (verified / primary), caution `#E9B44C`, risk `#F07A66`. Lowest text contrast 5.29:1 |
+| Colour (light) | paper `#F5F6F3`, surface `#FFFFFF`, ink `#0F1412`, muted `#5F6B65`, **green `#0A714B`**, caution `#9A5A00`, risk `#B42318`. Lowest text contrast 4.55:1 |
+| Rules | One accent only; no gradients, glass, glow or neon; no eyebrow labels or section numbers; icons from Lucide only (no emoji or ✓ glyphs); selection, caret, scrollbars and focus rings themed; motion = one staggered verdict reveal, from a visible state |
 | Voice | Plain, direct, kind. Say "skip this one for now", not "DO NOT APPLY". Never hype. |
 
 **Signature UI element:** the Verdict Strip on every job, four pills that answer "should I bother?" at a glance:
@@ -41,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.4, built and verified)
+## 3. What exists today (v2.5, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -67,7 +69,9 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Repost fingerprint: SHA-256 of normalised description in `fingerprints` (schema v5); same-site reposts and re-dated listings | Done (Phase A) | `src/services/repostFingerprint.ts` |
 | Contact ladder: people you know → staff on the company site (investors/testimonials filtered, ranked by closeness to hiring) → GitHub org members → careers inbox; every contact has a why; alumni search the user runs | Done (Phase C) | `src/services/contactLadder.ts`, `src/services/contacts/*`, `views/PeoplePanel.tsx` |
 | Hook Finder: blog feed, GitHub releases, HN, Google News; only linked hooks under 90 days | Done (Phase C) | `src/services/hookFinder.ts`, `views/WritePanel.tsx` |
-| Tests: 111 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Resume keyword match (deterministic), Answers tab (application questions and cover letters, fact-checked), autofill on 13 ATS incl. Workday and Indian ATS, data import, post-apply nudge, progressive Discover, Getting started, Alt+H | Done (audit) | `keywordMatch.ts`, `answerWriter.ts`, `views/AnswerPanel.tsx`, `content/formFill.ts` |
+| Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
+| Tests: 120 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
@@ -222,6 +226,23 @@ Paste each prompt as is. Each one assumes the rules in section 1 and ends with a
 > Never add a source that requires login or forbids automated access.
 >
 > Acceptance: `npm run test:live` passes for the new source, and Discover credits it.
+
+## 4b. Competitive audit (October 2026)
+
+What competitors had that Hirivo lacked, and what was done. Sources: Jobright's own 2026 comparison, Stork's Simplify vs Teal, Scoutify's 2026 roundup, Unstar's 2026 review analysis.
+
+| Gap | Who had it | Status |
+|---|---|---|
+| Resume ↔ job keyword check | Teal (Keyword Scanner), Jobright | Done: deterministic, works without a key, "add only if true" |
+| Answers to application questions, cover letters | Simplify, Jobright | Done: fact-backed, same company-claim guard as emails |
+| Autofill beyond 4 ATS | Simplify (100+) | Partly: 13 ATS incl. Workday, iCIMS, SmartRecruiters, Keka, Darwinbox, Zoho Recruit, Freshteam. Next: multi-step Workday pages, dropdowns |
+| Resume tailoring per job (rewrite) | Teal, Jobright | Open. Do it honestly: reorder and reword existing facts only, never add claims |
+| Auto-submit | Simplify Autopilot, Jobright agent | Deliberately not built: spam, bans and bad applications. Hirivo fills; the user submits |
+| Silent applications (18% of 1–3★ app reviews) | — | Done: one-week nudge to message the team, contact ladder |
+| Ghost jobs (24% of 1–3★ reviews) | GhostJob-style detectors stop at a warning | Done: company-board check, repost fingerprint, placeholder detection, Scam Shield |
+| Works with no setup | Competitors host AI | Open: free BYOK keys plus no-AI features; Pro hosted AI later |
+
+Found in real-key testing: Groq retired Llama 3.x (registry handles it); the writer invented company news ("recently launched a new checkout UI"), now blocked by the company-claim check; some postings are placeholders ("Job Description Needs to be Added"), now flagged.
 
 ## 5. Growth and money (after 100 real users, not before)
 

@@ -114,7 +114,7 @@ export function ProofSprintCard({
             </p>
           </div>
         </div>
-        <button className="btn primary block" onClick={plan} disabled={busy || !hasKey}>
+        <button className="btn block" onClick={plan} disabled={busy || !hasKey}>
           {busy ? <RefreshCw size={14} className="spin" /> : <Hammer size={14} />} {busy ? 'Planning…' : 'Plan a Proof Sprint'}
         </button>
         {!hasKey && <p className="small muted">Needs a free AI key (You → AI keys).</p>}
@@ -125,8 +125,8 @@ export function ProofSprintCard({
 
   return (
     <div className="sprint fade-in">
-      <div className="eyebrow">Proof Sprint · closes “{sprint.gap}”</div>
       <div className="h2">{sprint.title}</div>
+      <div className="small muted">A Proof Sprint that closes “{sprint.gap}”</div>
       {sprint.scope && <p className="small">{sprint.scope}</p>}
       {sprint.stack.length > 0 && (
         <div className="row wrap" style={{ gap: 5 }}>

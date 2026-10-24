@@ -240,7 +240,7 @@ export function NowView(props: Props) {
           </button>
         </div>
 
-        <div className="verdict-strip" style={{ marginTop: 12 }}>
+        <div className={`verdict-strip${analyzed ? ' ready' : ''}`} key={job.analyzedAt} style={{ marginTop: 12 }}>
           <Pill tone={ghostTone} onClick={() => setPanel('evidence')} title="Is the job real and still open?">
             <small>Real</small>
             <b>{realLabel}</b>

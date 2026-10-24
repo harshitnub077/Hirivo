@@ -139,9 +139,7 @@ export function PeoplePanel({ job, settings, onUpdateJob, onPick, goTo }: Props)
 
       {visible.map(({ tier, contacts }) => (
         <section key={tier} className="card">
-          <div className="eyebrow" style={{ marginBottom: 6 }}>
-            {tier}. {TIER_LABELS[tier]}
-          </div>
+          <h3 className="section-title">{TIER_LABELS[tier]}</h3>
           <div className="list">
             {contacts.map((c) => (
               <div key={c.id} className="list-item">

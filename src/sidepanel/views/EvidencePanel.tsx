@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AlertTriangle, ArrowRight, CheckCircle2, CircleHelp, RefreshCw, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, CheckCircle2, CircleHelp, RefreshCw, XCircle } from 'lucide-react';
 import { db, JobSnapshot } from '../../db';
 import { keywordMatch } from '../../services/keywordMatch';
 import { Callout, Field, Pill } from '../ui';
@@ -109,7 +109,9 @@ function KeywordCard({ job }: { job: JobSnapshot }) {
       </p>
       <div className="row wrap" style={{ gap: 5 }}>
         {match.present.map((k) => (
-          <Pill key={k} tone="ok">✓ {k}</Pill>
+          <Pill key={k} tone="ok">
+            <Check size={11} aria-hidden="true" /> {k}
+          </Pill>
         ))}
         {match.missing.map((k) => (
           <Pill key={k}>{k}</Pill>

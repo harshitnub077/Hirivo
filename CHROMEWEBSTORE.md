@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.4.0
+**Version:** 2.5.0
 **Category:** Productivity
 
 ## Short description (≤132 chars)
@@ -37,7 +37,7 @@ Then Hirivo opens the email in Gmail for you to send, and reminds you to follow 
 | `scripting` | Reads the job on the current tab when the user presses Analyze. |
 | `activeTab` | Allows Analyze on the tab the user opened Hirivo from, without broad access. |
 | `alarms` | Checks watched companies every 6 hours, follow-ups every 3 hours, and Discover every 12 hours. |
-| `notifications` | Tells the user about new matching roles and due follow-ups. |
+| `notifications` | Tells the user about new matching roles, due follow-ups, and a one-time nudge a week after applying. |
 | Host: `api.groq.com`, `generativelanguage.googleapis.com`, `openrouter.ai` | Sends the user's own AI requests to the provider they chose, with their key. |
 | Host: `rdap.org`, `dns.google` | Domain age and mail-record checks for company legitimacy. |
 | Host: `boards-api.greenhouse.io`, `api.lever.co`, `api.ashbyhq.com` | Reads public job-board feeds to confirm roles are live and power Radar. |

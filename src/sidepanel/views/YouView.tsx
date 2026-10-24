@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CheckCircle2, Cpu, Download, FileText, KeyRound, Mic, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
+import { CheckCircle2, Cpu, Download, FileText, KeyRound, Mic, Palette, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
 import { db, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
 import { patchSettings } from '../../db/settings';
 import { testGroqConnection } from '../../llm/providers/groq';
@@ -10,7 +10,7 @@ import { getUsageToday } from '../../llm/usage';
 import { calibrateVoiceProfile } from '../../services/voiceFingerprint';
 import { importConnectionsToDB, parseLinkedInConnectionsCSV } from '../../services/warmPathMatcher';
 import { buildProfile, saveProfile as saveResumeProfile } from '../../services/resumeImport';
-import { Callout, Field, Pill } from '../ui';
+import { Callout, Field, Pill, Segmented } from '../ui';
 import { ResumeImport } from './ResumeImport';
 
 interface Props {
@@ -297,6 +297,19 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
           <Upload size={14} /> Upload Connections.csv
           <input type="file" accept=".csv" onChange={importCsv} hidden />
         </label>
+      </Section>
+
+      <Section icon={<Palette size={16} />} title="Appearance" meta={<Pill>{settings.theme === 'light' ? 'Light' : settings.theme === 'system' ? 'System' : 'Dark'}</Pill>}>
+        <Segmented
+          label="Theme"
+          value={settings.theme || 'dark'}
+          onChange={(theme) => patchSettings({ theme })}
+          options={[
+            { value: 'dark', label: 'Dark' },
+            { value: 'light', label: 'Light' },
+            { value: 'system', label: 'Match system' },
+          ]}
+        />
       </Section>
 
       <Section icon={<ShieldCheck size={16} />} title="Privacy and safety">

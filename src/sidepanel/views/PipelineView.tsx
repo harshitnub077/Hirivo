@@ -82,24 +82,20 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
 
   return (
     <div className="view">
-      <section className="card">
-        <div className="grid-2">
-          <div>
-            <div className="eyebrow">Today</div>
-            <div className="score num" style={{ fontSize: 22, marginTop: 4 }}>
-              {used}
-              <span className="muted" style={{ fontSize: 14 }}>/{cap}</span>
-            </div>
-          </div>
-          <div>
-            <div className="eyebrow">Reply rate</div>
-            <div className="score num" style={{ fontSize: 22, marginTop: 4 }}>
-              {outreach.length ? Math.round((replied / outreach.length) * 100) : 0}%
-              <span className="muted" style={{ fontSize: 14 }}> of {outreach.length}</span>
-            </div>
-          </div>
+      <section className="card stack">
+        <div className="row between">
+          <div className="h1">Pipeline</div>
+          <span className="small muted num">
+            {outreach.length ? `${Math.round((replied / outreach.length) * 100)}% replied (${replied} of ${outreach.length})` : 'No messages yet'}
+          </span>
         </div>
-        <div style={{ marginTop: 10 }}>
+        <div>
+          <div className="row between small" style={{ marginBottom: 6 }}>
+            <span className="muted">Sent today</span>
+            <span className="num">
+              {used} of {cap}
+            </span>
+          </div>
           <Meter value={(used / cap) * 100} tone={used >= cap ? 'risk' : 'ok'} label="Messages sent today" />
         </div>
       </section>

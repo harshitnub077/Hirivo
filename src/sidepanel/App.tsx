@@ -36,6 +36,10 @@ export const App: React.FC = () => {
   const watchlist = useLiveQuery(() => db.watchlist.toArray(), []) ?? [];
 
   const followupsDue = outreach.filter((r) => dueFollowupStage(r) > 0).length;
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings?.theme || 'dark';
+  }, [settings?.theme]);
   const newRoles = watchlist.reduce((n, c) => n + c.newRoleIds.length, 0);
 
   // Track which page is open so "Now" can show the saved analysis for it, without reading the page.
@@ -87,7 +91,7 @@ export const App: React.FC = () => {
           <span>hirivo</span>
         </div>
         <div className="spacer" />
-        {page && <span className="small muted truncate">{page.host}</span>}
+        {page && <span className="host truncate">{page.host}</span>}
       </header>
 
       <main className="content">
