@@ -8,6 +8,7 @@ import { analyzeJobFit } from '../../services/fitAdvisor';
 import { findWarmPaths } from '../../services/warmPathMatcher';
 import { daysSince } from '../../services/atsFeeds';
 import { checkScam } from '../../services/scamShield';
+import { realVerdict, safetyVerdict } from '../../services/verdicts';
 import { recordFingerprint } from '../../services/repostFingerprint';
 import { Callout, Empty, Meter, Pill, Segmented, Tone, toneForScore } from '../ui';
 import type { ActivePage } from '../page';
@@ -21,8 +22,6 @@ import { ResumePanel } from './ResumePanel';
 
 type Panel = 'evidence' | 'people' | 'write' | 'resume' | 'answers';
 
-const TONE_RANK: Record<Tone, number> = { neutral: 0, ok: 1, caution: 2, risk: 3 };
-const worstTone = (a: Tone, b: Tone): Tone => (TONE_RANK[a] >= TONE_RANK[b] ? a : b);
 
 export interface Recipient {
   name: string;
@@ -196,24 +195,9 @@ export function NowView(props: Props) {
   };
 
   const analyzed = job.analyzedAt > 0;
-  const ghostTone: Tone = !analyzed ? 'neutral' : job.atsType === 'unknown' && (job.ghostScore ?? 0) < 60 ? 'neutral' : toneForScore(100 - (job.ghostScore ?? 0), { good: 65, ok: 40 });
-  const realLabel = !analyzed ? '—' : ghostTone === 'ok' ? 'Live' : ghostTone === 'caution' ? 'Aging' : ghostTone === 'risk' ? 'Doubtful' : 'Unconfirmed';
+  const { tone: ghostTone, label: realLabel } = realVerdict(job);
   const fitTone = toneForScore(job.fitScore, { good: 80, ok: 55 });
-  const legitTone: Tone = job.legitScore === undefined ? 'neutral' : toneForScore(job.legitScore, { good: 70, ok: 45 });
-  const scamTone: Tone = job.scamLevel === 'risk' ? 'risk' : job.scamLevel === 'caution' ? 'caution' : job.scamLevel === 'clear' ? 'ok' : 'neutral';
-  const safetyTone = worstTone(legitTone, scamTone);
-  const safetyLabel =
-    safetyTone === 'risk'
-      ? 'Risky'
-      : safetyTone === 'caution'
-        ? 'Check'
-        : safetyTone === 'ok'
-          ? job.legitScore === undefined
-            ? 'No flags'
-            : 'Clear'
-          : analyzed
-            ? 'Add site'
-            : '—';
+  const { tone: safetyTone, label: safetyLabel } = safetyVerdict(job);
   const atsAge = daysSince(job.atsPublishedAt);
 
   return (

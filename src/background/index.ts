@@ -5,15 +5,18 @@ import { buildAutofillProfile } from '../services/formAutofill';
 import { matchesTargets, refreshAll } from '../services/watchlist';
 import { dueFollowupStage } from '../services/outreach';
 import { runDiscover } from '../services/discover';
+import { buildDaily5, localDayKey, nextDailyAt } from '../services/daily5';
 
 const RADAR_ALARM = 'radar-poll';
 const FOLLOWUP_ALARM = 'followup-check';
 const DISCOVER_ALARM = 'discover-run';
+const DAILY_ALARM = 'daily-5';
 
 async function ensureAlarms() {
   if (!(await chrome.alarms.get(RADAR_ALARM))) chrome.alarms.create(RADAR_ALARM, { periodInMinutes: 360, delayInMinutes: 1 });
   if (!(await chrome.alarms.get(FOLLOWUP_ALARM))) chrome.alarms.create(FOLLOWUP_ALARM, { periodInMinutes: 180, delayInMinutes: 1 });
   if (!(await chrome.alarms.get(DISCOVER_ALARM))) chrome.alarms.create(DISCOVER_ALARM, { periodInMinutes: 720, delayInMinutes: 5 });
+  if (!(await chrome.alarms.get(DAILY_ALARM))) chrome.alarms.create(DAILY_ALARM, { when: nextDailyAt(), periodInMinutes: 1440 });
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -29,6 +32,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === RADAR_ALARM) await pollWatchlist();
   if (alarm.name === FOLLOWUP_ALARM) await checkFollowups();
   if (alarm.name === DISCOVER_ALARM) await discoverInBackground();
+  if (alarm.name === DAILY_ALARM) await morningShortlist();
   await updateBadge();
 });
 
@@ -50,6 +54,25 @@ async function pollWatchlist() {
             .slice(0, 3)
             .map(({ company, role }) => `${company.name}: ${role.title}`)
             .join('\n'),
+    priority: 1,
+  });
+}
+
+/** 8:00 local: refresh the feed if it's stale, pick today's five, send one notification. */
+async function morningShortlist() {
+  const settings = await getSettings();
+  const lastRun = Math.max(0, ...(await db.sourceFetches.toArray()).map((f) => f.fetchedAt));
+  if (settings.targetRoles?.length && Date.now() - lastRun > 6 * 3_600_000) await runDiscover().catch(() => undefined);
+  const { picks } = await buildDaily5();
+  if (!settings.earlyBirdAlerts || picks.length === 0) return;
+  chrome.notifications.create(`daily5:${localDayKey()}`, {
+    type: 'basic',
+    iconUrl: 'icons/icon128.png',
+    title: picks.length === 5 ? 'Your 5 for today' : `Your ${picks.length} for today`,
+    message: picks
+      .slice(0, 3)
+      .map((p) => `${p.company}: ${p.title}`)
+      .join('\n'),
     priority: 1,
   });
 }

@@ -8,6 +8,7 @@ import { openUrl } from '../../services/outreach';
 import { Callout, Empty, Pill, Segmented, timeAgo, toneForScore } from '../ui';
 import { getActivePage, saveJobsFromActivePage } from '../page';
 import { ResumeImport } from './ResumeImport';
+import { Daily5Card } from './Daily5Card';
 
 type Filter = 'new' | 'saved' | 'applying' | 'companies';
 const SEARCH_SITES = /linkedin\.com|naukri\.com|indeed\.|wellfound\.com|instahyre\.com|cutshort\.io|foundit\.in/;
@@ -87,6 +88,7 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
 
   return (
     <div className="stack">
+      <Daily5Card />
       <section className="card stack">
         <div className="row between">
           <div style={{ minWidth: 0 }}>

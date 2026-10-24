@@ -95,11 +95,47 @@ export async function githubHooks(org: string, now = Date.now()): Promise<Hook[]
   return lists.flat();
 }
 
-export async function hnHooks(company: string): Promise<Hook[]> {
+const STOP = new Set('about after again against their there these those which while would could should other where being every under above below between through during before because company companies people world today latest newest years month across within'.split(' '));
+const stem = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6);
+
+/** Words that describe what the company does (from its homepage and the job), to tell it apart from namesakes. */
+export function contextTerms(text: string, company: string): Set<string> {
+  const own = new Set(company.toLowerCase().split(/\s+/).map(stem));
+  const counts = new Map<string, number>();
+  for (const w of text.toLowerCase().match(/[a-z][a-z0-9-]{4,}/g) || []) {
+    if (STOP.has(w)) continue;
+    const k = stem(w);
+    if (own.has(k)) continue;
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return new Set([...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([k]) => k));
+}
+
+/** A third-party headline counts only if it names the company AND shares a word of its context.
+ * Stops "Ross Atlan releases debut single" from being a hook for Atlan the data company. */
+export function aboutCompany(title: string, company: string, terms: Set<string>): boolean {
+  if (!mentions(title, company)) return false;
+  if (terms.size === 0) return true;
+  return (title.toLowerCase().match(/[a-z][a-z0-9-]{4,}/g) || []).some((w) => terms.has(stem(w)));
+}
+
+/** "Show HN: Atlan, my AI agent" is someone's project named Atlan, unless it links to the company's own site. */
+export function hnPostIsCompany(title: string, url: string | undefined, domain?: string): boolean {
+  if (!/^(?:show|launch) hn\b/i.test(title)) return true;
+  if (!url || !domain) return false;
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    return host === domain || host.endsWith(`.${domain}`);
+  } catch {
+    return false;
+  }
+}
+
+export async function hnHooks(company: string, terms: Set<string> = new Set(), domain?: string): Promise<Hook[]> {
   const res = await fetch(`https://hn.algolia.com/api/v1/search_by_date?query=${encodeURIComponent(`"${company}"`)}&tags=story&hitsPerPage=20`);
   if (!res.ok) return [];
   return ((await res.json()).hits || [])
-    .filter((h: any) => h.title && mentions(h.title, company))
+    .filter((h: any) => h.title && aboutCompany(h.title, company, terms) && hnPostIsCompany(h.title, h.url, domain))
     .map(
       (h: any): Hook => ({
         id: `hn:${h.objectID}`,
@@ -113,11 +149,11 @@ export async function hnHooks(company: string): Promise<Hook[]> {
     );
 }
 
-export async function newsHooks(company: string): Promise<Hook[]> {
+export async function newsHooks(company: string, terms: Set<string> = new Set()): Promise<Hook[]> {
   const res = await fetchText(`https://news.google.com/rss/search?q=${encodeURIComponent(`"${company}"`)}&hl=en-IN&gl=IN&ceid=IN:en`);
   if (!res.ok) return [];
   return parseFeed(res.text, 20)
-    .filter((i) => i.date && mentions(i.title, company))
+    .filter((i) => i.date && aboutCompany(i.title, company, terms))
     .map((i) => {
       const [headline, publisher] = i.title.split(/\s+-\s+(?=[^-]+$)/);
       return {
@@ -147,14 +183,16 @@ export function selectHooks(hooks: Hook[], now = Date.now()): Hook[] {
 }
 
 export async function findHooks(
-  input: { company: string; domain?: string; githubOrg?: string; feedUrl?: string; siteAllowed: boolean },
+  input: { company: string; domain?: string; githubOrg?: string; feedUrl?: string; siteAllowed: boolean; context?: string },
   { force = false } = {}
 ): Promise<Hook[]> {
   return cached(
-    `hooks:${input.company.toLowerCase()}:${input.domain || ''}`,
+    `hooks:v3:${input.company.toLowerCase()}:${input.domain || ''}`,
     12 * 3_600_000,
     async () => {
-      const jobs: Promise<Hook[]>[] = [hnHooks(input.company), newsHooks(input.company)];
+      // News and HN are third-party: keep only headlines that match what this company does.
+      const terms = contextTerms(input.context || '', input.company);
+      const jobs: Promise<Hook[]>[] = [hnHooks(input.company, terms, input.domain), newsHooks(input.company, terms)];
       if (input.domain && input.siteAllowed) jobs.push(blogHooks(input.domain, input.feedUrl));
       if (input.githubOrg) jobs.push(githubHooks(input.githubOrg));
       const results = await Promise.all(jobs.map((j) => j.catch(() => [] as Hook[])));

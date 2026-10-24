@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isPersonName, roleIsElsewhere, scanPage } from '../../src/services/contacts/teamPage';
 import { buildLadder, jobFamily, roleRelevance } from '../../src/services/contactLadder';
 import { parseLinkedInConnectionsCSV } from '../../src/services/warmPathMatcher';
-import { hnHooks, parseFeed, selectHooks, type Hook } from '../../src/services/hookFinder';
+import { aboutCompany, contextTerms, hnHooks, hnPostIsCompany, parseFeed, selectHooks, type Hook } from '../../src/services/hookFinder';
 
 const doc = (html: string) => new DOMParser().parseFromString(html, 'text/html');
 
@@ -142,6 +142,21 @@ describe('feeds and hooks', () => {
     const h = (id: string, daysAgo: number, url = `https://x/${id}`, title = id): Hook => ({ id, source: 'news', sourceLabel: 'News', title, url, date: NOW - daysAgo * DAY, suggestion: id });
     const picked = selectHooks([h('old', 120), h('a', 5), h('b', 1), h('dup', 2, 'https://x/dup', 'b'), h('nolink', 1, ''), h('future', -5)], NOW);
     expect(picked.map((x) => x.id)).toEqual(['b', 'a']);
+  });
+
+  it('keeps namesakes out of third-party headlines', () => {
+    const terms = contextTerms('Atlan - The Context Layer for AI. Atlan gives AI agents a data graph, business logic and governance for enterprise data teams.', 'Atlan');
+    expect(aboutCompany('Atlan raises funding to build the context layer for enterprise AI', 'Atlan', terms)).toBe(true);
+    expect(aboutCompany('Atlan launches governance agents for data teams', 'Atlan', terms)).toBe(true);
+    expect(aboutCompany("Ross Atlan releases debut single 'I Can Feel Your Hands'", 'Atlan', terms)).toBe(false);
+    expect(aboutCompany('Former Atlan CEO Lee Kok Khee emerges as substantial shareholder in AWC', 'Atlan', terms)).toBe(false);
+    expect(aboutCompany('Daniel Atlan', 'Atlan', terms)).toBe(false);
+  });
+
+  it('treats Show HN posts as the company only when they link to its own site', () => {
+    expect(hnPostIsCompany('Show HN: Atlan, Your Mobile-Focused AI Agent', 'https://github.com/Atlansdaddy/atlan', 'atlan.com')).toBe(false);
+    expect(hnPostIsCompany('Launch HN: Atlan (YC W20) – Metadata for data teams', 'https://atlan.com/launch', 'atlan.com')).toBe(true);
+    expect(hnPostIsCompany('Atlan raises Series C', 'https://techcrunch.com/x', 'atlan.com')).toBe(true);
   });
 
   afterEach(() => vi.unstubAllGlobals());

@@ -1023,3 +1023,63 @@ details.section[open] > summary {
 .linklike:hover {
   text-decoration: underline;
 }
+
+/* ---------- Daily 5 ---------- */
+
+.daily-list {
+  list-style: none;
+  counter-reset: daily;
+  display: flex;
+  flex-direction: column;
+}
+
+.daily-list li {
+  counter-increment: daily;
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.daily-list li:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+/* The rank carries information here: it is the order to work through. */
+.daily-list li::before {
+  content: counter(daily);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand);
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-list .grow {
+  min-width: 0;
+}
+
+/* ---------- Interview pack ---------- */
+
+.pack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--well);
+}
+
+.pack ol,
+.pack ul {
+  margin: 4px 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+}

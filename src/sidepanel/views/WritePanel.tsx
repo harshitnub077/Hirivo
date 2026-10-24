@@ -32,7 +32,8 @@ function HookFinder({ job, onUse }: { job: JobSnapshot; onUse: (hook: string) =>
     try {
       const lookup = job.companyDomain ? await getCachedLookup(job.companyDomain) : undefined;
       const siteAllowed = job.companyDomain ? await hasSiteAccess(job.companyDomain) : false;
-      setHooks(await findHooks({ company: job.company, domain: job.companyDomain, githubOrg: lookup?.githubOrg, feedUrl: lookup?.feedUrl, siteAllowed }));
+      const context = [lookup?.homepageTitle, lookup?.homepageDescription, job.description.slice(0, 2500)].filter(Boolean).join('\n');
+      setHooks(await findHooks({ company: job.company, domain: job.companyDomain, githubOrg: lookup?.githubOrg, feedUrl: lookup?.feedUrl, siteAllowed, context }));
     } finally {
       setBusy(false);
     }

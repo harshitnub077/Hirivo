@@ -73,6 +73,28 @@ export async function seedDemo() {
       id: 'o2', jobId: 'y', companyName: 'Atlan', jobTitle: 'Full Stack Engineer', recipientName: 'Kabir Shah', recipientEmail: '', contactType: 'WARM_CONNECTION', channel: 'linkedin',
       emailSubject: 'LinkedIn note', emailBody: '…', linkedInNote: '', factsCited: [], status: 'REPLIED',
       createdAt: now - 3 * day, followup1Date: now + day, followup2Date: now + 6 * day, followupsDone: 0, repliedAt: now - day,
+      interviewPack: {
+        createdAt: now - day,
+        companyBrief: 'Atlan builds an active metadata platform that helps data teams find, trust and govern their data. (Sample pack for the demo.)',
+        sources: [{ title: 'Atlan homepage', url: 'https://atlan.com' }],
+        questions: [
+          'Walk me through a system you built end to end. What would you change now?',
+          'How would you make a slow, data-heavy table view feel instant?',
+          'Tell me about a bug that took you a long time to solve.',
+          'How do you decide what to test, and what not to?',
+          'How would you design search across millions of data assets?',
+          'Why this company, and why now?',
+          'Tell me about a disagreement with a teammate and how it ended.',
+          'What are you looking for in your next role?',
+        ],
+        strongestFacts: ['FACT-01', 'FACT-02'],
+        askThem: [
+          'What does great look like in this role after the first 90 days?',
+          'What is the biggest problem the frontend team is working on right now?',
+          'How does the team decide what to build next?',
+        ],
+        usedAI: false,
+      },
     },
   ]);
 }

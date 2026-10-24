@@ -20,6 +20,8 @@ A free Chrome extension that finds real jobs that fit you, tells you honestly wh
 8. **Tailors your resume to each job, honestly.** It puts the work the job cares about first and borrows the job's wording only where your resume already says the same thing. Every reworded line is checked against your original in code: a new number, tool, company, bigger role ("helped" → "led") or puffery ("widely adopted") means Hirivo keeps your words and tells you why. Missing keywords are listed for you to add only if true. Download as .docx or Markdown.
 9. **Answers application questions and writes cover letters** from the same facts, with the same check that nothing is claimed without proof.
 
+10. **Plans your morning and your interviews.** Every day at 8 you get "Your 5 for today": the best open roles by fit, freshness and people you know, never one that looks stale or unsafe. When someone replies, Hirivo prepares an interview pack: what the company does (with sources), likely questions for the role, your three strongest proofs, and good questions to ask.
+
 Dark by default, with a light theme in You → Appearance. Press **Alt+H** on any page to open Hirivo.
 
 ## Install (developer mode)

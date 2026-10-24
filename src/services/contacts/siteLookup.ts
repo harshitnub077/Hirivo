@@ -12,6 +12,8 @@ export interface SiteLookup {
   githubOrg?: string;
   githubMembers: GithubMember[];
   feedUrl?: string;
+  homepageTitle?: string;
+  homepageDescription?: string;
   pagesChecked: string[];
   checkedAt: number;
 }
@@ -39,9 +41,17 @@ export async function lookupCompanySite(domain: string, company: string, { force
       const pagesChecked: string[] = [];
 
       const home = await fetchText(base);
+      let homepageTitle: string | undefined;
+      let homepageDescription: string | undefined;
       if (home.ok) {
         pagesChecked.push('/');
-        mergeScans(total, scanPage(parse(home.text), company, domain, '/'));
+        const doc = parse(home.text);
+        homepageTitle = doc.querySelector('title')?.textContent?.trim() || undefined;
+        homepageDescription =
+          doc.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() ||
+          doc.querySelector('meta[property="og:description"]')?.getAttribute('content')?.trim() ||
+          undefined;
+        mergeScans(total, scanPage(doc, company, domain, '/'));
       }
       for (const path of TEAM_PATHS) {
         if (total.people.length >= 3 || pagesChecked.length >= 5) break;
@@ -55,7 +65,7 @@ export async function lookupCompanySite(domain: string, company: string, { force
       const githubMembers = githubOrg ? await fetchOrgMembers(githubOrg).catch(() => []) : [];
       const feedUrl = total.feedUrl ? new URL(total.feedUrl, base).toString() : undefined;
 
-      return { domain, people: total.people, inboxes: total.inboxes, githubOrg, githubMembers, feedUrl, pagesChecked, checkedAt: Date.now() };
+      return { domain, people: total.people, inboxes: total.inboxes, githubOrg, githubMembers, feedUrl, homepageTitle, homepageDescription, pagesChecked, checkedAt: Date.now() };
     },
     { force }
   );

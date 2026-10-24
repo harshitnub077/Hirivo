@@ -113,6 +113,34 @@ export interface TailoredResume {
   createdAt: number;
 }
 
+export interface DailyPick {
+  id: string; // the job id (analyzed) or discovered id
+  source: 'analyzed' | 'discovered';
+  title: string;
+  company: string;
+  location?: string;
+  url: string;
+  score: number;
+  reasons: string[];
+  warm: boolean;
+}
+
+export interface DailyPicks {
+  date: string; // local YYYY-MM-DD
+  createdAt: number;
+  picks: DailyPick[];
+}
+
+export interface InterviewPack {
+  createdAt: number;
+  companyBrief: string;
+  sources: { title: string; url: string }[];
+  questions: string[];
+  strongestFacts: string[]; // fact ids, always from the user's resume facts
+  askThem: string[];
+  usedAI: boolean;
+}
+
 export interface ResumeFile {
   id: string; // 'primary'
   name: string;
@@ -218,6 +246,7 @@ export interface OutreachRecord {
   gmailThreadId?: string;
   status: 'DRAFT_CREATED' | 'SENT' | 'FOLLOWUP_1_DUE' | 'FOLLOWUP_2_DUE' | 'REPLIED' | 'CLOSED';
   followupsDone?: number; // 0, 1 or 2
+  interviewPack?: InterviewPack;
   notifiedStage?: number; // last follow-up stage we sent a notification for
   createdAt: number;
   followup1Date: number; // +4 days
@@ -286,6 +315,7 @@ export class HirivoDatabase extends Dexie {
   atsProbes!: EntityTable<AtsBoardProbe, 'id'>;
   sourceFetches!: EntityTable<SourceFetch, 'id'>;
   fingerprints!: EntityTable<JobFingerprint, 'hash'>;
+  daily!: EntityTable<DailyPicks, 'date'>;
   outreach!: EntityTable<OutreachRecord, 'id'>;
   voiceProfiles!: EntityTable<VoiceProfile, 'id'>;
   llmCache!: EntityTable<LLMCacheItem, 'hashKey'>;
@@ -319,6 +349,10 @@ export class HirivoDatabase extends Dexie {
     // v5: repost fingerprints for the Scam Shield.
     this.version(5).stores({
       fingerprints: 'hash, lastSeen',
+    });
+    // v6: Daily 5 picks, one row per local day.
+    this.version(6).stores({
+      daily: 'date',
     });
   }
 }
