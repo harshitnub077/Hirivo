@@ -6,6 +6,7 @@ import { matchesTargets, refreshAll } from '../services/watchlist';
 import { dueFollowupStage } from '../services/outreach';
 import { runDiscover } from '../services/discover';
 import { buildDaily5, localDayKey, nextDailyAt } from '../services/daily5';
+import { GmailNeedsReconnect, pollGmailReplies } from '../services/gmail';
 
 const RADAR_ALARM = 'radar-poll';
 const FOLLOWUP_ALARM = 'followup-check';
@@ -113,7 +114,35 @@ async function nudgeAfterApplying() {
   }
 }
 
+/** Gmail power mode: mark replies first, so nobody gets a follow-up reminder for a thread that was answered. */
+async function checkGmailReplies() {
+  const before = (await getSettings()).gmail;
+  if (!before || before.needsReconnect) return;
+  try {
+    for (const { record } of await pollGmailReplies()) {
+      chrome.notifications.create(`reply:${record.id}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: `${record.recipientName} replied`,
+        message: `About ${record.jobTitle} at ${record.companyName}. Follow-ups stopped; your interview pack is one click away in Pipeline.`,
+        priority: 2,
+      });
+    }
+  } catch (err) {
+    if (err instanceof GmailNeedsReconnect) {
+      chrome.notifications.create('gmail-reconnect', {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: 'Reconnect Gmail',
+        message: 'Hirivo can’t check your replies until you reconnect Gmail (You → Gmail).',
+        priority: 1,
+      });
+    }
+  }
+}
+
 async function checkFollowups() {
+  await checkGmailReplies();
   await nudgeAfterApplying();
   const open = await db.outreach.where('status').equals('SENT').toArray();
   for (const r of open) {

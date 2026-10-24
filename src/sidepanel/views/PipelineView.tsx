@@ -17,6 +17,7 @@ import {
 import { Callout, Empty, Meter, Pill, timeAgo, useCopy } from '../ui';
 import { packAsText, prepareInterviewPack } from '../../services/interviewPack';
 import { hasSiteAccess } from '../../services/siteAccess';
+import { draftFollowupInThread, draftOpenUrl, pollGmailReplies } from '../../services/gmail';
 
 export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[]; settings: UserSettings }) {
   const [copied, copy] = useCopy();
@@ -35,9 +36,32 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
     const stage = dueFollowupStage(r);
     if (stage === 0) return;
     const { subject, body } = followupText(r, stage, settings.userFullName);
-    if (r.channel === 'linkedin' || !r.recipientEmail) copy(r.id, body.split('\n\n---\n')[0]);
-    else await openUrl(gmailComposeUrl(r.recipientEmail, subject, body));
+    const note = body.split('\n\n---\n')[0];
+    if (r.channel === 'linkedin' || !r.recipientEmail) copy(r.id, note);
+    else if (settings.gmail && !settings.gmail.needsReconnect && r.gmailThreadId) {
+      try {
+        // In the same thread, so the recipient sees it under the original email.
+        const d = await draftFollowupInThread(r, note);
+        await openUrl(draftOpenUrl(settings.gmail.email, d.messageId));
+      } catch {
+        await openUrl(gmailComposeUrl(r.recipientEmail, subject, body));
+      }
+    } else await openUrl(gmailComposeUrl(r.recipientEmail, subject, body));
     await markFollowupSent(r, stage);
+  };
+
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState<string | null>(null);
+  const checkNow = async () => {
+    setChecking(true);
+    try {
+      const found = await pollGmailReplies();
+      setCheckMsg(found.length ? `${found.length} new repl${found.length > 1 ? 'ies' : 'y'}` : 'No new replies');
+    } catch {
+      setCheckMsg('Check failed');
+    } finally {
+      setChecking(false);
+    }
   };
 
   const preparePack = async (r: OutreachRecord) => {
@@ -232,6 +256,19 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
               ))}
           </div>
         </section>
+      )}
+
+      {settings.gmail && (
+        <div className="row between small" style={{ padding: '0 2px' }}>
+          <span className={settings.gmail.needsReconnect ? '' : 'muted'} style={settings.gmail.needsReconnect ? { color: 'var(--caution)' } : undefined}>
+            {settings.gmail.needsReconnect ? 'Gmail needs reconnecting (You → Gmail)' : `Watching replies in ${settings.gmail.email}`}
+          </span>
+          {!settings.gmail.needsReconnect && (
+            <button className="btn sm ghost" onClick={checkNow} disabled={checking}>
+              <RefreshCw size={12} className={checking ? 'spin' : ''} /> {checking ? 'Checking…' : checkMsg || 'Check now'}
+            </button>
+          )}
+        </div>
       )}
 
       {packError && <Callout tone="caution">Couldn't prepare the interview pack: {packError}</Callout>}

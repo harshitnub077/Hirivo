@@ -22,6 +22,8 @@ A free Chrome extension that finds real jobs that fit you, tells you honestly wh
 
 10. **Plans your morning and your interviews.** Every day at 8 you get "Your 5 for today": the best open roles by fit, freshness and people you know, never one that looks stale or unsafe. When someone replies, Hirivo prepares an interview pack: what the company does (with sources), likely questions for the role, your three strongest proofs, and good questions to ask.
 
+11. **Optional Gmail power mode.** Connect your own free Google app (step-by-step guide in You → Gmail) and Hirivo saves real Gmail drafts, keeps follow-ups in the same thread, and notices replies on its own, stopping follow-ups. You still press Send. Your email never passes through anyone else's app.
+
 Dark by default, with a light theme in You → Appearance. Press **Alt+H** on any page to open Hirivo.
 
 ## Install (developer mode)

@@ -38,6 +38,8 @@ export interface NewOutreach {
   body: string;
   linkedInNote?: string;
   factsCited: string[];
+  gmailDraftId?: string;
+  gmailThreadId?: string;
 }
 
 export async function dailyCapStatus() {
@@ -72,6 +74,7 @@ export async function recordOutreach(input: NewOutreach): Promise<OutreachRecord
     followup2Date: now + FOLLOWUP_DAYS[1] * DAY,
     followupsDone: 0,
     notifiedStage: 0,
+    ...(input.gmailThreadId ? { gmailDraftId: input.gmailDraftId, gmailThreadId: input.gmailThreadId } : {}),
   };
   await db.outreach.put(record);
   await patchSettings({ todaySendCount: used + 1, lastSendDate: todayKey() });

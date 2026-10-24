@@ -1083,3 +1083,24 @@ details.section[open] > summary {
   gap: 4px;
   font-size: 12.5px;
 }
+
+/* ---------- Gmail setup ---------- */
+
+.setup-steps {
+  margin-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.setup-steps .redirect {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  background: var(--well);
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}

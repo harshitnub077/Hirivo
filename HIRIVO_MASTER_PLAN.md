@@ -43,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.7, built and verified)
+## 3. What exists today (v2.8, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -73,8 +73,9 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Honest per-job resume tailoring: reorder by what the job needs, AI rewording checked line by line (no new figures, tools, names, ownership, puffery or padding; failing rewrites keep the user's words with the reason), keyword gaps reported not added, .docx/Markdown/text export | Done | `src/services/resumeTailor.ts`, `resumeExport.ts`, `views/ResumePanel.tsx` |
 | Daily 5: 8:00 local shortlist from Discover + analyzed jobs, ranked by fit, freshness, warm path; never a Doubtful or Risky role (shared verdict logic with the Verdict Strip); max 2 per company; one notification | Done (Phase E) | `src/services/daily5.ts`, `services/verdicts.ts`, `views/Daily5Card.tsx` |
 | Interview Pack on "Got a reply": company brief from its homepage and linked news (figures must be in the sources), 8 likely questions, 3 strongest facts (only the user's), 3 questions to ask; works without AI | Done (Phase E) | `src/services/interviewPack.ts`, `views/PipelineView.tsx` |
+| Gmail power mode (optional, user's own OAuth client): code + PKCE via launchWebAuthFlow, real drafts, follow-ups in-thread, replies detected every 3 h or on Check now, follow-ups stop on reply; permissions requested only on Connect | Done (Phase F) | `src/services/gmail.ts`, `views/GmailSection.tsx` |
 | Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
-| Tests: 156 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Tests: 171 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
@@ -191,7 +192,7 @@ Paste each prompt as is. Each one assumes the rules in section 1 and ends with a
 > - Daily 5 never includes a role whose Real pill is Doubtful.
 > - The Interview Pack only cites facts from the resume.
 
-### Phase F: Gmail power mode (bring your own OAuth client)
+### Phase F: Gmail power mode (bring your own OAuth client) — ✅ done in v2.8 (uses a Web application client with the chromiumapp.org redirect and the authorization-code + PKCE flow; Google marks the implicit flow legacy)
 
 > Add an optional "Connect Gmail" flow in You.
 > - Explain step by step how the user creates their own Google Cloud project, enables the Gmail API, creates a Chrome-extension OAuth client with this extension's ID, sets the consent screen to Testing, and adds themselves as a test user.

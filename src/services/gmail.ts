@@ -3,6 +3,7 @@
 // flow; the implicit flow is legacy) via chrome.identity.launchWebAuthFlow. With it connected,
 // Hirivo creates real drafts (follow-ups in the same thread) and checks threads for replies.
 // The user still presses Send in Gmail. Without it, nothing changes: the compose-URL flow stays.
+import { db } from '../db';
 import { getSettings, patchSettings } from '../db/settings';
 import type { OutreachRecord, UserSettings } from '../db';
 
@@ -266,6 +267,21 @@ export async function draftFollowupInThread(r: Pick<OutreachRecord, 'gmailThread
   const msgId = last?.headers['message-id'];
   const refs = [last?.headers.references, msgId].filter(Boolean).join(' ');
   return createDraft({ to: r.recipientEmail, subject, body, threadId: r.gmailThreadId, inReplyTo: msgId, references: refs || undefined }, deps);
+}
+
+/** Polls every open thread, marks replies, and returns them. Needs a connected account. */
+export async function pollGmailReplies(): Promise<{ record: OutreachRecord; from: string }[]> {
+  const gmail = await gmailConnected();
+  if (!gmail) return [];
+  const open = await db.outreach.where('status').equals('SENT').toArray();
+  const found = await findReplies(open, gmail.email, (id) => getThread(id));
+  const out: { record: OutreachRecord; from: string }[] = [];
+  for (const f of found) {
+    await db.outreach.update(f.id, { status: 'REPLIED', repliedAt: Date.now() });
+    const record = open.find((r) => r.id === f.id);
+    if (record) out.push({ record, from: f.from });
+  }
+  return out;
 }
 
 /** One polling pass: which open threads now have a reply. Pure apart from the injected thread reader. */

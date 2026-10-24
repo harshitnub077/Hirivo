@@ -122,6 +122,25 @@ describe('reply detection', () => {
   });
 });
 
+describe('without setup', () => {
+  it('changes nothing: no polling, no network, not connected', async () => {
+    const { gmailConnected, pollGmailReplies } = await import('../../src/services/gmail');
+    let calls = 0;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      calls++;
+      return new Response('{}');
+    }) as typeof fetch;
+    try {
+      expect(await gmailConnected()).toBeUndefined();
+      expect(await pollGmailReplies()).toEqual([]);
+      expect(calls).toBe(0);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
 describe('tokens', () => {
   it('uses a cached token while it is valid', async () => {
     await connected();

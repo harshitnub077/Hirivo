@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.7.0
+**Version:** 2.8.0
 **Category:** Productivity
 
 ## Short description (≤132 chars)
@@ -45,9 +45,11 @@ Then Hirivo opens the email in Gmail for you to send, and reminds you to follow 
 | Host: `*.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com` | Reads job pages, fills application forms and attaches the user's resume. The user always submits. |
 | Host: `remotive.com`, `remoteok.com`, `himalayas.app`, `jobicy.com`, `www.arbeitnow.com`, `hn.algolia.com`, `yc-oss.github.io` | Public job APIs and open datasets for Discover. Each listing is credited and links to its source. |
 | Host: `api.github.com`, `news.google.com` | GitHub org members and releases, and Google News headlines, for the contact ladder and opening-line suggestions. |
+| Optional `identity`, optional host: `gmail.googleapis.com`, `oauth2.googleapis.com` | Asked only if the user connects Gmail with their own Google OAuth client: sign-in, saving drafts, and reading their own threads to spot replies. |
 | Optional host: `https://*/*` | Requested one site at a time, only when the user presses Analyze, Look up or Read this page on a site outside the list above. |
 
 ## Data use disclosure
 - Hirivo does not sell, share or transfer user data, and has no server.
 - Resume text and job descriptions are sent only to the AI provider the user configured, only when they use an AI feature.
+- With optional Gmail power mode, Hirivo talks to Gmail directly from the browser using the user's own Google app; tokens stay on the device and are never exported.
 - LinkedIn connections, outreach history and settings are stored in the browser's IndexedDB and can be exported or deleted from You → Privacy and safety.

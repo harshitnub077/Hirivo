@@ -7,6 +7,7 @@ import { JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
 import { checkGrounding, generateProofLinkedDraft, removeUnsupported } from '../../services/proofWriter';
 import { autoPurgeRoboticPhrases, lintOutreachText } from '../../services/phraseLinter';
 import { gmailComposeUrl, openUrl, recordOutreach, stripCitations } from '../../services/outreach';
+import { createDraft, draftOpenUrl, gmailConnected, GmailNeedsReconnect } from '../../services/gmail';
 import { Callout, Field, Pill, useCopy } from '../ui';
 import type { Recipient } from './NowView';
 import type { ViewId } from '../App';
@@ -141,19 +142,34 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
     }
     try {
       const clean = stripCitations(body);
-      await recordOutreach({
+      const base = {
         jobId: job.id,
         companyName: job.company,
         jobTitle: job.title,
         recipientName: recipient.name || 'Hiring team',
         recipientEmail: recipient.email,
         contactType: recipient.contactType,
-        channel: 'email',
+        channel: 'email' as const,
         subject,
         body: clean,
         linkedInNote: stripCitations(note),
         factsCited: grounding.citedFactIds,
-      });
+      };
+      const gmail = await gmailConnected();
+      if (gmail) {
+        try {
+          // Gmail power mode: a real draft, so replies can be detected and follow-ups stay in the thread.
+          const d = await createDraft({ to: recipient.email, subject, body: clean });
+          await recordOutreach({ ...base, gmailDraftId: d.draftId, gmailThreadId: d.threadId });
+          await openUrl(draftOpenUrl(gmail.email, d.messageId));
+          setLogged('Draft saved in your Gmail and opened. Press Send there. Hirivo will spot the reply and stop the follow-ups.');
+          return;
+        } catch (err: any) {
+          if (!(err instanceof GmailNeedsReconnect)) throw err;
+          setError('Gmail needs reconnecting (You → Gmail), so this opened as a normal compose window instead.');
+        }
+      }
+      await recordOutreach(base);
       await openUrl(gmailComposeUrl(recipient.email, subject, clean));
       setLogged('Opened in Gmail. Press Send there. Hirivo will remind you to follow up on day 4 and day 9.');
     } catch (err: any) {

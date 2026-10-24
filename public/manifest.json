@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hirivo: Real Jobs, Right People",
   "short_name": "Hirivo",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -44,7 +44,9 @@
     "https://news.google.com/*"
   ],
   "optional_host_permissions": [
-    "https://*/*"
+    "https://*/*",
+    "https://gmail.googleapis.com/*",
+    "https://oauth2.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -100,5 +102,8 @@
       },
       "description": "Open Hirivo"
     }
-  }
+  },
+  "optional_permissions": [
+    "identity"
+  ]
 }

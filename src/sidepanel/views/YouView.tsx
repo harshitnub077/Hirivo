@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CheckCircle2, Cpu, Download, FileText, KeyRound, Mic, Palette, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
+import { CheckCircle2, Cpu, Download, FileText, KeyRound, Mail, Mic, Palette, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
 import { db, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
 import { patchSettings } from '../../db/settings';
 import { testGroqConnection } from '../../llm/providers/groq';
@@ -12,6 +12,7 @@ import { importConnectionsToDB, parseLinkedInConnectionsCSV } from '../../servic
 import { buildProfile, saveProfile as saveResumeProfile } from '../../services/resumeImport';
 import { Callout, Field, Pill, Segmented } from '../ui';
 import { ResumeImport } from './ResumeImport';
+import { GmailSection } from './GmailSection';
 
 interface Props {
   settings: UserSettings;
@@ -119,7 +120,7 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
     const dump: Record<string, unknown> = { exportedAt: new Date().toISOString(), app: 'hirivo' };
     for (const table of db.tables) if (table.name !== 'llmCache') dump[table.name] = await table.toArray();
     const settingsRows = dump.settings as UserSettings[];
-    dump.settings = settingsRows.map((s) => ({ ...s, groqApiKey: '', geminiApiKey: '', openrouterApiKey: '' }));
+    dump.settings = settingsRows.map(({ gmail, ...s }) => ({ ...s, groqApiKey: '', geminiApiKey: '', openrouterApiKey: '' }));
     const url = URL.createObjectURL(new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url;
@@ -144,8 +145,8 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
       }
       const saved = Array.isArray(dump.settings) ? dump.settings[0] : undefined;
       if (saved) {
-        const { groqApiKey, geminiApiKey, openrouterApiKey, id, ...rest } = saved;
-        void groqApiKey, geminiApiKey, openrouterApiKey, id;
+        const { groqApiKey, geminiApiKey, openrouterApiKey, id, gmail, ...rest } = saved;
+        void groqApiKey, geminiApiKey, openrouterApiKey, id, gmail;
         await patchSettings(rest);
       }
       flash(`Imported ${rows} items from ${file.name}.`);
@@ -297,6 +298,14 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
           <Upload size={14} /> Upload Connections.csv
           <input type="file" accept=".csv" onChange={importCsv} hidden />
         </label>
+      </Section>
+
+      <Section
+        icon={<Mail size={16} />}
+        title="Gmail"
+        meta={settings.gmail ? <Pill tone={settings.gmail.needsReconnect ? 'caution' : 'ok'}>{settings.gmail.needsReconnect ? 'Reconnect' : 'Connected'}</Pill> : <Pill>Optional</Pill>}
+      >
+        <GmailSection settings={settings} />
       </Section>
 
       <Section icon={<Palette size={16} />} title="Appearance" meta={<Pill>{settings.theme === 'light' ? 'Light' : settings.theme === 'system' ? 'System' : 'Dark'}</Pill>}>
