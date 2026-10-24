@@ -8,6 +8,7 @@ import { openUrl } from '../../services/outreach';
 import { Callout, Empty, Pill, Segmented, timeAgo, toneForScore } from '../ui';
 import { getActivePage, saveJobsFromActivePage } from '../page';
 import { ResumeImport } from './ResumeImport';
+import { AutopilotButton } from './AutopilotViews';
 import { Daily5Card } from './Daily5Card';
 
 type Filter = 'new' | 'saved' | 'applying' | 'companies';
@@ -138,6 +139,14 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
         ]}
       />
 
+      {filter === 'saved' && counts.saved > 1 && (
+        <AutopilotButton
+          jobs={jobs.filter((j) => j.status === 'saved' && j.kind !== 'company').map((j) => ({ url: j.url, title: j.title, company: j.company }))}
+          settings={settings}
+          label={`Autopilot all ${counts.saved} saved jobs`}
+          className="btn block"
+        />
+      )}
       {filter === 'saved' && nextSaved && (
         <button className="btn primary block" onClick={() => apply(nextSaved)}>
           <Send size={14} /> Apply to next saved: {nextSaved.company}
@@ -160,7 +169,7 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
         <section className="card">
           <div className="list">
             {shown.slice(0, 60).map((j) => (
-              <JobRow key={j.id} job={j} onApply={() => apply(j)} />
+              <JobRow key={j.id} job={j} settings={settings} onApply={() => apply(j)} />
             ))}
           </div>
         </section>
@@ -186,7 +195,7 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
   );
 }
 
-function JobRow({ job, onApply }: { job: DiscoveredJob; onApply: () => void }) {
+function JobRow({ job, settings, onApply }: { job: DiscoveredJob; settings: UserSettings; onApply: () => void }) {
   const age = job.postedAt ? Math.max(0, Math.floor((Date.now() - job.postedAt) / 86_400_000)) : undefined;
   const saved = job.status === 'saved';
   return (
@@ -240,6 +249,7 @@ function JobRow({ job, onApply }: { job: DiscoveredJob; onApply: () => void }) {
             {job.kind === 'company' ? <ExternalLink size={12} /> : <Send size={12} />} {job.kind === 'company' ? 'See roles' : 'Apply'}
           </button>
         )}
+        {job.kind !== 'company' && job.status !== 'applied' && <AutopilotButton jobs={[{ url: job.url, title: job.title, company: job.company }]} settings={settings} compact />}
         {job.status !== 'applied' && job.status !== 'applying' && (
           <button className="btn sm icon ghost" title={saved ? 'Unsave' : 'Save'} onClick={() => setJobStatus(job.id, saved ? 'new' : 'saved')}>
             {saved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}

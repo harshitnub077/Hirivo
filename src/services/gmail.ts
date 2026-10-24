@@ -292,6 +292,11 @@ export async function createDraft(m: { to: string; subject: string; body: string
   return { draftId: draft.id, messageId: draft.message.id, threadId: draft.message.threadId };
 }
 
+/** Sends a saved draft (gmail.compose covers sending). Used only by Autopilot, which the user turned on. */
+export async function sendDraft(draftId: string, deps?: AuthDeps) {
+  return api<{ id: string; threadId: string; labelIds?: string[] }>('/drafts/send', { method: 'POST', body: JSON.stringify({ id: draftId }) }, deps);
+}
+
 export async function getThread(threadId: string, deps?: AuthDeps): Promise<ThreadMessage[]> {
   const t = await api<{ messages?: { id: string; labelIds?: string[]; payload?: { headers?: { name: string; value: string }[] } }[] }>(
     `/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=From&metadataHeaders=Message-ID&metadataHeaders=Subject&metadataHeaders=References`,

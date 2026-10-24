@@ -7,7 +7,7 @@
 // Job-page reading lives in extractJob.ts and runs only when the user clicks Analyze.
 
 import { attachResume, base64ToFile, SUCCESS_TEXT } from './formFill';
-import { countryOf, decide, fillQuestion, findQuestions, readComboboxOptions, type FillContext, type Question } from './formEngine';
+import { countryOf, decide, fillQuestion, findQuestions, findSubmitButton, readComboboxOptions, type FillContext, type Question } from './formEngine';
 import type { AskRequest, AskResponse, FillProfile } from './profileTypes';
 
 const send = <T = any>(message: Record<string, unknown>) =>
@@ -190,7 +190,7 @@ function section(body: HTMLElement, title: string, color: string, items: Item[],
 let running = false;
 let lastReport: Report | null = null;
 
-async function fillAll({ withAi }: { withAi: boolean }) {
+async function fillAll({ withAi }: { withAi: boolean }): Promise<Report | undefined> {
   if (running) return;
   running = true;
   try {
@@ -226,6 +226,7 @@ async function fillAll({ withAi }: { withAi: boolean }) {
     lastReport = report;
     render(report, () => writeAnswers(report, job));
     if (withAi && report.pendingAi.length) await writeAnswers(report, job, true);
+    return report;
   } finally {
     running = false;
   }
@@ -325,7 +326,61 @@ async function tick() {
 observer.observe(document.documentElement, { childList: true, subtree: true });
 tick();
 
+// ---------- Autopilot: fill, check, submit ----------
+
+const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const visible = (el: Element) => {
+  const r = (el as HTMLElement).getBoundingClientRect?.();
+  return !!r && r.width > 0 && r.height > 0 && getComputedStyle(el as HTMLElement).visibility !== 'hidden';
+};
+
+function captchaShowing(): boolean {
+  return Array.from(document.querySelectorAll('iframe[src*="recaptcha/api2/bframe"], iframe[src*="hcaptcha.com"], iframe[title*="challenge" i]')).some(visible);
+}
+
+function formErrors(): string {
+  const errs = Array.from(document.querySelectorAll('[role="alert"], [class*="error"]:not(input), [aria-live="assertive"]'))
+    .filter(visible)
+    .map((e) => (e.textContent || '').trim())
+    .filter((t) => t && t.length < 200);
+  return Array.from(new Set(errs)).slice(0, 3).join(' ');
+}
+
+async function autopilotFill(submit: boolean) {
+  for (let i = 0; i < 120 && running; i++) await pause(500); // let an on-open fill finish first
+  const report = await fillAll({ withAi: true });
+  if (!report) return { status: 'failed', filled: 0, written: 0, left: [], error: 'Hirivo has no profile to fill with yet' };
+  const left = report.left.map((i) => ({ label: i.q.label, note: i.note, required: Boolean(i.q.required) }));
+  const requiredFile = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="file"]')).some((f) => f.required && !f.files?.length);
+  if (report.resume === 'missing' && requiredFile) left.push({ label: 'Resume', note: 'Upload your resume in Hirivo', required: true });
+  // Count what's answered on the page now, including what the on-open fill already did.
+  const base = { filled: findQuestions().filter((q) => q.answered).length, written: report.ai.length, left };
+  const blocking = left.filter((l) => l.required);
+  if (blocking.length) {
+    const consent = blocking.some((l) => /accept this yourself/i.test(l.note || ''));
+    return { ...base, status: 'needs-you', needs: consent ? 'Tick the consent box (only you can agree to it), then press Submit' : `Answer ${blocking.length} required question${blocking.length === 1 ? '' : 's'}, then press Submit` };
+  }
+  if (!submit) return { ...base, status: 'ready' };
+  const button = findSubmitButton();
+  if (!button) return { ...base, status: 'needs-you', needs: 'Press Submit' };
+  const before = location.href;
+  button.click();
+  for (let i = 0; i < 40; i++) {
+    await pause(500);
+    if (SUCCESS_TEXT.test(document.body.innerText.slice(0, 5000)) || (location.href !== before && /confirm|thank|success|submitted/i.test(location.href))) {
+      return { ...base, status: 'submitted' };
+    }
+    if (captchaShowing()) return { ...base, status: 'needs-you', needs: 'Solve the CAPTCHA, then press Submit' };
+  }
+  const errors = formErrors();
+  return { ...base, status: 'needs-you', needs: errors ? `The form says: ${errors}` : 'Check the form and press Submit' };
+}
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  if (request.action === 'AUTOPILOT_FILL') {
+    autopilotFill(Boolean(request.submit)).then(sendResponse, (err) => sendResponse({ status: 'failed', filled: 0, written: 0, left: [], error: err?.message || String(err) }));
+    return true;
+  }
   if (request.action === 'EXECUTE_AUTOFILL') {
     fillAll({ withAi: true }).then(() => sendResponse({ success: true, filled: lastReport ? lastReport.profile.length + lastReport.ai.length : 0 }));
     return true;

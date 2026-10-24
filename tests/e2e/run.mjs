@@ -397,6 +397,36 @@ try {
     return `picked: ${picked.join(' || ')}\nlogged after first open: ${after.join(', ')}; gmail tabs: ${compose}\n` + drafts.map((d) => `--- ${d.to}\nSubject: ${d.subject}\n${d.body}`).join('\n');
   });
 
+  await step('Autopilot: hand over a job, it reads, checks, fills (submit off, no Gmail: nothing is sent)', async () => {
+    await tab('You');
+    await ev(P, String.raw`(() => { const d = [...document.querySelectorAll('details')].find(x => x.querySelector('summary')?.innerText.trim().startsWith('Autopilot')); d.open = true; d.scrollIntoView(); })()`);
+    await sleep(500);
+    // Never submit to a real company from a test: switch submitting off before turning Autopilot on.
+    await click('Submit applications when every required question is answered');
+    await click('Autopilot on');
+    await sleep(500);
+    const ap = await ev(P, String.raw`new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('settings').objectStore('settings').get('config'); q.onsuccess = () => res(q.result.autopilot); }; })`);
+    if (!ap?.enabled || ap.submitForms) throw new Error(`autopilot settings wrong for a test: ${JSON.stringify(ap)}`);
+    await ev(BG, String.raw`chrome.tabs.query({ url: ${JSON.stringify(JOB.replace(/\?.*$/, '') + '*')} }).then(t => chrome.tabs.update(t.find(x => !/hirivo_e2e|\/(apply|application)/.test(x.url)).id, { active: true })).then(() => true)`);
+    await sleep(1500);
+    await tab('Now');
+    await click('Hand to Autopilot');
+    let row;
+    for (let i = 0; i < 480; i++) {
+      await sleep(1000);
+      row = await ev(P, String.raw`new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('autopilot').objectStore('autopilot').getAll(); q.onsuccess = () => res(q.result[0]); }; })`);
+      if (row && !['queued', 'working'].includes(row.status)) break;
+    }
+    await tab('Pipeline');
+    await sleep(800);
+    await shot('14-autopilot');
+    if (!row) throw new Error('nothing was queued');
+    const log = row.steps.map((s) => `[${s.tone}] ${s.text}`).join('\n  ');
+    if (row.status === 'done' || row.applied) throw new Error('an application was submitted from a test');
+    if (!['needs-you'].includes(row.status)) throw new Error(`status ${row.status}: ${row.needs || ''}\n  ${log}`);
+    return `status ${row.status}: ${row.needs}\n  ${log}`;
+  });
+
   await step('Discover finds real jobs for the chosen roles', async () => {
     await tab('Radar');
     await waitFor(`/\\d+ matching jobs/.test(t) || (t.includes('For you') && !t.includes('Searching'))`, 240000, 'discover');

@@ -18,6 +18,7 @@ import { Callout, Empty, Meter, Pill, timeAgo, useCopy } from '../ui';
 import { packAsText, prepareInterviewPack } from '../../services/interviewPack';
 import { hasSiteAccess } from '../../services/siteAccess';
 import { draftFollowupInThread, draftOpenUrl, pollGmailReplies } from '../../services/gmail';
+import { AutopilotQueue } from './AutopilotViews';
 
 export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[]; settings: UserSettings }) {
   const [copied, copy] = useCopy();
@@ -230,6 +231,8 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
           <Meter value={(used / cap) * 100} tone={used >= cap ? 'risk' : 'ok'} label="Messages sent today" />
         </div>
       </section>
+
+      <AutopilotQueue />
 
       {applications.length > 0 && (
         <section className="card">

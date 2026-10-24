@@ -2,15 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { CheckCircle2, Circle, Clock, MapPin, RefreshCw, ScanSearch, ShieldCheck } from 'lucide-react';
 import { db, JobSnapshot, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
-import { checkGhostJob } from '../../services/ghostJobShield';
-import { checkLegitimacy } from '../../services/legitimacyScorer';
-import { companyDomainOf } from '../../services/companyDomain';
-import { analyzeJobFit } from '../../services/fitAdvisor';
 import { findWarmPaths } from '../../services/warmPathMatcher';
 import { daysSince } from '../../services/atsFeeds';
-import { checkScam } from '../../services/scamShield';
 import { realVerdict, safetyVerdict } from '../../services/verdicts';
-import { recordFingerprint } from '../../services/repostFingerprint';
+import { runJobChecks } from '../../services/jobChecks';
 import { Callout, Empty, loadSession, Meter, Pill, saveSession, Segmented, toneForScore } from '../ui';
 import type { ActivePage } from '../page';
 import type { ViewId } from '../App';
@@ -20,6 +15,7 @@ import { WritePanel } from './WritePanel';
 import { ResumeImport } from './ResumeImport';
 import { AnswerPanel } from './AnswerPanel';
 import { ResumePanel } from './ResumePanel';
+import { AutopilotButton } from './AutopilotViews';
 
 type Panel = 'evidence' | 'people' | 'write' | 'resume' | 'answers';
 
@@ -144,56 +140,9 @@ export function NowView(props: Props) {
     setChecking(true);
     setCheckError(null);
     try {
-      const domain = companyDomainOf(job.companyDomain) || companyDomainOf(job.url);
-      const fitWanted = hasKey && (facts.length > 0 || !!resume);
-      const [ghost, legit, fit] = await Promise.all([
-        checkGhostJob({
-          jobTitle: job.title,
-          companyName: job.company,
-          sourceUrl: job.url,
-          atsUrl: job.atsUrl,
-          jobPostedDate: job.postedDate,
-          isReposted: job.isReposted,
-        }),
-        checkLegitimacy({ domain, companyName: job.company }),
-        fitWanted ? analyzeJobFit(job.title, job.company, job.description, resume, facts, { yearsExperience: settings.yearsExperience, skills: settings.skills }).catch((e: Error) => e) : null,
-      ]);
-      if (fit instanceof Error) setCheckError(`Fit check failed: ${fit.message}`);
-      const fitResult = fit instanceof Error ? null : fit;
-      // Domain age and mail records are shown from legit itself, so Scam Shield only reads the listing here.
-      const scam = checkScam({ title: job.title, description: job.description, companyDomain: domain });
-      const repost = await recordFingerprint(job).catch(() => null);
-      const scamFindings = [...scam.findings, ...(repost?.finding ? [repost.finding] : [])];
-      const scamLevel = scamFindings.some((f) => f.tone === 'risk') ? 'risk' : scamFindings.length ? 'caution' : 'clear';
-      await onUpdateJob({
-        ...job,
-        ghostScore: ghost.ghostScore,
-        ghostReasons: ghost.reasons,
-        atsType: ghost.atsType,
-        atsSlug: ghost.atsSlug,
-        atsPublishedAt: ghost.atsPublishedAt,
-        scamLevel,
-        scamFindings,
-        companyDomain: domain,
-        legitScore: domain && legit.checked ? legit.score : undefined,
-        legitDetails: domain && legit.checked
-          ? { domainAgeDays: legit.domainAgeDays, hasMx: legit.hasMx, mailProvider: legit.mailProvider, isFreeEmail: legit.isFreeEmail }
-          : undefined,
-        ...(fitResult
-          ? {
-              fitScore: fitResult.matchScore,
-              fitVerdict: fitResult.verdict,
-              honestAdvice: fitResult.honestAdvice,
-              dealbreakers: fitResult.dealbreakers,
-              matchingStrengths: fitResult.matchingStrengths,
-              skillGaps: fitResult.skillGaps,
-              fitEvidence: fitResult.evidence,
-              // Requirement ids change between runs; keep a sprint only once it's done (its fact stays).
-              proofSprint: job.proofSprint?.completedAt ? job.proofSprint : undefined,
-            }
-          : {}),
-        analyzedAt: Date.now(),
-      });
+      const { job: checked, fitError } = await runJobChecks(job, { resume, facts, settings });
+      if (fitError) setCheckError(`Fit check failed: ${fitError}`);
+      await onUpdateJob(checked);
       setPanel('evidence');
     } catch (err: any) {
       setCheckError(err.message);
@@ -252,6 +201,9 @@ export function NowView(props: Props) {
           </Pill>
         </div>
 
+        <div className="stack" style={{ marginTop: 10, alignItems: 'flex-start' }}>
+          <AutopilotButton jobs={[{ url: job.atsUrl || job.url, title: job.title, company: job.company }]} settings={settings} label="Hand to Autopilot" />
+        </div>
         {!analyzed && (
           <button className="btn primary block" style={{ marginTop: 12 }} onClick={runChecks} disabled={checking}>
             {checking ? <RefreshCw size={14} className="spin" /> : <ShieldCheck size={14} />}

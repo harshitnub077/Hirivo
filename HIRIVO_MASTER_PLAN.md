@@ -12,7 +12,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 1. **No fake data, ever.** Never hardcode scores, "verified" badges, company lists, people, emails, or resume facts. If Hirivo doesn't know something, the UI says so. (v1 shipped a hardcoded "Radar" that gave every company a 95/100 trust score and guessed CEO emails. It has been removed. Don't bring it back.)
 2. **Never automate LinkedIn.** No auto-click, auto-connect, auto-message or auto-apply. No content script that runs on `linkedin.com` by itself. Hirivo reads the open job only when the user presses **Analyze**, through `chrome.scripting.executeScript`. It doesn't add `web_accessible_resources` and doesn't inject UI into LinkedIn.
-3. **The user always presses Send and Submit.** Emails open as prefilled Gmail compose windows, and forms are filled but never submitted.
+3. **The user presses Send and Submit, unless they turned on Autopilot.** By default emails open as prefilled Gmail compose windows and forms are filled but not submitted. Autopilot (opt-in, decided by the owner in October 2026) sends and submits for the jobs the user hands it, and only within these limits: verified addresses only (listed on the company site, the user's own export, the listed inbox; never guesses), no sentence the resume doesn't back, the daily email cap, no consent box ticked, no CAPTCHA touched, never LinkedIn, every action logged in Pipeline.
 4. **Every claim is backed by a resume fact.** Drafts cite `[FACT-xx]`, and `checkGrounding()` flags any claim without a citation. Citations are stripped before anything leaves the browser.
 5. **Business emails only.** Never look up personal emails or phone numbers. Label guessed addresses as guesses.
 6. **Local-first.** All data lives in IndexedDB (`HirivoDB`). There is no Hirivo server. AI calls go straight from the browser to the provider the user picked, using the user's own key.
@@ -43,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.10.0, built and verified)
+## 3. What exists today (v2.11.0, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -80,7 +80,8 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | End-to-end run (v2.9.2): the built extension in real Chrome with real Groq/Gemini keys and a fictional resume, on live Greenhouse and Ashby jobs: keys, resume PDF import, Analyze, checks, evidence table, Write, Open in Gmail, tailoring, answers, Interview Pack, Discover, Daily 5. Fixed what it found: the AI keys card closed after the first key (Gemini field hidden), generic role keywords ("engineer", "site") filled Discover and the Daily 5 with unrelated jobs, drafts and the recipient were lost on any tab switch (including the Gmail tab), a resend was possible after coming back, and filler like "my work aligns with" got through | Done | `src/services/targets.ts`, `views/WritePanel.tsx` |
 | Full application fill (v2.10): a content-only form engine reads every question (text, textarea, select, React dropdown, typeahead, radio, checkbox list, Yes/No buttons), answers from the profile and saved Application answers, sends open questions to the user's AI key (answers grounded in resume facts, unsupported sentences cut, company-name typos fixed), and shows a card of filled / written / left-for-you with reasons. Never ticks consent, never answers diversity questions unless the user opted to decline, never picks a "Yes, <specific visa>" variant, never submits. Tested on saved real forms (GitLab/Greenhouse, Palantir/Lever, Notion/Ashby) and live in Chrome | Done | `src/content/formEngine.ts`, `src/content/index.ts`, `src/services/formAnswers.ts`, `views/YouView.tsx` |
 | Write to up to 5 people: ladder contacts or typed work addresses, one role-aware email each (founder, hiring manager, recruiter, inbox, connection), unsupported sentences cut, Gmail drafts with the resume attached (multipart MIME) or one compose window at a time | Done | `src/services/multiOutreach.ts`, `views/ReachOutCard.tsx`, `src/services/gmail.ts` |
-| Tests: 275 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Autopilot (v2.11, opt-in): hand it any jobs (Now, Radar, all saved). For each: posting from the ATS API (or the page in a background tab), company website found and verified by its homepage, Real/Safety/Fit checks (shared `jobChecks.ts`), team page + GitHub + news research, one grounded email per verified address sent through the user's Gmail (resume attached, spaced out, daily cap), follow-ups sent in-thread, then the form filled in a background tab and submitted when nothing required is left. Pauses with a notification for consent ticks, CAPTCHAs and required questions it can't answer. Research runs in an offscreen document (DOMParser) | Done | `src/services/autopilot/*`, `src/offscreen/index.ts`, `views/AutopilotViews.tsx` |
+| Tests: 289 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 

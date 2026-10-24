@@ -493,3 +493,12 @@ export async function fillQuestion(q: Question, value: string | string[], source
     }
   }
 }
+
+/** The form's own Submit button (never anything that just navigates). */
+export function findSubmitButton(root: ParentNode = document): HTMLElement | undefined {
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>('button, input[type="submit"]')).filter((b) => {
+    const label = ((b as HTMLInputElement).value || b.innerText || b.textContent || '').trim();
+    return /^(submit( (your )?application)?|apply( now)?|send application|submit & apply)$/i.test(label) && !(b as HTMLButtonElement).disabled;
+  });
+  return candidates.find((b) => (b as HTMLButtonElement).type === 'submit') || candidates[candidates.length - 1];
+}

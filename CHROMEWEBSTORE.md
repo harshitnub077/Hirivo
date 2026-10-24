@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.10.0
+**Version:** 2.11.0
 **Category:** Productivity
 **Language:** English (India), English
 **Privacy policy:** [docs/privacy.md](docs/privacy.md). Publish it at a public URL (GitHub Pages, or the file's GitHub link) and paste that link into the dashboard.
@@ -11,7 +11,7 @@ Checks if a job is real and safe, tells you honestly if you fit, finds who to me
 
 ## Detailed description
 
-Hirivo is a job-search co-pilot for people who would rather send five good applications than fifty ignored ones. It never invents anything about you, never acts on LinkedIn for you, and never presses Send or Submit for you.
+Hirivo is a job-search co-pilot for people who would rather send five good applications than fifty ignored ones. It never invents anything about you and never acts on LinkedIn for you. You press Send and Submit yourself, unless you turn on Autopilot for the jobs you choose.
 
 **Start with your resume.** Upload a PDF, Word or text resume. Hirivo fills your profile, keeps only facts it can trace back to the file, and suggests the roles you fit.
 
@@ -31,6 +31,8 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 **Write to several people.** Pick up to five people at the company (the hiring manager, a recruiter, a founder, the hiring inbox, someone you know) and Hirivo writes each one their own email for their role. Sentences your resume doesn't back are cut before you see them.
 
 **Follow up on time.** The email opens in Gmail for you to send. Hirivo reminds you on day 4 and day 9 and stops when you get a reply. When someone replies, the Interview Pack collects what the company does, likely questions and your strongest points for the role. Optional Gmail power mode, with your own Google app, saves real drafts (with your resume attached if you like), keeps follow-ups in the same thread and spots replies by itself.
+
+**Autopilot, when you want it.** Turn it on, hand it the jobs you choose, and it does the rest: reads each posting, checks the job is real and safe, finds the company's website and the people there, emails everyone with a verified address from your own Gmail (with your resume attached and every claim backed by it), fills the application and submits it. It stops and notifies you only when a form needs your consent tick or a CAPTCHA, and it never emails a guessed address or touches LinkedIn.
 
 **Safe for your LinkedIn account.** Hirivo runs no script on LinkedIn by itself. It reads the page you are viewing only when you press Analyze or Save jobs, and it never clicks, connects, messages or applies there.
 
@@ -57,9 +59,10 @@ Help a job seeker decide which jobs are worth applying to and reach the right pe
 |---|---|
 | `sidePanel` | Hirivo's interface lives in the side panel and opens from the toolbar icon or Alt+H. |
 | `storage` | Keeps small local caches: daily AI usage counts, recent job-board results, company site lookups and which sites the user has allowed. |
-| `scripting` | Reads the job on the current tab when the user presses Analyze, Save jobs or Read people on this page. Nothing is injected without a click. |
+| `scripting` | Reads the job on the current tab when the user presses Analyze, Save jobs or Read people on this page, and, for jobs the user handed to Autopilot, reads the posting and loads the form filler in a background tab. Nothing is injected otherwise. |
 | `activeTab` | Gives Hirivo the open tab's address and one-time read access when the user opens the panel, so Analyze works without broad site access. |
 | `alarms` | Checks followed companies every 6 hours, follow-ups and Gmail replies every 3 hours, Discover every 12 hours, and builds the Daily 5 at 8:00 local time. |
+| `offscreen` | Autopilot's research runs in an offscreen document, because reading company websites needs an HTML parser that the background worker doesn't have. It only runs while there are jobs the user handed to Autopilot. |
 | `notifications` | Tells the user about new matching roles, due follow-ups, replies, the morning Daily 5, and a single check-in a week after applying. |
 | Host: `api.groq.com`, `generativelanguage.googleapis.com`, `openrouter.ai` | Sends the user's AI requests straight to the provider they chose, with their own key. |
 | Host: `rdap.org`, `dns.google` | Domain age and mail-server checks for company legitimacy and Scam Shield. |
@@ -70,8 +73,8 @@ Help a job seeker decide which jobs are worth applying to and reach the right pe
 | Host: `api.github.com`, `news.google.com` | Public GitHub org members and releases, and Google News headlines, for the contact ladder and opening-line suggestions. |
 | Optional `identity` | Asked only when the user connects Gmail with their own Google OAuth client, to run Google's sign-in window. |
 | Optional host: `gmail.googleapis.com`, `oauth2.googleapis.com` | Asked only on Connect Gmail: saving drafts in the user's Gmail and reading their own threads to spot replies. |
-| Optional host: `https://*/*` | Requested one site at a time, only when the user presses Analyze, Look up or Read people on this page on a site not listed above, such as a company careers page. |
-| Content scripts: `boards.greenhouse.io`, `job-boards.greenhouse.io`, `job-boards.eu.greenhouse.io`, `boards.eu.greenhouse.io`, `jobs.lever.co`, `jobs.eu.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com`, `*.myworkdayjobs.com`, `*.smartrecruiters.com`, `*.icims.com`, `*.recruitee.com`, `*.bamboohr.com`, `*.keka.com`, `*.darwinbox.in`, `*.zohorecruit.com`, `*.zohorecruit.in`, `*.freshteam.com` | Application-form pages only. Fills empty fields with the user's saved answers, writes answers to open questions from their resume when they press Fill with Hirivo, and attaches their resume. It never ticks consent boxes or presses Submit. |
+| Optional host: `https://*/*` | Requested one site at a time when the user presses Analyze, Look up or Read people on this page on a site not listed above. If the user turns on Autopilot, it asks once for all sites, so Autopilot can read company websites, careers pages and job postings for the jobs the user hands it. |
+| Content scripts: `boards.greenhouse.io`, `job-boards.greenhouse.io`, `job-boards.eu.greenhouse.io`, `boards.eu.greenhouse.io`, `jobs.lever.co`, `jobs.eu.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com`, `*.myworkdayjobs.com`, `*.smartrecruiters.com`, `*.icims.com`, `*.recruitee.com`, `*.bamboohr.com`, `*.keka.com`, `*.darwinbox.in`, `*.zohorecruit.com`, `*.zohorecruit.in`, `*.freshteam.com` | Application-form pages only. Fills empty fields with the user's saved answers, writes answers to open questions from their resume when they press Fill with Hirivo, and attaches their resume. It presses Submit only for jobs the user handed to Autopilot with submitting turned on, and never ticks consent boxes. |
 
 Hirivo uses no remote code. Everything it runs ships in the package. It has no `web_accessible_resources`.
 
@@ -83,7 +86,7 @@ Hirivo uses no remote code. Everything it runs ships in the package. It has no `
 |---|---|---|
 | Personally identifiable information | Yes, on device | Name, email and phone from the user's own resume and profile, used to fill application forms the user opens. |
 | Authentication information | Yes, on device | The user's own AI keys and, if connected, Gmail tokens. Stored in the browser, never synced or exported. |
-| Personal communications | Yes, on device | With Gmail power mode, Hirivo reads only the threads it started, to spot replies. |
+| Personal communications | Yes, on device | With Gmail power mode, Hirivo reads only the threads it started, to spot replies. With Autopilot on, it sends the emails and follow-ups the user asked it to send. |
 | Website content | Yes, on device | Job pages the user analyses, kept in local history. |
 | Health, financial, location, web history, user activity | No | |
 

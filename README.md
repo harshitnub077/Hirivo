@@ -22,7 +22,9 @@ A free Chrome extension that finds real jobs that fit you, tells you honestly wh
 
 10. **Plans your morning and your interviews.** Every day at 8 you get "Your 5 for today": the best open roles by fit, freshness and people you know, never one that looks stale or unsafe. When someone replies, Hirivo prepares an interview pack: what the company does (with sources), likely questions for the role, your three strongest proofs, and good questions to ask.
 
-11. **Optional Gmail power mode.** Connect your own free Google app (step-by-step guide in You → Gmail) and Hirivo saves real Gmail drafts, keeps follow-ups in the same thread, and notices replies on its own, stopping follow-ups. You still press Send. Your email never passes through anyone else's app.
+11. **Optional Gmail power mode.** Connect your own free Google app (step-by-step guide in You → Gmail) and Hirivo saves real Gmail drafts, keeps follow-ups in the same thread, and notices replies on its own, stopping follow-ups. You still press Send, unless you turn on Autopilot. Your email never passes through anyone else's app.
+
+12. **Autopilot, if you want zero clicks.** Turn it on in You → Autopilot and hand it any jobs you choose (one at a time, or all your saved jobs). For each job it reads the posting, checks the job is real and safe, finds the company's website and the people there, emails everyone with a verified address from your own Gmail with your resume attached, sends day-4 and day-9 follow-ups in the same thread (stopping when someone replies), then fills the application and submits it. It notifies you only when a form needs your consent tick, a CAPTCHA or an answer only you can give, and logs every step in Pipeline. It never emails a guessed address and never touches LinkedIn.
 
 Dark by default, with a light theme in You → Appearance. Press **Alt+H** on any page to open Hirivo.
 
@@ -40,7 +42,7 @@ Optional: add a free [Groq key](https://console.groq.com/keys) under **You → A
 ## Safety rules (built into the code)
 
 - **Never automates LinkedIn.** No auto-click, connect, message or apply. On LinkedIn or Naukri pages, Hirivo reads only what you're viewing, and only when you click.
-- **Never submits anything for you.** Forms are filled; you press Submit. Emails open in Gmail; you press Send.
+- **Never submits anything for you, unless you turn on Autopilot.** By default forms are filled and you press Submit; emails open in Gmail and you press Send. Autopilot sends and submits only for jobs you hand it, only to verified addresses, never ticks consent boxes or solves CAPTCHAs, and logs everything.
 - **No fake data.** Scores come with reasons. Facts must trace back to your resume. Guessed emails are labelled as guesses.
 - **Local-first.** Everything is stored in your browser. There is no Hirivo server. AI calls go straight to the provider you choose, with your key. Full details in the [privacy policy](docs/privacy.md).
 - **Credits its sources.** Every listing links back to where it came from, and each API is called within its stated limits.

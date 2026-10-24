@@ -29,6 +29,7 @@ const API_USE: Record<string, RegExp> = {
   alarms: /chrome\.alarms\.create/,
   notifications: /chrome\.notifications\.create/,
   identity: /chrome\.identity\.launchWebAuthFlow/,
+  offscreen: /chrome\.offscreen\s*\.createDocument/,
 };
 
 /** "https://*.naukri.com/*" -> "*.naukri.com" */

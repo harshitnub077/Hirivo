@@ -253,6 +253,7 @@ export interface OutreachRecord {
   followup2Date: number; // +9 days
   repliedAt?: number;
   notes?: string;
+  autopilot?: boolean; // sent by Autopilot, which also sends its follow-ups
 }
 
 export interface VoiceProfile {
@@ -272,6 +273,25 @@ export interface LLMCacheItem {
   model: string;
   createdAt: number;
   expiresAt: number;
+}
+
+/** One job handed to Autopilot: research, checks, emails and the application, start to finish. */
+export interface AutopilotJob {
+  id: string;
+  url: string; // the posting or application page
+  title: string;
+  company: string;
+  companyDomain?: string;
+  status: 'queued' | 'working' | 'needs-you' | 'done' | 'skipped' | 'failed';
+  stage?: string; // what it is doing right now
+  steps: { at: number; text: string; tone: 'ok' | 'caution' | 'risk' | 'neutral' }[];
+  emailed: string[]; // addresses actually sent to
+  applied?: boolean;
+  needs?: string; // what the user has to do, when status is needs-you
+  tabId?: number; // the application tab left open for the user
+  force?: boolean; // run even if the checks say skip
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface UserSettings {
@@ -328,6 +348,12 @@ export interface UserSettings {
   howDidYouHear?: string;
   languages?: string; // comma-separated
   eeoDecline?: boolean; // answer diversity questions with "decline to self-identify"
+  autopilot?: {
+    enabled: boolean;
+    sendEmails: boolean; // to verified addresses only, through the user's Gmail
+    submitForms: boolean; // press Submit when every required question is answered
+    peoplePerCompany: number; // 1-5
+  };
 }
 
 export class HirivoDatabase extends Dexie {
@@ -346,6 +372,7 @@ export class HirivoDatabase extends Dexie {
   voiceProfiles!: EntityTable<VoiceProfile, 'id'>;
   llmCache!: EntityTable<LLMCacheItem, 'hashKey'>;
   settings!: EntityTable<UserSettings, 'id'>;
+  autopilot!: EntityTable<AutopilotJob, 'id'>;
 
   constructor() {
     super('HirivoDB');
@@ -379,6 +406,10 @@ export class HirivoDatabase extends Dexie {
     // v6: Daily 5 picks, one row per local day.
     this.version(6).stores({
       daily: 'date',
+    });
+    // v7: Autopilot queue.
+    this.version(7).stores({
+      autopilot: 'id, status, createdAt',
     });
   }
 }

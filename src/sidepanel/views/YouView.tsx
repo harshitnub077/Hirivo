@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CheckCircle2, ClipboardList, Cpu, Download, FileText, KeyRound, Mail, Mic, Palette, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
+import { Bot, CheckCircle2, ClipboardList, Cpu, Download, FileText, KeyRound, Mail, Mic, Palette, Plus, ShieldCheck, Trash2, Upload, UserRound, Users } from 'lucide-react';
 import { db, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
 import { patchSettings } from '../../db/settings';
 import { testGroqConnection } from '../../llm/providers/groq';
@@ -13,6 +13,7 @@ import { buildProfile, saveProfile as saveResumeProfile } from '../../services/r
 import { Callout, Field, Pill, Segmented } from '../ui';
 import { ResumeImport } from './ResumeImport';
 import { GmailSection } from './GmailSection';
+import { AutopilotSettings } from './AutopilotViews';
 
 interface Props {
   settings: UserSettings;
@@ -350,6 +351,10 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
           Answer diversity questions (gender, race, veteran, disability) with “Decline to self-identify”. Off: Fill leaves them for you.
         </label>
         <button className="btn primary" onClick={saveAnswers}>Save answers</button>
+      </Section>
+
+      <Section icon={<Bot size={16} />} title="Autopilot" meta={settings.autopilot?.enabled ? <Pill tone="ok">On</Pill> : <Pill>Off</Pill>}>
+        <AutopilotSettings settings={settings} />
       </Section>
 
       <Section icon={<Users size={16} />} title="LinkedIn connections" meta={<Pill tone={connectionCount ? 'ok' : 'neutral'}>{connectionCount}</Pill>}>

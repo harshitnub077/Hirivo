@@ -1,7 +1,7 @@
 # Hirivo privacy policy
 
 **Effective:** 24 October 2026
-**Applies to:** the Hirivo Chrome extension, version 2.10.0 and later
+**Applies to:** the Hirivo Chrome extension, version 2.11.0 and later
 
 Hirivo is built so that your job search stays yours. There is no Hirivo server, no Hirivo account and no analytics. The people who make Hirivo cannot see your resume, your contacts, your messages or which jobs you look at.
 
@@ -43,6 +43,8 @@ Hirivo sends data off your computer only in these cases, and only directly from 
 **Pages you open.** When you press Analyze, Save jobs or Read people on this page, Hirivo reads the page in that tab, on your computer. If you turn on autofill, Hirivo fills your saved details into application forms on Greenhouse, Lever, Ashby, Workable, Workday and similar sites, and attaches your resume. When you press Fill with Hirivo, the open questions on that form (for example "Why do you want to work here?") are sent with your resume facts to your AI provider to write answers. Hirivo never ticks consent boxes, never answers diversity questions unless you chose "decline to self-identify" in Hirivo, and nothing is submitted until you press Submit.
 
 **Gmail.** By default, Hirivo opens a Gmail compose window with your draft filled in, and you press Send. If you choose to connect Gmail power mode with your own Google OAuth client, Hirivo talks to the Gmail API directly from your browser to save drafts in your account (with your resume attached, if you choose) and to read the threads it started, so it can tell when someone has replied. It does not read other email. You can disconnect at any time from **You → Gmail**, and you can revoke access from your Google account's security settings.
+
+**Autopilot (only if you turn it on).** For each job you hand it, Autopilot reads the posting and the company's public website, writes to people at the company whose work address is listed publicly, in your own LinkedIn export, or the company's hiring inbox, and sends those emails from your Gmail with your resume attached. It then fills and submits the application on the job's own application form. It never emails a guessed address, never ticks consent boxes, never solves CAPTCHAs, and never acts on LinkedIn. Everything it does is logged in Hirivo → Pipeline.
 
 Hirivo does not sell, rent or share your data with anyone, does not use it for advertising, and does not use it for any purpose other than helping you find and apply for jobs.
 
