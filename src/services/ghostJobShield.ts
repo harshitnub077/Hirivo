@@ -69,11 +69,15 @@ export async function checkGhostJob(params: GhostJobCheckParams): Promise<GhostJ
           reasons.push(`Posted ${age} day${age === 1 ? '' : 's'} ago on the company's board.`);
         }
       }
+    } else if (boardWasGuessed) {
+      // A board found by name may belong to a namesake, so a missing role here is weak evidence.
+      score = 45;
+      reasons.push(`${where} has ${roles.length} open roles, but not this one. That board was found by name, so it may not be theirs.`);
     } else {
       score = 70;
       reasons.push(`${where} has ${roles.length} open roles, but not this one. It may be closed, or posted only on the job board.`);
     }
-    if (boardWasGuessed) reasons.push('Board found by name; double-check it belongs to this company.');
+    if (boardWasGuessed && match) reasons.push('Board found by name; double-check it belongs to this company.');
   } else {
     reasons.push('No public Greenhouse, Lever or Ashby board found, so the company board could not confirm this role.');
   }

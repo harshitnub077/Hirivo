@@ -13,7 +13,9 @@ export async function callGemini(
       .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
     generationConfig: {
       temperature: options.temperature ?? 0.2,
-      maxOutputTokens: Math.max(256, options.maxTokens ?? 1024),
+      // Flash models think before answering and that counts against this limit, so leave room
+      // (only the tokens actually used are billed against the free quota).
+      maxOutputTokens: Math.max(2048, (options.maxTokens ?? 1024) * 3),
       ...(options.jsonMode ? { responseMimeType: 'application/json' } : {}),
     },
   };

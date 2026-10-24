@@ -168,8 +168,10 @@ export async function runDiscover({ force = false } = {}): Promise<DiscoverResul
 export async function savePageJobs(jobs: RawJob[]): Promise<number> {
   const profile = await getMatchProfile();
   const now = Date.now();
+  const existing = new Map((await db.discovered.bulkGet(jobs.map((j) => `page:${j.sourceId}`))).filter(Boolean).map((j) => [j!.id, j!]));
   const rows: DiscoveredJob[] = jobs.map((raw) => {
     const result = scoreJob(raw, { ...profile, locationPreference: 'anywhere', targets: [] }, now);
+    const prev = existing.get(`page:${raw.sourceId}`);
     return {
       id: `page:${raw.sourceId}`,
       source: 'page',
@@ -184,8 +186,11 @@ export async function savePageJobs(jobs: RawJob[]): Promise<number> {
       tags: [],
       score: result?.score ?? 30,
       matchReasons: result?.reasons ?? [],
-      status: 'saved',
-      firstSeenAt: now,
+      // Saving the same search page again must not undo "applied" on a job from it.
+      status: prev && prev.status !== 'new' && prev.status !== 'dismissed' ? prev.status : 'saved',
+      firstSeenAt: prev?.firstSeenAt || now,
+      appliedAt: prev?.appliedAt,
+      nudgedAt: prev?.nudgedAt,
     };
   });
   await db.discovered.bulkPut(rows);

@@ -53,7 +53,7 @@ export function AnswerPanel({ job, facts, voiceProfile, settings, hasKey, goTo }
         facts,
         voiceProfile,
         senderName: settings.userFullName,
-        requirements: (job.fitEvidence || []).sort((a, b) => Number(b.met) - Number(a.met)).map((r) => r.text),
+        requirements: [...(job.fitEvidence || [])].sort((a, b) => Number(b.met) - Number(a.met)).map((r) => r.text),
       });
       setText(r.text);
     } catch (err: any) {

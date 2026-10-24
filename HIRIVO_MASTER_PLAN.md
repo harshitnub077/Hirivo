@@ -43,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.9, built and verified)
+## 3. What exists today (v2.9.1, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -76,7 +76,8 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Gmail power mode (optional, user's own OAuth client): code + PKCE via launchWebAuthFlow, real drafts, follow-ups in-thread, replies detected every 3 h or on Check now, follow-ups stop on reply; permissions requested only on Connect | Done (Phase F) | `src/services/gmail.ts`, `views/GmailSection.tsx` |
 | Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
 | Store launch kit: listing with every permission justified, data-use answers, privacy policy, four 1280×800 screenshots rendered from the demo panel; a unit test fails if any manifest permission is unused in code or missing from the listing | Done (Phase G) | `CHROMEWEBSTORE.md`, `docs/privacy.md`, `scripts/store-screenshots.js`, `tests/unit/manifest.test.ts` |
-| Tests: 216 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Code review (v2.9.1): job boards and careers subdomains no longer checked as the employer's domain (`companyDomain.ts`); "thank you for your interest" no longer marks a job applied; bounces, auto-replies and alias mail no longer count as Gmail replies and a network blip no longer forces a reconnect; malformed AI JSON is never cached; Write/Resume/Answers reset per job; one logged send per draft; Greenhouse pages without JSON-LD read correctly; autofill on EU Greenhouse and Lever boards. Checked by loading `dist/` in real Chrome (CDP `Extensions.loadUnpacked`) and filling a live Greenhouse form | Done | `tests/unit/hardening.test.ts` |
+| Tests: 243 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 

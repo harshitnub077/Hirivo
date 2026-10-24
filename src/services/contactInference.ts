@@ -5,7 +5,14 @@ export interface EmailPermutation {
 }
 
 export function generateEmailPermutations(fullName: string, domain: string): EmailPermutation[] {
-  const parts = fullName.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  // "Dr. José O'Neil" → ["jose", "oneil"]: no titles, accents or punctuation in a mailbox name.
+  const parts = fullName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/\s+/)
+    .map((p) => p.replace(/[^a-z0-9]/g, ''))
+    .filter((p) => p && !/^(?:dr|mr|mrs|ms|prof|sir|shri|smt)$/.test(p));
   if (parts.length === 0 || !domain) return [];
 
   const first = parts[0];

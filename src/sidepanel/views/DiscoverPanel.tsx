@@ -20,7 +20,8 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
   const [pageHost, setPageHost] = useState<string | null>(null);
 
   const jobs = useLiveQuery(() => db.discovered.orderBy('score').reverse().toArray(), []) ?? [];
-  const fetches = useLiveQuery(() => db.sourceFetches.toArray(), []) ?? [];
+  const fetchRows = useLiveQuery(() => db.sourceFetches.toArray(), []);
+  const fetches = fetchRows ?? [];
   const lastRun = Math.max(0, ...fetches.map((f) => f.fetchedAt));
 
   const refresh = async (force: boolean) => {
@@ -41,10 +42,12 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
   }, []);
 
   // Refresh automatically when the feed is older than 6 hours.
+  // Waits for the fetch log to load: before that, lastRun reads as "never" and every open re-searched.
   useEffect(() => {
+    if (fetchRows === undefined) return;
     if (hasResume && (settings.targetRoles?.length ?? 0) > 0 && Date.now() - lastRun > 6 * 3_600_000 && !running) refresh(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasResume, settings.targetRoles?.join(','), settings.locationPreference, settings.smallTeamsOnly]);
+  }, [fetchRows === undefined, hasResume, settings.targetRoles?.join(','), settings.locationPreference, settings.smallTeamsOnly]);
 
   const savePage = async () => {
     setMessage(null);

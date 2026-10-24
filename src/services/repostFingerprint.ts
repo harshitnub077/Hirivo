@@ -75,7 +75,9 @@ export async function recordFingerprint(
     const mine = rec.sightings.find((s) => s.jobId === job.id);
     let reposted = false;
     if (mine) {
-      reposted = postedAt !== undefined && mine.postedAt !== undefined && postedAt - mine.postedAt > 3 * DAY;
+      // Re-dated: the listing now claims a posting date after we had already seen it. Comparing two
+      // relative dates instead ("2 weeks ago", later "1 month ago") flags rounding as a repost.
+      reposted = postedAt !== undefined && postedAt > mine.seenAt + DAY;
       if (reposted) rec.reposts++;
       mine.postedAt = postedAt ?? mine.postedAt;
       mine.seenAt = now;

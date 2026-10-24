@@ -3,6 +3,7 @@ import { extractJobFromPage, ExtractedJobData } from '../content/extractJob';
 import { extractJobListFromPage, ListedJob } from '../content/extractJobList';
 import { savePageJobs } from '../services/discover';
 import { grabRenderedPage } from '../content/grabPage';
+import { companyDomainOf } from '../services/companyDomain';
 
 export interface ActivePage {
   tabId: number;
@@ -66,7 +67,7 @@ export async function analyzeActivePage(): Promise<JobSnapshot> {
     url: data.sourceUrl,
     title: data.title,
     company: data.company || previous?.company || '',
-    companyDomain: previous?.companyDomain || data.companyDomain,
+    companyDomain: companyDomainOf(previous?.companyDomain) || companyDomainOf(data.companyDomain),
     location: data.location,
     description: data.description,
     postedDate: data.postedDate,
@@ -91,7 +92,7 @@ export async function saveJobsFromActivePage(): Promise<{ host: string; count: n
     if (!granted) throw new Error(`Hirivo needs your OK to read ${page.host}.`);
     results = await run();
   }
-  const { host, jobs } = results[0]?.result as { host: string; jobs: ListedJob[] };
+  const { host, jobs } = (results[0]?.result as { host: string; jobs: ListedJob[] } | undefined) ?? { host: page.host, jobs: [] };
   if (!jobs?.length) throw new Error('No job cards found on this page. Open a search results list and try again.');
   const count = await savePageJobs(
     jobs.map((j) => ({

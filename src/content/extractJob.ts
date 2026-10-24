@@ -12,7 +12,7 @@ export interface ExtractedJobData {
   isReposted?: boolean;
   atsUrl?: string;
   sourceUrl: string;
-  source: 'json-ld' | 'linkedin' | 'naukri' | 'generic';
+  source: 'json-ld' | 'linkedin' | 'naukri' | 'greenhouse' | 'generic';
 }
 
 export function extractJobFromPage(): ExtractedJobData {
@@ -24,10 +24,18 @@ export function extractJobFromPage(): ExtractedJobData {
     }
     return '';
   };
+  // DOMParser never runs scripts or loads images, and block tags become line breaks so lists
+  // ("<li>React</li><li>Go</li>") don't run together.
   const stripHtml = (html: string) => {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return (div.innerText || div.textContent || '').trim();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+    doc.querySelectorAll('p, div, li, h1, h2, h3, h4, h5, h6, tr, ul, ol').forEach((el) => el.append('\n'));
+    doc.querySelectorAll('li').forEach((li) => li.prepend('- '));
+    return (doc.body?.textContent || '')
+      .replace(/[ \t\u00a0]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   };
   const domainOf = (url?: string) => {
     try {
@@ -98,7 +106,10 @@ export function extractJobFromPage(): ExtractedJobData {
     return {
       title: String(p.title || text('h1')),
       company: String(org?.name || ''),
-      companyDomain: domainOf(org?.sameAs || org?.url),
+      // sameAs is often a list that starts with the LinkedIn page; take the first real website.
+      companyDomain: [org?.url, ...(Array.isArray(org?.sameAs) ? org.sameAs : [org?.sameAs])]
+        .map((u) => (typeof u === 'string' ? domainOf(u) : undefined))
+        .find((d) => d && !/(^|\.)(linkedin|twitter|x|facebook|instagram|youtube|github|crunchbase|glassdoor|wikipedia)\.\w+$/.test(d)),
       location: [address.addressLocality, address.addressRegion, address.addressCountry?.name || address.addressCountry, remote]
         .filter((x) => typeof x === 'string' && x)
         .join(', '),
@@ -110,7 +121,25 @@ export function extractJobFromPage(): ExtractedJobData {
     };
   }
 
-  // 3. Naukri without JSON-LD.
+  // 3. Greenhouse boards stopped publishing JSON-LD; the header and <title> carry the rest.
+  //    <title>Job Application for Account Executive - France at GitLab</title>
+  if (/(^|\.)greenhouse\.io$/.test(host)) {
+    const title = text('.job__title h1 | .job__title | h1');
+    const description = text('.job__description | #content');
+    if (title && description) {
+      return {
+        title,
+        company: document.title.match(/^Job Application for .+ at (.+)$/)?.[1]?.trim() || '',
+        location: text('.job__location') || document.querySelector('meta[property="og:description"]')?.getAttribute('content') || '',
+        description: description.slice(0, 12000),
+        atsUrl: href,
+        sourceUrl: href,
+        source: 'greenhouse',
+      };
+    }
+  }
+
+  // 4. Naukri without JSON-LD.
   if (host.endsWith('naukri.com')) {
     const title = text('h1');
     const description = text('[class*="job-desc"] | [class*="JDC"] | section[class*="description"]');
@@ -128,7 +157,7 @@ export function extractJobFromPage(): ExtractedJobData {
     }
   }
 
-  // 4. Anything else: best effort from headings and Open Graph tags.
+  // 5. Anything else: best effort from headings and Open Graph tags.
   const og = (prop: string) => document.querySelector(`meta[property="${prop}"]`)?.getAttribute('content') || '';
   const main = document.querySelector('main, article, [class*="job-description"], [id*="job-description"]') as HTMLElement | null;
   return {

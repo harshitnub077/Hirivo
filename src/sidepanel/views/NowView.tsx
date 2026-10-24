@@ -3,14 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { CheckCircle2, Circle, Clock, MapPin, RefreshCw, ScanSearch, ShieldCheck } from 'lucide-react';
 import { db, JobSnapshot, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
 import { checkGhostJob } from '../../services/ghostJobShield';
-import { checkLegitimacy, extractDomainFromUrl } from '../../services/legitimacyScorer';
+import { checkLegitimacy } from '../../services/legitimacyScorer';
+import { companyDomainOf } from '../../services/companyDomain';
 import { analyzeJobFit } from '../../services/fitAdvisor';
 import { findWarmPaths } from '../../services/warmPathMatcher';
 import { daysSince } from '../../services/atsFeeds';
 import { checkScam } from '../../services/scamShield';
 import { realVerdict, safetyVerdict } from '../../services/verdicts';
 import { recordFingerprint } from '../../services/repostFingerprint';
-import { Callout, Empty, Meter, Pill, Segmented, Tone, toneForScore } from '../ui';
+import { Callout, Empty, Meter, Pill, Segmented, toneForScore } from '../ui';
 import type { ActivePage } from '../page';
 import type { ViewId } from '../App';
 import { EvidencePanel } from './EvidencePanel';
@@ -137,7 +138,7 @@ export function NowView(props: Props) {
     setChecking(true);
     setCheckError(null);
     try {
-      const domain = job.companyDomain || extractDomainFromUrl(job.url) || undefined;
+      const domain = companyDomainOf(job.companyDomain) || companyDomainOf(job.url);
       const fitWanted = hasKey && (facts.length > 0 || !!resume);
       const [ghost, legit, fit] = await Promise.all([
         checkGhostJob({
@@ -167,8 +168,9 @@ export function NowView(props: Props) {
         atsPublishedAt: ghost.atsPublishedAt,
         scamLevel,
         scamFindings,
-        legitScore: domain ? legit.score : undefined,
-        legitDetails: domain
+        companyDomain: domain,
+        legitScore: domain && legit.checked ? legit.score : undefined,
+        legitDetails: domain && legit.checked
           ? { domainAgeDays: legit.domainAgeDays, hasMx: legit.hasMx, mailProvider: legit.mailProvider, isFreeEmail: legit.isFreeEmail }
           : undefined,
         ...(fitResult
@@ -269,6 +271,7 @@ export function NowView(props: Props) {
 
       <div hidden={panel !== 'evidence'}>
         <EvidencePanel
+          key={job.id}
           job={job}
           analyzed={analyzed}
           checking={checking}
@@ -282,6 +285,7 @@ export function NowView(props: Props) {
       </div>
       <div hidden={panel !== 'people'}>
         <PeoplePanel
+          key={job.id}
           job={job}
           settings={settings}
           onUpdateJob={onUpdateJob}
@@ -293,13 +297,14 @@ export function NowView(props: Props) {
         />
       </div>
       <div hidden={panel !== 'resume'}>
-        <ResumePanel job={job} facts={facts} resume={resume} settings={settings} hasKey={hasKey} onUpdateJob={onUpdateJob} goTo={props.goTo} />
+        <ResumePanel key={job.id} job={job} facts={facts} resume={resume} settings={settings} hasKey={hasKey} onUpdateJob={onUpdateJob} goTo={props.goTo} />
       </div>
       <div hidden={panel !== 'answers'}>
-        <AnswerPanel job={job} facts={facts} voiceProfile={props.voiceProfile} settings={settings} hasKey={hasKey} goTo={props.goTo} />
+        <AnswerPanel key={job.id} job={job} facts={facts} voiceProfile={props.voiceProfile} settings={settings} hasKey={hasKey} goTo={props.goTo} />
       </div>
       <div hidden={panel !== 'write'}>
         <WritePanel
+          key={job.id}
           job={job}
           facts={facts}
           voiceProfile={props.voiceProfile}

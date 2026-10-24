@@ -12,12 +12,17 @@ export function decodeEntities(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&gt;/g, '>')
     .replace(/&lt;/g, '<')
-    .replace(/&amp;/g, '&')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&amp;/g, '&');
 }
 
 export function htmlToText(html: string): string {
-  return decodeEntities(html.replace(/<p>/g, '\n').replace(/<[^>]+>/g, '')).trim();
+  return decodeEntities(html.replace(/<(?:p|br|li|\/li|div|\/div|h\d)[^>]*>/gi, '\n').replace(/<[^>]+>/g, ''))
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n\s*/g, '\n')
+    .trim();
 }
 
 /** Parses one top-level comment. Returns null when it isn't a job post. */

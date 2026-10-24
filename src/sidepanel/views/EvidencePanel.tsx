@@ -166,7 +166,11 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
         ) : (
           <div className="stack">
             {job.scamLevel && <Checklist lines={scamLines(job)} />}
-            <p className="small muted">This job board doesn't say which website the company owns. Add it to check the domain.</p>
+            <p className="small muted">
+              {job.companyDomain
+                ? `The domain checks for ${job.companyDomain} didn't answer (offline or rate-limited). Press Recheck, or correct the website below.`
+                : "This job board doesn't say which website the company owns. Add it to check the domain."}
+            </p>
             <Field label="Company website">
               <div className="row">
                 <input value={site} onChange={(e) => setSite(e.target.value)} placeholder="razorpay.com" onKeyDown={(e) => e.key === 'Enter' && saveSite()} />
@@ -212,7 +216,7 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
                 <ProofSprintCard job={job} hasKey={hasKey} onUpdateJob={onUpdateJob} onWrite={onWrite} />
               </>
             ) : (
-              (job.matchingStrengths?.length || job.dealbreakers?.length) && (
+              Boolean(job.matchingStrengths?.length || job.dealbreakers?.length) && (
                 <Checklist
                   lines={[
                     ...(job.matchingStrengths || []).map((text): Line => ({ tone: 'ok', text })),

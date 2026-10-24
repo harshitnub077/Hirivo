@@ -22,12 +22,18 @@ export async function getSettings(): Promise<UserSettings> {
 }
 
 // Merge-update so no caller can wipe fields it doesn't know about.
+// In a transaction, so a Gmail token refresh in the background can't overwrite a profile edit
+// made in the panel at the same moment (or the other way round).
 export async function patchSettings(patch: Partial<UserSettings>): Promise<UserSettings> {
-  const next = { ...(await getSettings()), ...patch, id: 'config' };
-  await db.settings.put(next);
-  return next;
+  return db.transaction('rw', db.settings, async () => {
+    const next = { ...(await getSettings()), ...patch, id: 'config' };
+    await db.settings.put(next);
+    return next;
+  });
 }
 
-export function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+/** The user's local calendar day, so daily limits reset at their midnight, not UTC's. */
+export function todayKey(now = Date.now()): string {
+  const d = new Date(now);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

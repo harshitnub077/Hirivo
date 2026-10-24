@@ -29,12 +29,21 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onStartup.addListener(ensureAlarms);
 
+const JOBS: Record<string, () => Promise<void>> = {
+  [RADAR_ALARM]: pollWatchlist,
+  [FOLLOWUP_ALARM]: checkFollowups,
+  [DISCOVER_ALARM]: discoverInBackground,
+  [DAILY_ALARM]: morningShortlist,
+};
+
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === RADAR_ALARM) await pollWatchlist();
-  if (alarm.name === FOLLOWUP_ALARM) await checkFollowups();
-  if (alarm.name === DISCOVER_ALARM) await discoverInBackground();
-  if (alarm.name === DAILY_ALARM) await morningShortlist();
-  await updateBadge();
+  // A failing feed or a network blip must not stop the badge, or the next alarm, from running.
+  try {
+    await JOBS[alarm.name]?.();
+  } catch (err) {
+    console.warn(`Hirivo: ${alarm.name} failed`, err);
+  }
+  await updateBadge().catch(() => undefined);
 });
 
 async function pollWatchlist() {
@@ -143,7 +152,7 @@ async function checkGmailReplies() {
 
 async function checkFollowups() {
   await checkGmailReplies();
-  await nudgeAfterApplying();
+  await nudgeAfterApplying().catch(() => undefined);
   const open = await db.outreach.where('status').equals('SENT').toArray();
   for (const r of open) {
     const stage = dueFollowupStage(r);
@@ -164,7 +173,7 @@ async function updateBadge() {
   const due = open.filter((r) => dueFollowupStage(r) > 0).length;
   const fresh = companies.reduce((n, c) => n + c.newRoleIds.length, 0);
   const count = due + fresh;
-  await chrome.action.setBadgeBackgroundColor({ color: due > 0 ? '#A15C00' : '#0F7A55' });
+  await chrome.action.setBadgeBackgroundColor({ color: due > 0 ? '#9A5A00' : '#0A714B' });
   await chrome.action.setBadgeText({ text: count > 0 ? String(Math.min(count, 99)) : '' });
 }
 

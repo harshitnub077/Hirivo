@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.9.0
+**Version:** 2.9.1
 **Category:** Productivity
 **Language:** English (India), English
 **Privacy policy:** [docs/privacy.md](docs/privacy.md). Publish it at a public URL (GitHub Pages, or the file's GitHub link) and paste that link into the dashboard.
@@ -69,7 +69,7 @@ Help a job seeker decide which jobs are worth applying to and reach the right pe
 | Optional `identity` | Asked only when the user connects Gmail with their own Google OAuth client, to run Google's sign-in window. |
 | Optional host: `gmail.googleapis.com`, `oauth2.googleapis.com` | Asked only on Connect Gmail: saving drafts in the user's Gmail and reading their own threads to spot replies. |
 | Optional host: `https://*/*` | Requested one site at a time, only when the user presses Analyze, Look up or Read people on this page on a site not listed above, such as a company careers page. |
-| Content scripts: `boards.greenhouse.io`, `job-boards.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com`, `*.myworkdayjobs.com`, `*.smartrecruiters.com`, `*.icims.com`, `*.recruitee.com`, `*.bamboohr.com`, `*.keka.com`, `*.darwinbox.in`, `*.zohorecruit.com`, `*.zohorecruit.in`, `*.freshteam.com` | Application-form pages only. Fills empty fields with the user's saved details and attaches their resume, if they turned autofill on. It never presses Submit. |
+| Content scripts: `boards.greenhouse.io`, `job-boards.greenhouse.io`, `job-boards.eu.greenhouse.io`, `boards.eu.greenhouse.io`, `jobs.lever.co`, `jobs.eu.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com`, `*.myworkdayjobs.com`, `*.smartrecruiters.com`, `*.icims.com`, `*.recruitee.com`, `*.bamboohr.com`, `*.keka.com`, `*.darwinbox.in`, `*.zohorecruit.com`, `*.zohorecruit.in`, `*.freshteam.com` | Application-form pages only. Fills empty fields with the user's saved details and attaches their resume, if they turned autofill on. It never presses Submit. |
 
 Hirivo uses no remote code. Everything it runs ships in the package. It has no `web_accessible_resources`.
 

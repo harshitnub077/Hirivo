@@ -95,8 +95,10 @@ const normalizeTitle = (t: string) =>
 
 /** Finds the posting on the company's own board that corresponds to a job seen elsewhere. */
 export function findMatchingRole(roles: WatchedRole[], title: string, pageUrl?: string): WatchedRole | undefined {
-  if (pageUrl) {
-    const byUrl = roles.find((r) => r.url && pageUrl.includes(r.id));
+  // Only an ATS link carries the board's own job id; elsewhere (a LinkedIn id) digits can collide.
+  if (pageUrl && /^https?:\/\//.test(pageUrl) && parseAtsUrl(pageUrl)) {
+    const segments = new URL(pageUrl).pathname.split('/');
+    const byUrl = roles.find((r) => r.url === pageUrl || segments.includes(r.id));
     if (byUrl) return byUrl;
   }
   const target = normalizeTitle(title);

@@ -95,10 +95,20 @@ export interface ThreadMessage {
 
 const addressOf = (from: string) => (from.match(/<([^>]+)>/)?.[1] || from).trim().toLowerCase();
 
-/** A reply is any message in the thread from someone other than the user (drafts don't count). */
+// Bounces and out-of-office notes land in the same thread but are not a person answering.
+const AUTOMATED_SENDER = /^(?:mailer-daemon|postmaster|no-?reply|do-?not-?reply)@/i;
+const AUTOMATED_SUBJECT = /^(?:automatic reply|auto(?:matic)?[- ]?reply|out of (?:the )?office|undeliverable|delivery status notification|mail delivery failed|returned mail)\b/i;
+
+/** A reply is a message in the thread from someone other than the user: not a draft, not one the
+ * user sent (from any alias), and not a bounce or auto-reply. */
 export function detectReply(messages: ThreadMessage[], userEmail: string): ThreadMessage | undefined {
   const me = userEmail.toLowerCase();
-  return messages.find((m) => !(m.labelIds || []).includes('DRAFT') && m.headers.from && addressOf(m.headers.from) !== me);
+  return messages.find((m) => {
+    const labels = m.labelIds || [];
+    if (labels.includes('DRAFT') || labels.includes('SENT') || !m.headers.from) return false;
+    const from = addressOf(m.headers.from);
+    return from !== me && !AUTOMATED_SENDER.test(from) && !AUTOMATED_SUBJECT.test(m.headers.subject || '');
+  });
 }
 
 // ---------- Tokens ----------
@@ -162,6 +172,9 @@ export async function getAccessToken(deps: AuthDeps = defaultDeps()): Promise<st
     await patchSettings({ gmail: { ...s, accessToken: t.access_token, expiresAt: now + t.expires_in * 1000, needsReconnect: false } });
     return t.access_token;
   } catch (err: any) {
+    // Offline or Google hiccup: the refresh token may be fine. Try again next time instead of
+    // asking the user to reconnect.
+    if (!err?.code) throw err;
     // Refresh tokens from a Testing-mode Google app expire after 7 days; try a silent sign-in first.
     try {
       const t = await codeFlow(s, deps, true, s.email);
@@ -293,7 +306,15 @@ export async function findReplies(
   const replies: { id: string; from: string }[] = [];
   for (const r of records) {
     if (r.status !== 'SENT' || !r.gmailThreadId) continue;
-    const reply = detectReply(await readThread(r.gmailThreadId), userEmail);
+    let thread: ThreadMessage[];
+    try {
+      thread = await readThread(r.gmailThreadId);
+    } catch (err) {
+      // A thread the user deleted (404) shouldn't stop every other thread from being checked.
+      if (err instanceof GmailNeedsReconnect) throw err;
+      continue;
+    }
+    const reply = detectReply(thread, userEmail);
     if (reply) replies.push({ id: r.id, from: reply.headers.from });
   }
   return replies;

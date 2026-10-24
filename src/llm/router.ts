@@ -2,6 +2,7 @@ import { getSettings } from '../db/settings';
 import { computePromptHash, getCachedResponse, setCachedResponse } from './cache';
 import { pickModel } from './registry';
 import { recordUsage } from './usage';
+import { parseJsonLoose } from './json';
 import { LLMMessage, ModelRole, ProviderId } from './types';
 import { callGroq } from './providers/groq';
 import { callGemini } from './providers/gemini';
@@ -36,9 +37,21 @@ export async function routeLLMRequest(req: RouteRequest): Promise<RouteResult> {
   const role = ROLE_FOR_TASK[req.taskType];
   const hash = await computePromptHash(JSON.stringify({ m: req.messages, j: req.jsonMode, r: role }));
 
+  // In JSON mode, a reply that doesn't parse is a failure: never return it from the cache or store it,
+  // or every retry for a week would hit the same broken answer.
+  const usable = (content: string) => {
+    if (!req.jsonMode) return true;
+    try {
+      parseJsonLoose(content);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   if (!req.skipCache) {
     const cached = await getCachedResponse(hash);
-    if (cached) {
+    if (cached && usable(cached)) {
       await recordUsage('cache');
       return { content: cached, providerUsed: 'cache', model: 'cache', cached: true };
     }
@@ -74,6 +87,7 @@ export async function routeLLMRequest(req: RouteRequest): Promise<RouteResult> {
         result = await call(key, req.messages, { ...base, model });
       }
       await recordUsage(provider, result.totalTokens);
+      if (!usable(result.content)) throw new Error(`${result.model} returned malformed JSON`);
       await setCachedResponse(hash, result.content, result.model);
       return { content: result.content, providerUsed: provider, model: result.model, cached: false };
     } catch (err: any) {

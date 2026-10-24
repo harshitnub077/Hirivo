@@ -1,4 +1,5 @@
-// False-positive check: real postings from established companies must come back clear.
+// False-positive check: real postings from established companies must come back clear. The one
+// allowed finding is the placeholder caution, because real boards do carry "description to be added" stubs.
 import { describe, expect, it } from 'vitest';
 import { checkScam } from '../../src/services/scamShield';
 import { htmlToText } from '../../src/services/discover/hn';
@@ -23,7 +24,8 @@ describe.each([
     expect(jobs.length).toBeGreaterThan(0);
     const flagged = jobs
       .map((j: any) => ({ title: j.title, r: checkScam({ ...j, companyDomain: domain }) }))
-      .filter((x: any) => x.r.level !== 'clear');
+      .map((x: any) => ({ ...x, r: { ...x.r, findings: x.r.findings.filter((f: any) => !/no real job description/.test(f.text)) } }))
+      .filter((x: any) => x.r.findings.length > 0);
     console.log(`${name}: ${jobs.length} postings, ${flagged.length} flagged`);
     for (const f of flagged) console.log(`  ${f.title}: ${f.r.findings.map((x: any) => x.text).join(' | ')}`);
     expect(flagged).toEqual([]);

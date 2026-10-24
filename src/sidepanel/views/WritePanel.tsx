@@ -6,7 +6,7 @@ import { hasSiteAccess } from '../../services/siteAccess';
 import { JobSnapshot, ResumeFact, UserSettings, VoiceProfile } from '../../db';
 import { checkGrounding, generateProofLinkedDraft, removeUnsupported } from '../../services/proofWriter';
 import { autoPurgeRoboticPhrases, lintOutreachText } from '../../services/phraseLinter';
-import { gmailComposeUrl, openUrl, recordOutreach, stripCitations } from '../../services/outreach';
+import { dailyCapStatus, gmailComposeUrl, openUrl, recordOutreach, stripCitations } from '../../services/outreach';
 import { createDraft, draftOpenUrl, gmailConnected, GmailNeedsReconnect } from '../../services/gmail';
 import { Callout, Field, Pill, useCopy } from '../ui';
 import type { Recipient } from './NowView';
@@ -118,7 +118,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
         facts,
         voiceProfile,
         realSignalHook: hook.trim() || undefined,
-        requirements: (job.fitEvidence || []).sort((a, b) => Number(b.met) - Number(a.met)).map((r) => r.text),
+        requirements: [...(job.fitEvidence || [])].sort((a, b) => Number(b.met) - Number(a.met)).map((r) => r.text),
         senderName: settings.userFullName,
       });
       setSubject(draft.emailSubject);
@@ -133,6 +133,8 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
   };
 
   const blocked = grounding.unverifiedClaimsCount > 0 && !claimsReviewed;
+  // One logged send per version: a second click would double the follow-up reminders.
+  const sent = logged !== null;
 
   const sendEmail = async () => {
     setError(null);
@@ -141,6 +143,9 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
       return;
     }
     try {
+      // Check the cap before touching Gmail, so a refused send leaves no orphan draft behind.
+      const { used, cap } = await dailyCapStatus();
+      if (used >= cap) throw new Error(`You've reached today's limit of ${cap} messages. Fewer, better messages get more replies; pick this up tomorrow.`);
       const clean = stripCitations(body);
       const base = {
         jobId: job.id,
@@ -165,8 +170,11 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
           setLogged('Draft saved in your Gmail and opened. Press Send there. Hirivo will spot the reply and stop the follow-ups.');
           return;
         } catch (err: any) {
-          if (!(err instanceof GmailNeedsReconnect)) throw err;
-          setError('Gmail needs reconnecting (You → Gmail), so this opened as a normal compose window instead.');
+          setError(
+            err instanceof GmailNeedsReconnect
+              ? 'Gmail needs reconnecting (You → Gmail), so this opened as a normal compose window instead.'
+              : `Couldn't save a Gmail draft (${err.message}), so this opened as a normal compose window instead.`
+          );
         }
       }
       await recordOutreach(base);
@@ -295,8 +303,8 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
           )}
 
           <div className="row">
-            <button className="btn primary" style={{ flex: 1 }} onClick={sendEmail} disabled={blocked}>
-              <Mail size={14} /> Open in Gmail
+            <button className="btn primary" style={{ flex: 1 }} onClick={sendEmail} disabled={blocked || sent}>
+              <Mail size={14} /> {sent ? 'Logged in Pipeline' : 'Open in Gmail'}
             </button>
             <button className="btn icon" title="Copy email" onClick={() => copy('email', `Subject: ${subject}\n\n${stripCitations(body)}`)}>
               {copied === 'email' ? <Check size={14} /> : <Copy size={14} />}
@@ -319,7 +327,7 @@ export function WritePanel({ job, facts, voiceProfile, settings, hasKey, recipie
             <button className="btn" style={{ flex: 1 }} onClick={() => copy('note', stripCitations(note))}>
               {copied === 'note' ? <Check size={14} /> : <Copy size={14} />} Copy note
             </button>
-            <button className="btn" style={{ flex: 1 }} onClick={logLinkedIn} disabled={blocked}>
+            <button className="btn" style={{ flex: 1 }} onClick={logLinkedIn} disabled={blocked || sent}>
               I sent it
             </button>
           </div>

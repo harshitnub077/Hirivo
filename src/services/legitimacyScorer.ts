@@ -1,3 +1,5 @@
+import { registrableDomain } from './companyDomain';
+
 export interface LegitimacyCheckParams {
   domain?: string;
   companyName: string;
@@ -12,22 +14,9 @@ export interface LegitimacyResult {
   hasMx: boolean;
   mailProvider?: string;
   isFreeEmail: boolean;
+  /** False when neither the DNS nor the RDAP lookup answered (offline, rate-limited): the score means nothing then. */
+  checked: boolean;
   flags: string[];
-}
-
-export function extractDomainFromUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    let host = parsed.hostname.toLowerCase();
-    if (host.startsWith('www.')) host = host.substring(4);
-    // Exclude major job boards
-    if (host.includes('linkedin.com') || host.includes('naukri.com') || host.includes('indeed.com') || host.includes('greenhouse.io') || host.includes('lever.co')) {
-      return null;
-    }
-    return host;
-  } catch {
-    return null;
-  }
 }
 
 export async function checkLegitimacy(params: LegitimacyCheckParams): Promise<LegitimacyResult> {
@@ -38,8 +27,11 @@ export async function checkLegitimacy(params: LegitimacyCheckParams): Promise<Le
   let hasMx = false;
   let mailProvider: string | undefined;
   let isFreeEmail = false;
+  let checked = false;
 
-  const targetDomain = params.domain || (params.contactEmail ? params.contactEmail.split('@')[1] : null);
+  // Subdomains (careers.acme.com) usually have no mail server or RDAP record of their own.
+  const rawDomain = params.domain || (params.contactEmail ? params.contactEmail.split('@')[1] : null);
+  const targetDomain = rawDomain ? registrableDomain(rawDomain) : null;
 
   // Check if contact email is from a free public provider
   if (params.contactEmail) {
@@ -48,18 +40,19 @@ export async function checkLegitimacy(params: LegitimacyCheckParams): Promise<Le
     if (emailDomain && freeDomains.includes(emailDomain)) {
       isFreeEmail = true;
       score -= 40;
-      flags.push(`⚠️ Scam alert: Job poster is using a free personal email address (@${emailDomain}) rather than a corporate domain.`);
+      flags.push(`Scam alert: Job poster is using a free personal email address (@${emailDomain}) rather than a corporate domain.`);
     }
   }
 
   if (targetDomain) {
     // 1. Check DNS MX records via Google DNS-over-HTTPS (DoH)
     try {
-      const dohRes = await fetch(`https://dns.google/resolve?name=${targetDomain}&type=MX`, {
+      const dohRes = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(targetDomain)}&type=MX`, {
         headers: { Accept: 'application/dns-json' },
       });
       if (dohRes.ok) {
         const dohData = await dohRes.json();
+        checked = true;
         if (dohData.Status === 0 && Array.isArray(dohData.Answer) && dohData.Answer.length > 0) {
           hasMx = true;
           score += 25;
@@ -77,7 +70,7 @@ export async function checkLegitimacy(params: LegitimacyCheckParams): Promise<Le
           flags.push(`Active mail exchange verified (${mailProvider}). Domain is capable of receiving outreach.`);
         } else {
           score -= 30;
-          flags.push(`⚠️ No MX records found for ${targetDomain}. This domain cannot receive emails.`);
+          flags.push(`No MX records found for ${targetDomain}. This domain cannot receive emails.`);
         }
       }
     } catch (err) {
@@ -86,11 +79,12 @@ export async function checkLegitimacy(params: LegitimacyCheckParams): Promise<Le
 
     // 2. Check Domain Age via RDAP
     try {
-      const rdapRes = await fetch(`https://rdap.org/domain/${targetDomain}`, {
+      const rdapRes = await fetch(`https://rdap.org/domain/${encodeURIComponent(targetDomain)}`, {
         method: 'GET',
       });
       if (rdapRes.ok) {
         const rdap = await rdapRes.json();
+        checked = true;
         const events = rdap.events || [];
         const regEvent = events.find((e: any) =>
           e.eventAction === 'registration' || e.eventAction === 'creation'
@@ -107,7 +101,7 @@ export async function checkLegitimacy(params: LegitimacyCheckParams): Promise<Le
 
           if (domainAgeDays < 90) {
             score -= 40;
-            flags.push(`🚨 High Risk: Domain was registered only ${domainAgeDays} days ago (${regDate.toLocaleDateString()}). Possible fraudulent shell company.`);
+            flags.push(`High risk: Domain was registered only ${domainAgeDays} days ago (${regDate.toLocaleDateString()}). Possible fraudulent shell company.`);
           } else if (domainAgeDays < 365) {
             score += 10;
             flags.push(`Young entity: Domain registered ${domainAgeFormatted} ago.`);
@@ -141,6 +135,7 @@ export async function checkLegitimacy(params: LegitimacyCheckParams): Promise<Le
     hasMx,
     mailProvider,
     isFreeEmail,
+    checked,
     flags,
   };
 }

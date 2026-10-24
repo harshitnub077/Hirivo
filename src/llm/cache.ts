@@ -30,6 +30,8 @@ export async function setCachedResponse(
   ttlSeconds = 7 * 24 * 3600
 ): Promise<void> {
   try {
+    // Expired answers are only removed when read; sweep them now and then so the cache can't grow forever.
+    if (Math.random() < 0.05) await db.llmCache.where('expiresAt').below(Date.now()).delete();
     await db.llmCache.put({
       hashKey,
       response,

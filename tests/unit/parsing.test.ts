@@ -34,7 +34,9 @@ describe('findMatchingRole', () => {
     { id: '22', title: 'Product Designer', location: '', url: 'https://x/22' },
   ];
   it('matches titles despite "Sr." and brackets', () => expect(findMatchingRole(roles, 'Sr. Frontend Engineer')?.id).toBe('11'));
-  it('matches by id in the page url', () => expect(findMatchingRole(roles, 'whatever', 'https://board/jobs/22?src=li')?.id).toBe('22'));
+  it('matches by id in an ATS page url', () => expect(findMatchingRole(roles, 'whatever', 'https://job-boards.greenhouse.io/acme/jobs/22?src=li')?.id).toBe('22'));
+  it('does not match ids hidden inside another site\'s numbers', () =>
+    expect(findMatchingRole(roles, 'whatever', 'https://www.linkedin.com/jobs/view/4011223344/')).toBeUndefined());
   it('returns undefined when absent', () => expect(findMatchingRole(roles, 'Data Analyst')).toBeUndefined());
   it('daysSince', () => expect(daysSince(new Date(Date.now() - 3 * 86_400_000).toISOString())).toBe(3));
 });

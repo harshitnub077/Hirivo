@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hirivo: Real Jobs, Right People",
   "short_name": "Hirivo",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -68,7 +68,10 @@
       "matches": [
         "https://boards.greenhouse.io/*",
         "https://job-boards.greenhouse.io/*",
+        "https://job-boards.eu.greenhouse.io/*",
+        "https://boards.eu.greenhouse.io/*",
         "https://jobs.lever.co/*",
+        "https://jobs.eu.lever.co/*",
         "https://jobs.ashbyhq.com/*",
         "https://apply.workable.com/*",
         "https://*.myworkdayjobs.com/*",

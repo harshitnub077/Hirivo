@@ -60,7 +60,7 @@ function addButton() {
     position: 'fixed',
     bottom: '84px',
     right: '24px',
-    background: '#0f7a55',
+    background: '#0a714b',
     color: '#ffffff',
     border: '0',
     borderRadius: '9999px',
@@ -87,7 +87,9 @@ const observer = new MutationObserver(() => {
   }, 500);
 });
 async function tick() {
-  if (!reported && SUCCESS_TEXT.test(document.body.innerText.slice(0, 5000))) {
+  // A confirmation page has no application form left on it; a job page that merely says
+  // "applications received on a rolling basis" still has one.
+  if (!reported && !hasApplicationForm() && SUCCESS_TEXT.test(document.body.innerText.slice(0, 5000))) {
     reported = true;
     send({ action: 'APPLICATION_SUBMITTED', url: location.href, title: document.title });
   }

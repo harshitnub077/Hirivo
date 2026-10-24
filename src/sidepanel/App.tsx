@@ -82,10 +82,17 @@ export const App: React.FC = () => {
     }
   };
 
+  // Checks take a few seconds; if the user moved to another job meanwhile, save the result
+  // without pulling the old job back onto the screen.
   const updateJob = async (next: JobSnapshot) => {
-    setJob(next);
+    setJob((current) => (current && current.id !== next.id ? current : next));
     await db.jobs.put(next);
   };
+
+  // The toolbar badge counts due follow-ups and new roles; keep it in step with the panel.
+  useEffect(() => {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id) chrome.runtime.sendMessage({ action: 'REFRESH_BADGE' }).catch(() => undefined);
+  }, [followupsDue, newRoles]);
 
   if (!settings) return null;
 

@@ -13,15 +13,22 @@ export async function callOpenRouter(
   };
   if (options.jsonMode) payload.response_format = { type: 'json_object' };
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-      'X-Title': 'Hirivo',
-    },
-    body: JSON.stringify(payload),
-  });
+  const post = () =>
+    fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'X-Title': 'Hirivo',
+      },
+      body: JSON.stringify(payload),
+    });
+  let res = await post();
+  // Some free models reject JSON mode; retry once without it (callers parse JSON loosely).
+  if (res.status === 400 && options.jsonMode) {
+    delete payload.response_format;
+    res = await post();
+  }
   if (!res.ok) throw new ProviderError(`OpenRouter ${res.status}: ${await res.text()}`, res.status);
 
   const data = await res.json();

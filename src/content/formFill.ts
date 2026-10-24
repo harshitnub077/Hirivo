@@ -30,7 +30,9 @@ const RULES: { key: keyof Profile; test: RegExp; not?: RegExp }[] = [
   { key: 'fullName', test: /\b(full[_\s-]?name|your name|^name)\b|^name\b/, not: /first|last|company|school|reference|employer/ },
 ];
 
-export const SUCCESS_TEXT = /thank you for (applying|your (application|interest))|application (has been |was )?(submitted|received)|we('ve| have) received your application/i;
+// "Thank you for your interest in Acme" closes many job descriptions, so it is not a success signal.
+export const SUCCESS_TEXT =
+  /thank(?:s| you) for (?:applying|your application|submitting your application)|(?:your )?application (?:has been |was )?(?:successfully )?(?:submitted|received)|we(?:'ve| have) received your application/i;
 
 export function describe(el: Field): string {
   const id = el.id;
@@ -70,7 +72,7 @@ function setNativeValue(element: Field, value: string) {
 
 function highlight(el: HTMLElement) {
   el.style.transition = 'box-shadow 0.3s ease';
-  el.style.boxShadow = '0 0 0 2px rgba(15, 122, 85, 0.45)';
+  el.style.boxShadow = '0 0 0 2px rgba(10, 113, 75, 0.45)';
 }
 
 export function fillFields(profile: Profile): number {
