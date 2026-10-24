@@ -1,7 +1,7 @@
 // End-to-end test of the built extension in a throwaway headless Chrome profile, with real Groq and
 // Gemini keys (GROQ_API_KEY, GEMINI_API_KEY from the environment) and the fictional resume next to
 // this file. Drives the real side panel: keys, resume import, Analyze, checks, Write, Open in Gmail,
-// tailoring, answers, Interview Pack, Discover and Daily 5. Nothing is sent: Gmail only opens a
+// tailoring, answers, the job search and Daily 5. Nothing is sent: Gmail only opens a
 // compose window (to an example.com address). Screenshots land in tests/e2e/shots/.
 // Usage: npm run build && npm run test:e2e -- [jobUrl]   (needs Chrome; set CHROME_PATH if unusual)
 import fs from 'node:fs';
@@ -19,8 +19,10 @@ const PORT = 9350;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'hirivo-e2e-'));
 const CHROME = process.env.CHROME_PATH || ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium'].find((p) => fs.existsSync(p));
+// Job sites turn away headless Chrome's own user agent; the extension searches from a normal browser.
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
 const chrome = spawn(CHROME, [
-  '--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, '--no-first-run', '--enable-unsafe-extension-debugging', '--window-size=1400,900', 'about:blank',
+  '--headless=new', '--disable-blink-features=AutomationControlled', `--user-agent=${UA}`, `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`, '--no-first-run', '--enable-unsafe-extension-debugging', '--window-size=1400,900', 'about:blank',
 ], { stdio: 'ignore' });
 
 const log = [];
@@ -294,18 +296,13 @@ try {
     return answer;
   });
 
-  await step('Pipeline shows the message; Got a reply builds an Interview Pack', async () => {
+  await step('Pipeline shows the message; Got a reply marks it replied', async () => {
     await tab('Pipeline');
     await waitFor(`t.includes('Neha Kapoor')`, 10000, 'outreach row');
     await click('Got a reply');
-    await waitFor(`t.includes('Likely questions') || /Couldn't prepare/.test(t)`, 150000, 'interview pack');
-    await sleep(800);
-    await shot('09-pipeline-pack');
-    const t = await text();
-    if (/Couldn't prepare/.test(t)) throw new Error(t.slice(t.indexOf("Couldn't"), t.indexOf("Couldn't") + 200));
-    const qs = (t.split('Likely questions')[1] || '').split('Your strongest proof')[0].trim().split('\n').filter(Boolean);
-    const proof = (t.split('Your strongest proof')[1] || '').split('Ask them')[0].trim().split('\n').filter(Boolean);
-    return `${qs.length} questions (e.g. "${qs[0]}"); proof: ${proof.slice(0, 3).join(' / ')}`;
+    await waitFor(`t.includes('Replied')`, 10000, 'replied pill');
+    await shot('09-pipeline-replied');
+    return 'replied; follow-ups stop';
   });
 
   await step('Application answers saved in You', async () => {
@@ -435,8 +432,16 @@ try {
     const t = await text();
     const count = t.match(/(\d+) matching jobs, (\d+) new/)?.[0] || t.match(/For you\s*(\d+)/)?.[0];
     const first = await ev(P, `[...document.querySelectorAll('.job-card .h2, .list-item .h2, .card .h2')].map(e => e.innerText).filter(x => !/Jobs for you|Your 5/.test(x)).slice(0, 4)`);
-    const st = await ev(P, `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('settings').objectStore('settings').get('config'); q.onsuccess = () => res({ targetRoles: q.result.targetRoles, chosenRoles: q.result.chosenRoles, skills: q.result.skills }); }; })`);
-    return `${count}; e.g. ${first.join(' / ')}; settings: ${JSON.stringify(st)}`;
+    const st = await ev(P, `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('settings').objectStore('settings').get('config'); q.onsuccess = () => res({ chosenRoles: q.result.chosenRoles, search: q.result.search }); }; })`);
+    const all = (store) => `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('${store}').objectStore('${store}').getAll(); q.onsuccess = () => res(q.result); }; })`;
+    const fetches = await ev(P, all('sourceFetches'));
+    const jobs = await ev(P, all('discovered'));
+    const health = fetches.map((f) => `${f.id.split(':')[0]} ${f.error ? 'ERR ' + f.error.slice(0, 60) : f.count}`).join(', ');
+    const sites = jobs.filter((j) => ['linkedin', 'naukri', 'indeed', 'internshala', 'unstop'].includes(j.source));
+    if (!sites.length) throw new Error(`no jobs from the job sites; sources: ${health}`);
+    const undated = sites.filter((j) => !j.postedAt && j.source !== 'naukri').length;
+    const sample = sites.slice(0, 3).map((j) => `${j.source}: ${j.title} @ ${j.company}, ${j.location}${j.distanceKm !== undefined ? ` (${j.distanceKm} km)` : ''}`);
+    return `${count}; ${sites.length} from job sites (${undated} undated); e.g. ${sample.join(' / ')}\n  sources: ${health}\n  search: ${JSON.stringify(st.search)}`;
   });
 
   await step('Daily 5 picks today\'s roles', async () => {

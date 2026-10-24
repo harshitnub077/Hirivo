@@ -38,7 +38,7 @@ Hirivo sends data off your computer only in these cases, and only directly from 
 
 **Public sources that check a job.** To tell you whether a job is real and safe, Hirivo looks up the company's name or domain on public services: Greenhouse, Lever and Ashby job boards, RDAP (domain age), Google's public DNS (mail records), GitHub, Google News and Hacker News search. These requests contain the company name or domain, not your personal details.
 
-**Job boards for Discover.** Hirivo asks Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, Hacker News search and the open YC company list for open roles. A request may include a role keyword such as "frontend". It never includes your name, email or resume.
+**Job sites for your search.** Hirivo asks LinkedIn (its public job listings, without your LinkedIn sign-in), Naukri, Indeed, Internshala, Unstop, Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, Hacker News search and the open YC company list for open roles. Naukri and Indeed are read by opening their results page in a background tab, which closes after reading. A request contains your search: role words such as "frontend intern", the city and radius, and how recent. It never includes your name, email or resume.
 
 **Pages you open.** When you press Analyze, Save jobs or Read people on this page, Hirivo reads the page in that tab, on your computer. If you turn on autofill, Hirivo fills your saved details into application forms on Greenhouse, Lever, Ashby, Workable, Workday and similar sites, and attaches your resume. When you press Fill with Hirivo, the open questions on that form (for example "Why do you want to work here?") are sent with your resume facts to your AI provider to write answers. Hirivo never ticks consent boxes, never answers diversity questions unless you chose "decline to self-identify" in Hirivo, and nothing is submitted until you press Submit.
 
@@ -63,7 +63,7 @@ Your AI keys, your Google OAuth client secret and your Gmail tokens are stored o
 
 ## LinkedIn
 
-Hirivo runs no script on LinkedIn by itself. It reads the job or search results you are looking at only when you press Analyze or Save jobs, and it never clicks, connects, messages or applies on LinkedIn for you.
+Hirivo never uses your LinkedIn session to search. Your saved search reads LinkedIn's public job listings, the same ones anyone sees without signing in, and sends no LinkedIn cookies. On LinkedIn pages, Hirivo reads the job or search results you are looking at only when you press Analyze or Save jobs, and it never clicks, connects, messages or applies on LinkedIn for you.
 
 ## Export and delete
 

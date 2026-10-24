@@ -5,12 +5,12 @@ import { buildFillProfile, sourceForUrl } from '../services/formAutofill';
 import { answerFormQuestions } from '../services/formAnswers';
 import { matchesTargets, refreshAll } from '../services/watchlist';
 import { dueFollowupStage } from '../services/outreach';
-import { runDiscover } from '../services/discover';
 import { buildDaily5, localDayKey, nextDailyAt } from '../services/daily5';
 import { createDraft, draftFollowupInThread, GmailNeedsReconnect, gmailConnected, pollGmailReplies, sendDraft } from '../services/gmail';
 import { followupText, markFollowupSent } from '../services/outreach';
 import { resumeAttachment } from '../services/multiOutreach';
 import { extractJobFromPage } from '../content/extractJob';
+import { extractJobListFromPage } from '../content/extractJobList';
 import type { ApplyReport } from '../services/autopilot/run';
 
 const RADAR_ALARM = 'radar-poll';
@@ -22,7 +22,8 @@ const AUTOPILOT_ALARM = 'autopilot';
 async function ensureAlarms() {
   if (!(await chrome.alarms.get(RADAR_ALARM))) chrome.alarms.create(RADAR_ALARM, { periodInMinutes: 360, delayInMinutes: 1 });
   if (!(await chrome.alarms.get(FOLLOWUP_ALARM))) chrome.alarms.create(FOLLOWUP_ALARM, { periodInMinutes: 180, delayInMinutes: 1 });
-  if (!(await chrome.alarms.get(DISCOVER_ALARM))) chrome.alarms.create(DISCOVER_ALARM, { periodInMinutes: 720, delayInMinutes: 5 });
+  // Saved search: every 2 hours, so new postings are seen while they're fresh.
+  if ((await chrome.alarms.get(DISCOVER_ALARM))?.periodInMinutes !== 120) chrome.alarms.create(DISCOVER_ALARM, { periodInMinutes: 120, delayInMinutes: 3 });
   if (!(await chrome.alarms.get(DAILY_ALARM))) chrome.alarms.create(DAILY_ALARM, { when: nextDailyAt(), periodInMinutes: 1440 });
   if (!(await chrome.alarms.get(AUTOPILOT_ALARM))) chrome.alarms.create(AUTOPILOT_ALARM, { periodInMinutes: 5, delayInMinutes: 1 });
 }
@@ -76,11 +77,16 @@ async function pollWatchlist() {
   });
 }
 
-/** 8:00 local: refresh the feed if it's stale, pick today's five, send one notification. */
+/** 8:00 local: refresh the feed if it's stale, then pick today's five (when the search finishes). */
 async function morningShortlist() {
   const settings = await getSettings();
   const lastRun = Math.max(0, ...(await db.sourceFetches.toArray()).map((f) => f.fetchedAt));
-  if (settings.targetRoles?.length && Date.now() - lastRun > 6 * 3_600_000) await runDiscover().catch(() => undefined);
+  if (settings.targetRoles?.length && Date.now() - lastRun > 6 * 3_600_000) return startSearch('daily');
+  await sendDaily5();
+}
+
+async function sendDaily5() {
+  const settings = await getSettings();
   const { picks } = await buildDaily5();
   if (!settings.earlyBirdAlerts || picks.length === 0) return;
   chrome.notifications.create(`daily5:${localDayKey()}`, {
@@ -97,8 +103,19 @@ async function morningShortlist() {
 
 async function discoverInBackground() {
   const settings = await getSettings();
-  if (!settings.targetRoles?.length) return;
-  const { newTopMatches } = await runDiscover();
+  if (!settings.targetRoles?.length && !settings.chosenRoles?.length) return;
+  await startSearch('alert');
+}
+
+/** Searches run in the offscreen document: the job sites need an HTML parser the worker lacks. */
+async function startSearch(reason: 'alert' | 'daily') {
+  await ensureOffscreen();
+  chrome.runtime.sendMessage({ target: 'offscreen', action: 'SEARCH_RUN', reason }).catch(() => undefined);
+}
+
+async function searchDone(reason: 'alert' | 'daily', newTopMatches: { title: string; company: string }[]) {
+  if (reason === 'daily') return sendDaily5();
+  const settings = await getSettings();
   if (!settings.earlyBirdAlerts || newTopMatches.length === 0) return;
   const top = newTopMatches[0];
   chrome.notifications.create(`discover:${Date.now()}`, {
@@ -233,13 +250,46 @@ async function startAutopilot() {
   if (!s.autopilot?.enabled) return;
   const pending = await db.autopilot.where('status').anyOf('queued', 'working').count();
   if (!pending) return;
-  const exists = await (chrome.offscreen as any).hasDocument?.().catch(() => false);
-  if (!exists) {
-    await chrome.offscreen
-      .createDocument({ url: 'offscreen.html', reasons: [chrome.offscreen.Reason.DOM_PARSER], justification: 'Autopilot reads company websites and job pages to research the jobs you handed it.' })
-      .catch(() => undefined); // already open
-  }
+  await ensureOffscreen();
   chrome.runtime.sendMessage({ target: 'offscreen', action: 'AP_RUN' }).catch(() => undefined);
+}
+
+async function ensureOffscreen() {
+  const exists = await (chrome.offscreen as any).hasDocument?.().catch(() => false);
+  if (exists) return;
+  await chrome.offscreen
+    .createDocument({ url: 'offscreen.html', reasons: [chrome.offscreen.Reason.DOM_PARSER], justification: 'Reads job-site results and company websites for the saved search and Autopilot.' })
+    .catch(() => undefined); // already open
+  await sleep(800); // let its message listener register before the first message
+}
+
+// At most two background tabs at a time, so a search never floods the browser.
+let tabsInUse = 0;
+const tabWaiters: (() => void)[] = [];
+async function withTabSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (tabsInUse >= 2) await new Promise<void>((r) => tabWaiters.push(r));
+  tabsInUse++;
+  try {
+    return await fn();
+  } finally {
+    tabsInUse--;
+    tabWaiters.shift()?.();
+  }
+}
+
+/** Reads the job cards on a job-site results page in a background tab, then closes it. */
+async function scrapeInTab(url: string) {
+  return withTabSlot(async () => {
+    const tab = await chrome.tabs.create({ url, active: false });
+    try {
+      await waitForLoad(tab.id!);
+      await sleep(2500); // results render after load on most job sites
+      const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id! }, func: extractJobListFromPage });
+      return r?.result ?? { host: new URL(url).hostname, jobs: [] };
+    } finally {
+      chrome.tabs.remove(tab.id!).catch(() => undefined);
+    }
+  });
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -340,6 +390,8 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true;
   };
   if (request.action === 'AP_START') return reply(startAutopilot());
+  if (request.action === 'TAB_SCRAPE') return reply(scrapeInTab(String(request.url)));
+  if (request.action === 'SEARCH_DONE') return reply(searchDone(request.reason, request.newTopMatches || []));
   if (request.action === 'AP_CAN_READ') return reply(chrome.permissions.contains({ origins: ['https://*/*'] }).then((ok) => ({ ok })));
   if (request.action === 'AP_READ_PAGE') return reply(readPageInTab(String(request.url)).then((page) => ({ page })));
   if (request.action === 'AP_APPLY') return reply(applyInTab(String(request.url), Boolean(request.submit)));

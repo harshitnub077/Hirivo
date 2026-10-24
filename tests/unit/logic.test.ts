@@ -23,7 +23,15 @@ const job = (over: Partial<RawJob> = {}): RawJob => ({
   ...over,
 });
 
-const me: MatchProfile = { targets: ['frontend', 'react'], skills: ['react', 'typescript'], level: 'entry', locationPreference: 'india', smallTeamsOnly: false };
+const me: MatchProfile = {
+  targets: ['frontend', 'react'],
+  queries: ['frontend'],
+  skills: ['react', 'typescript'],
+  level: 'entry',
+  locationPreference: 'india',
+  smallTeamsOnly: false,
+  search: { jobType: 'both', workModes: ['onsite', 'hybrid', 'remote'], experience: '0-2', city: '', scope: 'india', radiusKm: 25, postedWithinDays: 30 },
+};
 
 describe('scoreJob', () => {
   it('scores a matching fresh Indian role highly, with reasons', () => {

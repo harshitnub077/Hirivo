@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowRight, Check, CheckCircle2, CircleHelp, RefreshCw, 
 import { db, JobSnapshot } from '../../db';
 import { keywordMatch } from '../../services/keywordMatch';
 import { Callout, Field, Pill } from '../ui';
-import { EvidenceTable, ProofSprintCard } from './FitPanel';
+import { EvidenceTable } from './FitPanel';
 import type { ViewId } from '../App';
 
 interface Props {
@@ -211,10 +211,7 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
             </div>
             {job.honestAdvice && <p className="small">{job.honestAdvice}</p>}
             {job.fitEvidence?.length ? (
-              <>
-                <EvidenceTable job={job} />
-                <ProofSprintCard job={job} hasKey={hasKey} onUpdateJob={onUpdateJob} onWrite={onWrite} />
-              </>
+              <EvidenceTable job={job} />
             ) : (
               Boolean(job.matchingStrengths?.length || job.dealbreakers?.length) && (
                 <Checklist

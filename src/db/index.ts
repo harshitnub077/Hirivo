@@ -149,7 +149,33 @@ export interface ResumeFile {
   savedAt: number;
 }
 
-export type JobSource = 'remotive' | 'remoteok' | 'himalayas' | 'jobicy' | 'arbeitnow' | 'hn' | 'yc' | 'watchlist' | 'page';
+export type JobSource =
+  | 'linkedin'
+  | 'naukri'
+  | 'indeed'
+  | 'internshala'
+  | 'unstop'
+  | 'remotive'
+  | 'remoteok'
+  | 'himalayas'
+  | 'jobicy'
+  | 'arbeitnow'
+  | 'hn'
+  | 'yc'
+  | 'watchlist'
+  | 'page';
+
+/** What the user is looking for. Set once in Radar; every search and alert uses it. */
+export interface SearchProfile {
+  jobType: 'internship' | 'fulltime' | 'both';
+  workModes: ('onsite' | 'hybrid' | 'remote')[];
+  experience: 'fresher' | '0-2' | '2-5' | '5+';
+  city: string; // e.g. "Bengaluru"; empty with scope 'india' or 'remote'
+  scope: 'radius' | 'india' | 'remote'; // around the city, anywhere in India, or remote anywhere
+  radiusKm: 10 | 25 | 50 | 100;
+  postedWithinDays: 1 | 3 | 7 | 30;
+  minMonthlyPay?: number; // rupees; stipend or salary per month
+}
 
 export interface DiscoveredJob {
   id: string; // `${source}:${sourceId}`
@@ -166,6 +192,9 @@ export interface DiscoveredJob {
   salary?: string;
   tags: string[];
   snippet?: string;
+  internship?: boolean;
+  distanceKm?: number; // from the search city, when both are known
+  applyVia?: 'ats' | 'naukri' | 'internshala' | 'linkedin' | 'indeed' | 'unstop' | 'site';
   teamSize?: number; // when the source knows it (YC)
   smallTeamReason?: string; // e.g. "YC W24 · 18 people"
   score: number; // 0-100 match with the user's roles and skills
@@ -348,6 +377,7 @@ export interface UserSettings {
   howDidYouHear?: string;
   languages?: string; // comma-separated
   eeoDecline?: boolean; // answer diversity questions with "decline to self-identify"
+  search?: SearchProfile;
   autopilot?: {
     enabled: boolean;
     sendEmails: boolean; // to verified addresses only, through the user's Gmail

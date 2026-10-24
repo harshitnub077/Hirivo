@@ -18,7 +18,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 6. **Local-first.** All data lives in IndexedDB (`HirivoDB`). There is no Hirivo server. AI calls go straight from the browser to the provider the user picked, using the user's own key.
 7. **No hardcoded model IDs in calls.** Use `pickModel(provider, key, role)` from `src/llm/registry.ts`. To change a model, edit the preference lists there.
 8. **Free resources only**: Groq, Gemini and OpenRouter free tiers, Chrome's built-in Gemini Nano, and public ATS feeds, RDAP and DNS-over-HTTPS.
-9. **Job sources: public APIs only, credited, within their limits.** No background scraping of LinkedIn, Naukri or any site whose terms forbid it. Search-result pages are read only on a user click, only for what is visible, with no scrolling or paging. Every listing links back to its source.
+9. **Job sources: public listings, read from the user's own browser, within their limits.** Searches run in the user's Chrome on their own connection, paced (at most 2 background tabs, a few seconds between pages, a handful of pages per site per run), and stop for that site when it shows a check or a block. LinkedIn is read only logged-out (`credentials: 'omit'`); Hirivo never acts on LinkedIn. Every listing links back to its source.
 10. **Design system only.** Use the tokens and classes in `src/sidepanel/styles/globals.css`, with no new colours, gradients or glassmorphism. Inline styles are for one-off spacing only.
 
 ---
@@ -43,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.11.0, built and verified)
+## 3. What exists today (v2.12.0, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -52,7 +52,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Ghost-job check against the company's real Greenhouse/Lever/Ashby board, using real posting dates | Done | `src/services/ghostJobShield.ts`, `atsFeeds.ts` |
 | Company legitimacy: RDAP domain age, MX records | Done (existing) | `src/services/legitimacyScorer.ts` |
 | Fit v2: requirements extracted, each matched to one resume fact, score computed in code (musts ×2, nice ×1); guards against invented requirements, fake fact ids and missing years; evidence table in the UI | Done (Phase B) | `src/services/fitAdvisor.ts`, `views/FitPanel.tsx` |
-| Proof Sprint: 3–7 day project for the biggest must-have gap on 40–70 fits; finishing adds a citable resume fact and rescores | Done (Phase B) | `src/services/proofSprint.ts`, `views/FitPanel.tsx` |
+| Proof Sprint | Removed in v2.12 (v3 focus: finding and applying) | |
 | Proof-linked writer, grounding re-checked on every edit, cliché linter with India-specific rules | Done | `proofWriter.ts`, `phraseLinter.ts`, `views/WritePanel.tsx` |
 | Warm path from the LinkedIn `Connections.csv` export; email-pattern guesses (labelled) | Done | `warmPathMatcher.ts`, `views/PeoplePanel.tsx` |
 | Send via prefilled Gmail compose (no OAuth); LinkedIn note copy and log | Done | `src/services/outreach.ts` |
@@ -72,7 +72,8 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Resume keyword match (deterministic), Answers tab (application questions and cover letters, fact-checked), autofill on 13 ATS incl. Workday and Indian ATS, data import, post-apply nudge, progressive Discover, Getting started, Alt+H | Done (audit) | `keywordMatch.ts`, `answerWriter.ts`, `views/AnswerPanel.tsx`, `content/formFill.ts` |
 | Honest per-job resume tailoring: reorder by what the job needs, AI rewording checked line by line (no new figures, tools, names, ownership, puffery or padding; failing rewrites keep the user's words with the reason), keyword gaps reported not added, .docx/Markdown/text export | Done | `src/services/resumeTailor.ts`, `resumeExport.ts`, `views/ResumePanel.tsx` |
 | Daily 5: 8:00 local shortlist from Discover + analyzed jobs, ranked by fit, freshness, warm path; never a Doubtful or Risky role (shared verdict logic with the Verdict Strip); max 2 per company; one notification | Done (Phase E) | `src/services/daily5.ts`, `services/verdicts.ts`, `views/Daily5Card.tsx` |
-| Interview Pack on "Got a reply": company brief from its homepage and linked news (figures must be in the sources), 8 likely questions, 3 strongest facts (only the user's), 3 questions to ask; works without AI | Done (Phase E) | `src/services/interviewPack.ts`, `views/PipelineView.tsx` |
+| Interview Pack | Removed in v2.12 ("Got a reply" still stops follow-ups) | |
+| v3 M1 Search: one saved search (internship/job/both, city + 10–100 km radius or India or remote, posted within 1–30 days, work mode, experience, minimum ₹/month); LinkedIn guest search, Naukri and Indeed (background tab), Internshala and Unstop; posted time, distance and internship labels; dedupe across sites by company + title + city; per-site health with blocks shown; search every 2 h with notifications | Done (v2.12) | `src/services/discover/sources/*`, `discover/geo.ts`, `discover/rank.ts`, `views/SearchCard.tsx`, `tests/unit/sources.test.ts` |
 | Gmail power mode (optional, user's own OAuth client): code + PKCE via launchWebAuthFlow, real drafts, follow-ups in-thread, replies detected every 3 h or on Check now, follow-ups stop on reply; permissions requested only on Connect | Done (Phase F) | `src/services/gmail.ts`, `views/GmailSection.tsx` |
 | Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
 | Store launch kit: listing with every permission justified, data-use answers, privacy policy, four 1280×800 screenshots rendered from the demo panel; a unit test fails if any manifest permission is unused in code or missing from the listing | Done (Phase G) | `CHROMEWEBSTORE.md`, `docs/privacy.md`, `scripts/store-screenshots.js`, `tests/unit/manifest.test.ts` |

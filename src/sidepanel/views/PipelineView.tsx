@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { setJobStatus } from '../../services/discover';
-import { Check, Copy, GraduationCap, Inbox, Mail, MessageSquare, RefreshCw } from 'lucide-react';
+import { Inbox, Mail, MessageSquare, RefreshCw } from 'lucide-react';
 import { db, OutreachRecord, UserSettings } from '../../db';
 import { todayKey } from '../../db/settings';
 import {
@@ -14,18 +14,12 @@ import {
   openUrl,
   setOutreachStatus,
 } from '../../services/outreach';
-import { Callout, Empty, Meter, Pill, timeAgo, useCopy } from '../ui';
-import { packAsText, prepareInterviewPack } from '../../services/interviewPack';
-import { hasSiteAccess } from '../../services/siteAccess';
+import { Empty, Meter, Pill, timeAgo, useCopy } from '../ui';
 import { draftFollowupInThread, draftOpenUrl, pollGmailReplies } from '../../services/gmail';
 import { AutopilotQueue } from './AutopilotViews';
 
 export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[]; settings: UserSettings }) {
   const [copied, copy] = useCopy();
-  const [preparing, setPreparing] = useState<Set<string>>(new Set());
-  const [openPack, setOpenPack] = useState<string | null>(null);
-  const [packError, setPackError] = useState<string | null>(null);
-  const facts = useLiveQuery(() => db.facts.toArray(), []) ?? [];
   const applications = useLiveQuery(() => db.discovered.where('status').anyOf('applying', 'applied').toArray(), []) ?? [];
   const used = settings.lastSendDate === todayKey() ? settings.todaySendCount : 0;
   const cap = settings.dailySendCap || 15;
@@ -65,110 +59,10 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
     }
   };
 
-  const preparePack = async (r: OutreachRecord) => {
-    setPreparing((p) => new Set(p).add(r.id));
-    setPackError(null);
-    try {
-      const job = await db.jobs.get(r.jobId);
-      const siteAllowed = job?.companyDomain ? await hasSiteAccess(job.companyDomain) : false;
-      await prepareInterviewPack(r, { siteAllowed });
-      setOpenPack(r.id);
-    } catch (err: any) {
-      setPackError(err.message);
-    } finally {
-      setPreparing((p) => {
-        const next = new Set(p);
-        next.delete(r.id);
-        return next;
-      });
-    }
-  };
-
   const gotReply = async (r: OutreachRecord) => {
     const first = (await db.outreach.where('status').equals('REPLIED').count()) === 0;
     await setOutreachStatus(r, 'REPLIED');
     if (first) confetti({ particleCount: 70, spread: 70, origin: { y: 0.7 }, colors: ['#3FD69B', '#4BC994', '#E6ECE8'] });
-    await preparePack({ ...r, status: 'REPLIED' });
-  };
-
-  const packView = (r: OutreachRecord) => {
-    const pack = r.interviewPack;
-    const busy = preparing.has(r.id);
-    if (!pack) {
-      return (
-        <button className="btn sm" style={{ alignSelf: 'flex-start' }} onClick={() => preparePack(r)} disabled={busy}>
-          {busy ? <RefreshCw size={12} className="spin" /> : <GraduationCap size={12} />} {busy ? 'Preparing your interview pack…' : 'Prepare interview pack'}
-        </button>
-      );
-    }
-    const isOpen = openPack === r.id;
-    const claim = (id: string) => facts.find((f) => f.id === id)?.claim;
-    return (
-      <div className="stack">
-        <div className="row" style={{ gap: 6 }}>
-          <button className="btn sm" onClick={() => setOpenPack(isOpen ? null : r.id)} aria-expanded={isOpen}>
-            <GraduationCap size={12} /> {isOpen ? 'Hide interview pack' : 'Interview pack'}
-          </button>
-          {isOpen && (
-            <>
-              <button className="btn sm ghost" onClick={() => copy(`pack:${r.id}`, packAsText(pack, facts, r.companyName, r.jobTitle))}>
-                {copied === `pack:${r.id}` ? <Check size={12} /> : <Copy size={12} />} Copy
-              </button>
-              <button className="btn sm ghost" onClick={() => preparePack(r)} disabled={busy} title="Prepare again">
-                <RefreshCw size={12} className={busy ? 'spin' : ''} />
-              </button>
-            </>
-          )}
-        </div>
-        {isOpen && (
-          <div className="pack fade-in">
-            <div>
-              <div className="section-title">What they do</div>
-              <p className="small">{pack.companyBrief || 'No description found on their homepage. Read it before the call.'}</p>
-              {pack.sources.length > 0 && (
-                <p className="small muted" style={{ marginTop: 4 }}>
-                  Sources:{' '}
-                  {pack.sources.map((src, i) => (
-                    <span key={src.url}>
-                      <a href={src.url} onClick={(e) => (e.preventDefault(), openUrl(src.url))}>
-                        {src.title}
-                      </a>
-                      {i < pack.sources.length - 1 ? ', ' : ''}
-                    </span>
-                  ))}
-                </p>
-              )}
-            </div>
-            <div>
-              <div className="section-title">Likely questions</div>
-              <ol>
-                {pack.questions.map((q) => (
-                  <li key={q}>{q}</li>
-                ))}
-              </ol>
-            </div>
-            <div>
-              <div className="section-title">Your strongest proof</div>
-              <ul>
-                {pack.strongestFacts.map((id) => (
-                  <li key={id}>
-                    {claim(id) || 'This fact is no longer in your resume.'} <span className="fact">{id}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="section-title">Ask them</div>
-              <ul>
-                {pack.askThem.map((q) => (
-                  <li key={q}>{q}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   const row = (r: OutreachRecord) => {
@@ -196,7 +90,6 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
             <span className={done >= 2 ? 'done' : stage === 2 ? 'due' : ''}>Day {FOLLOWUP_DAYS[1]}</span>
           </div>
         )}
-        {r.status === 'REPLIED' && packView(r)}
         {!closed && (
           <div className="row" style={{ gap: 6 }}>
             {stage > 0 && (
@@ -273,8 +166,6 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
           )}
         </div>
       )}
-
-      {packError && <Callout tone="caution">Couldn't prepare the interview pack: {packError}</Callout>}
 
       {outreach.length === 0 ? (
         <Empty icon={<Inbox size={30} />} title="Nothing sent yet">

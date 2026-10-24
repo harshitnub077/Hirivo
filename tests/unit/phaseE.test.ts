@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { JobSnapshot, ResumeFact } from '../../src/db';
+import type { JobSnapshot } from '../../src/db';
 
 const replies: unknown[] = [];
 vi.mock('../../src/llm/router', () => ({
@@ -10,7 +10,6 @@ vi.mock('../../src/llm/router', () => ({
 
 const { db } = await import('../../src/db');
 const { buildDaily5, localDayKey, nextDailyAt, pickDaily5 } = await import('../../src/services/daily5');
-const { buildInterviewPack, defaultQuestions, parseHomepageMeta, packAsText } = await import('../../src/services/interviewPack');
 const { realVerdict } = await import('../../src/services/verdicts');
 
 const NOW = new Date(2026, 9, 24, 9, 0, 0).getTime();
@@ -92,60 +91,5 @@ describe('buildDaily5 (end to end on the database)', () => {
     const row = await buildDaily5(NOW);
     expect(row.picks.map((p) => p.company)).toEqual(['Zeta']);
     expect(await db.daily.get(localDayKey(NOW))).toMatchObject({ picks: row.picks });
-  });
-});
-
-const FACTS: ResumeFact[] = [
-  { id: 'FACT-01', category: 'METRIC', claim: 'Cut checkout page load time 38% by moving to React Server Components', sourceSnippet: '', verified: true },
-  { id: 'FACT-02', category: 'PROJECT', claim: 'Built an open-source UPI payment status tracker in TypeScript', sourceSnippet: '', verified: true },
-  { id: 'FACT-03', category: 'METRIC', claim: 'Wrote Jest and Playwright tests raising coverage from 41% to 78%', sourceSnippet: '', verified: true },
-  { id: 'FACT-04', category: 'EDUCATION', claim: 'B.Tech, IIT Delhi', sourceSnippet: '', verified: true },
-];
-const HOME = parseHomepageMeta(
-  '<html><head><title>Zeta | Banking tech</title><meta name="description" content="Zeta builds modern card and banking software for banks in 12 countries."></head></html>',
-  'https://zeta.tech'
-);
-const HOOKS = [{ id: 'h', source: 'blog' as const, sourceLabel: 'zeta.tech blog', title: 'Launching Zeta Tachyon 2', url: 'https://zeta.tech/blog/t2', date: NOW - 3 * DAY, suggestion: '' }];
-const OUT = { companyName: 'Zeta', jobTitle: 'Frontend Engineer' };
-
-describe('Interview Pack', () => {
-  beforeEach(() => {
-    replies.length = 0;
-  });
-
-  it('reads the homepage description', () => {
-    expect(HOME).toEqual({ url: 'https://zeta.tech', title: 'Zeta | Banking tech', description: 'Zeta builds modern card and banking software for banks in 12 countries.' });
-  });
-
-  it('only ever cites the user’s own facts, and drops a brief with invented figures', async () => {
-    replies.push({
-      companyBrief: 'Zeta builds banking software and has 5,000 employees.',
-      questions: Array.from({ length: 10 }, (_, i) => `Question number ${i + 1} about checkout performance?`),
-      strongestFactIds: ['FACT-99', 'FACT-03', 'FACT-01'],
-      askThem: ['How does Tachyon 2 change the frontend roadmap?', 'What does great look like in 90 days?', 'How is the team split?'],
-    });
-    const pack = await buildInterviewPack({ outreach: OUT, facts: FACTS, homepage: HOME, hooks: HOOKS, useAI: true });
-    expect(pack.strongestFacts).toHaveLength(3);
-    expect(pack.strongestFacts.every((id) => FACTS.some((f) => f.id === id))).toBe(true);
-    expect(pack.strongestFacts.slice(0, 2)).toEqual(['FACT-03', 'FACT-01']);
-    expect(pack.strongestFacts).not.toContain('FACT-04'); // a degree is not proof of the work
-    expect(pack.companyBrief).toBe(HOME.description); // 5,000 isn't in the sources
-    expect(pack.questions).toHaveLength(8);
-    expect(pack.sources.map((s) => s.url)).toEqual(['https://zeta.tech', 'https://zeta.tech/blog/t2']);
-  });
-
-  it('keeps a brief that stays within its sources', async () => {
-    replies.push({ companyBrief: 'Zeta makes banking software for banks in 12 countries and recently launched Tachyon 2.', questions: [], strongestFactIds: [], askThem: [] });
-    const pack = await buildInterviewPack({ outreach: OUT, facts: FACTS, homepage: HOME, hooks: HOOKS, useAI: true });
-    expect(pack.companyBrief).toMatch(/12 countries/);
-    expect(pack.questions).toEqual(defaultQuestions('Frontend Engineer'));
-  });
-
-  it('works without AI, from the question bank and ranked facts', async () => {
-    const pack = await buildInterviewPack({ outreach: OUT, facts: FACTS, homepage: HOME, hooks: HOOKS, useAI: false });
-    expect(pack.usedAI).toBe(false);
-    expect(pack.questions[0]).toMatch(/system you built/);
-    expect(pack.askThem[2]).toContain('Launching Zeta Tachyon 2');
-    expect(packAsText(pack, FACTS, 'Zeta', 'Frontend Engineer')).toContain('Your strongest proof\n- ');
   });
 });

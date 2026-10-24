@@ -1123,3 +1123,24 @@ details.section[open] > summary {
   border-top: 0;
   padding-top: 0;
 }
+
+/* Toggle chips (search work modes). */
+.chip {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chip.on {
+  border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  color: var(--ink);
+}
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

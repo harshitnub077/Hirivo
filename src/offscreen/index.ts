@@ -2,6 +2,8 @@
 // lacks. Tabs, Gmail and notifications are asked of the background worker by message.
 import { runQueue, type ApplyReport, type AutopilotHost } from '../services/autopilot/run';
 import type { ExtractedJobData } from '../content/extractJob';
+import { runDiscover } from '../services/discover';
+import { browserSearchHost } from '../services/discover/host';
 
 function ask<T>(message: Record<string, unknown>): Promise<T> {
   return new Promise((resolve, reject) =>
@@ -22,8 +24,24 @@ const host: AutopilotHost = {
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
 };
 
+let searching = false;
+async function search(reason: 'alert' | 'daily') {
+  if (searching) return;
+  searching = true;
+  try {
+    const r = await runDiscover({ host: browserSearchHost() });
+    const newTopMatches = r.newTopMatches.slice(0, 5).map((j) => ({ title: j.title, company: j.company }));
+    await chrome.runtime.sendMessage({ action: 'SEARCH_DONE', reason, newTopMatches }).catch(() => undefined);
+  } catch {
+    if (reason === 'daily') await chrome.runtime.sendMessage({ action: 'SEARCH_DONE', reason, newTopMatches: [] }).catch(() => undefined);
+  } finally {
+    searching = false;
+  }
+}
+
 chrome.runtime.onMessage.addListener((m) => {
   if (m?.target === 'offscreen' && m.action === 'AP_RUN') runQueue(host);
+  if (m?.target === 'offscreen' && m.action === 'SEARCH_RUN') search(m.reason === 'daily' ? 'daily' : 'alert');
   return false;
 });
 runQueue(host);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Bookmark, BookmarkCheck, Check, Download, ExternalLink, RefreshCw, Send, Sparkles, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Check, Download, ExternalLink, Send, Sparkles, X } from 'lucide-react';
 import { db, DiscoveredJob, UserSettings } from '../../db';
 import { patchSettings } from '../../db/settings';
 import { runDiscover, setJobStatus, SOURCES } from '../../services/discover';
@@ -10,6 +10,8 @@ import { getActivePage, saveJobsFromActivePage } from '../page';
 import { ResumeImport } from './ResumeImport';
 import { AutopilotButton } from './AutopilotViews';
 import { Daily5Card } from './Daily5Card';
+import { SearchCard } from './SearchCard';
+import { browserSearchHost } from '../../services/discover/host';
 
 type Filter = 'new' | 'saved' | 'applying' | 'companies';
 const SEARCH_SITES = /linkedin\.com|naukri\.com|indeed\.|wellfound\.com|instahyre\.com|cutshort\.io|foundit\.in/;
@@ -29,7 +31,7 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
     setRunning(true);
     setMessage(null);
     try {
-      const r = await runDiscover({ force });
+      const r = await runDiscover({ force, host: browserSearchHost() });
       setMessage({ tone: 'ok', text: `${r.total} matching jobs, ${r.added} new.` });
     } catch (err: any) {
       setMessage({ tone: 'caution', text: err.message });
@@ -46,9 +48,9 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
   // Waits for the fetch log to load: before that, lastRun reads as "never" and every open re-searched.
   useEffect(() => {
     if (fetchRows === undefined) return;
-    if (hasResume && (settings.targetRoles?.length ?? 0) > 0 && Date.now() - lastRun > 6 * 3_600_000 && !running) refresh(false);
+    if (hasResume && ((settings.targetRoles?.length ?? 0) > 0 || (settings.chosenRoles?.length ?? 0) > 0) && Date.now() - lastRun > 2 * 3_600_000 && !running) refresh(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchRows === undefined, hasResume, settings.targetRoles?.join(','), settings.locationPreference, settings.smallTeamsOnly]);
+  }, [fetchRows === undefined, hasResume, settings.targetRoles?.join(','), JSON.stringify(settings.search), settings.smallTeamsOnly]);
 
   const savePage = async () => {
     setMessage(null);
@@ -73,7 +75,7 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
   if (!hasResume) {
     return (
       <div className="stack">
-        <Callout>Upload your resume and Hirivo will find roles that fit you across job boards, Hacker News and YC startups.</Callout>
+        <Callout>Upload your resume and Hirivo will find internships and jobs that fit you on LinkedIn, Naukri, Internshala, Indeed, Unstop and company career sites.</Callout>
         <ResumeImport />
       </div>
     );
@@ -93,28 +95,8 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
   return (
     <div className="stack">
       <Daily5Card />
+      <SearchCard settings={settings} running={running} onSearch={() => refresh(true)} />
       <section className="card stack">
-        <div className="row between">
-          <div style={{ minWidth: 0 }}>
-            <div className="h2">Jobs for you</div>
-            <div className="small muted truncate">
-              {settings.chosenRoles?.length ? settings.chosenRoles.join(' · ') : (settings.targetRoles || []).join(', ') || 'Set roles below'}
-            </div>
-          </div>
-          <button className="btn sm" onClick={() => refresh(true)} disabled={running}>
-            <RefreshCw size={12} className={running ? 'spin' : ''} /> {running ? 'Searching…' : 'Refresh'}
-          </button>
-        </div>
-        <Segmented
-          label="Where"
-          value={settings.locationPreference || 'india'}
-          onChange={(v) => patchSettings({ locationPreference: v })}
-          options={[
-            { value: 'india', label: 'India + remote' },
-            { value: 'remote', label: 'Remote only' },
-            { value: 'anywhere', label: 'Anywhere' },
-          ]}
-        />
         <label className="row small">
           <input type="checkbox" checked={Boolean(settings.smallTeamsOnly)} onChange={(e) => patchSettings({ smallTeamsOnly: e.target.checked })} />
           Only small teams (under 100 people). Fewer applicants, more impact.
@@ -156,7 +138,7 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
       {shown.length === 0 ? (
         <Empty icon={<Sparkles size={28} className={running ? 'spin' : undefined} />} title={running ? 'Searching every source…' : 'Nothing here yet'}>
           {running
-            ? 'Checking 7 job sources and up to 24 startup hiring boards. This takes about 20–30 seconds.'
+            ? 'Searching LinkedIn, Naukri, Internshala, Indeed, Unstop and company boards. This takes about a minute.'
             : filter === 'new'
             ? 'Press Refresh. If nothing shows up, widen your roles or choose Anywhere.'
             : filter === 'saved'
@@ -196,7 +178,7 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
 }
 
 function JobRow({ job, settings, onApply }: { job: DiscoveredJob; settings: UserSettings; onApply: () => void }) {
-  const age = job.postedAt ? Math.max(0, Math.floor((Date.now() - job.postedAt) / 86_400_000)) : undefined;
+  const posted = job.postedAt ? `posted ${timeAgo(job.postedAt)}` : '';
   const saved = job.status === 'saved';
   return (
     <div className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
@@ -215,7 +197,7 @@ function JobRow({ job, settings, onApply }: { job: DiscoveredJob; settings: User
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="h2">{job.title}</div>
               <div className="small muted truncate">
-                {[job.company, job.location, age !== undefined ? (age === 0 ? 'today' : `${age} d ago`) : ''].filter(Boolean).join(' · ')}
+                {[job.company, job.location, job.distanceKm ? `${job.distanceKm} km` : '', posted].filter(Boolean).join(' · ')}
               </div>
             </div>
             <Pill tone={toneForScore(job.score, { good: 70, ok: 45 })} title="Match with your roles and skills">
@@ -223,6 +205,7 @@ function JobRow({ job, settings, onApply }: { job: DiscoveredJob; settings: User
             </Pill>
           </div>
           <div className="row wrap" style={{ gap: 5 }}>
+            {job.internship && <Pill tone="ok">Internship</Pill>}
             {job.smallTeamReason && <Pill tone="ok">{job.smallTeamReason}</Pill>}
             {job.salary && <Pill>{job.salary}</Pill>}
             <a className="small muted" href={job.sourceUrl || job.url} onClick={(e) => (e.preventDefault(), openUrl(job.sourceUrl || job.url))}>

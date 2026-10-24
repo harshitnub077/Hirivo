@@ -26,14 +26,14 @@ const SHOTS = [
   {
     file: 'screenshot-2-radar.png',
     view: 'radar',
-    caption: 'Real roles from public boards and the companies you follow, with reasons.',
-    ready: `d.body.innerText.includes('Jobs for you') && !d.body.innerText.includes('Searching')`,
-    prepare: `[...d.querySelectorAll('.h2, b, span, div')].find((e) => e.children.length === 0 && e.textContent.trim() === 'Jobs for you')?.closest('.card')?.scrollIntoView({ block: 'start' })`,
+    caption: 'One search across LinkedIn, Naukri, Indeed, Internshala and more: posted time, distance and reasons.',
+    ready: `d.body.innerText.includes('Search now') && !d.body.innerText.includes('Searching')`,
+    prepare: `[...d.querySelectorAll('.h2')].find((e) => e.textContent.trim() === 'Search')?.closest('.card')?.scrollIntoView({ block: 'start' })`,
   },
   {
     file: 'screenshot-3-pipeline.png',
     view: 'pipeline',
-    caption: 'Follow-ups on day 4 and day 9, and an interview pack when someone replies.',
+    caption: 'Follow-ups on day 4 and day 9, stopped when someone replies.',
     ready: `d.body.innerText.includes('Follow up today')`,
   },
   {

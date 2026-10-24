@@ -1,5 +1,6 @@
-// Runs in the page via chrome.scripting.executeScript when the user clicks "Save jobs from this page".
-// Reads only the job cards already on screen. It never scrolls, paginates, opens or clicks anything.
+// Runs in the page via chrome.scripting.executeScript: when the user clicks "Save jobs from this
+// page", and when Hirivo's search reads a results page in a background tab. Reads only the job cards
+// already on the page. It never scrolls, paginates, opens or clicks anything.
 // Must stay self-contained (Chrome serialises this function).
 
 export interface ListedJob {
@@ -7,10 +8,16 @@ export interface ListedJob {
   company: string;
   location: string;
   url: string;
-  posted?: string;
+  posted?: string; // as the site shows it: "3 days ago", "Starts in 1-3 months"
+  postedAt?: number; // when the site gives an exact time
+  id?: string; // the site's own job id
+  salary?: string;
+  internship?: boolean;
+  remote?: boolean;
+  snippet?: string;
 }
 
-export function extractJobListFromPage(): { host: string; jobs: ListedJob[] } {
+export function extractJobListFromPage(): { host: string; jobs: ListedJob[]; blocked?: string } {
   const host = location.hostname.replace(/^www\./, '');
   const txt = (root: Element, sel: string) => {
     for (const s of sel.split('|')) {
@@ -47,23 +54,77 @@ export function extractJobListFromPage(): { host: string; jobs: ListedJob[] } {
   } else if (host.endsWith('naukri.com')) {
     for (const card of Array.from(document.querySelectorAll('.srp-jobtuple-wrapper, article.jobTuple, [class*="jobTuple"]')).slice(0, 60)) {
       const link = card.querySelector('a.title, a[class*="title"]') as HTMLAnchorElement | null;
+      const tuple = card.querySelector('.cust-job-tuple') || card;
+      const loc = txt(card, '.locWdth | [class*="loc"]');
       push({
-        title: link?.innerText.trim() || '',
+        title: link?.innerText.trim() || link?.getAttribute('title') || '',
         company: txt(card, '.comp-name | [class*="comp-name"] | .subTitle'),
-        location: txt(card, '.locWdth | [class*="loc"]'),
+        location: loc,
         url: abs(link?.getAttribute('href')),
         posted: txt(card, '.job-post-day | [class*="post-day"]'),
+        id: card.getAttribute('data-job-id') || undefined,
+        salary: txt(card, '.sal-wrap span[title] | .sal | [class*="sal"]'),
+        internship: /internship/.test(tuple.className) || /\bintern(ship)?\b/i.test(link?.innerText || ''),
+        remote: /remote|work from home/i.test(loc),
+        snippet: txt(card, '.job-desc | [class*="job-desc"]'),
       });
     }
   } else if (host.includes('indeed.')) {
-    for (const card of Array.from(document.querySelectorAll('.job_seen_beacon, [data-jk]')).slice(0, 60)) {
-      const jk = card.getAttribute('data-jk') || card.querySelector('[data-jk]')?.getAttribute('data-jk');
-      push({
-        title: txt(card, 'h2.jobTitle span[title] | h2.jobTitle | [class*="jobTitle"]'),
-        company: txt(card, '[data-testid="company-name"] | .companyName'),
-        location: txt(card, '[data-testid="text-location"] | .companyLocation'),
-        url: jk ? `https://${location.host}/viewjob?jk=${jk}` : abs((card.querySelector('a') as HTMLAnchorElement | null)?.getAttribute('href')),
-      });
+    // Indeed embeds its result list as JSON; it's more complete than the cards (exact posting time).
+    for (const script of Array.from(document.querySelectorAll('script'))) {
+      const t = script.textContent || '';
+      const at = t.indexOf('window.mosaic.providerData["mosaic-provider-jobcards"]');
+      if (at < 0) continue;
+      const start = t.indexOf('{', at);
+      let depth = 0;
+      let end = -1;
+      let inStr = false;
+      for (let i = start; i < t.length; i++) {
+        const ch = t[i];
+        if (inStr) {
+          if (ch === '\\') i++;
+          else if (ch === '"') inStr = false;
+        } else if (ch === '"') inStr = true;
+        else if (ch === '{') depth++;
+        else if (ch === '}' && --depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+      try {
+        const results = JSON.parse(t.slice(start, end))?.metaData?.mosaicProviderJobCardsModel?.results || [];
+        for (const r of results) {
+          if (!r?.jobkey) continue;
+          push({
+            title: String(r.displayTitle || r.title || ''),
+            company: String(r.company || ''),
+            location: String(r.formattedLocation || ''),
+            url: `https://${location.host}/viewjob?jk=${r.jobkey}`,
+            posted: r.formattedRelativeTime,
+            postedAt: typeof r.pubDate === 'number' ? r.pubDate : undefined,
+            id: r.jobkey,
+            salary: r.salarySnippet?.text || undefined,
+            internship: Array.isArray(r.jobTypes) && r.jobTypes.some((x: string) => /intern/i.test(x)),
+            remote: Boolean(r.remoteLocation) || /remote/i.test(String(r.formattedLocation || '')),
+            snippet: typeof r.snippet === 'string' ? r.snippet.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400) : undefined,
+          });
+        }
+      } catch {
+        /* fall back to the cards below */
+      }
+      break;
+    }
+    if (!jobs.length) {
+      for (const card of Array.from(document.querySelectorAll('.job_seen_beacon, [data-jk]')).slice(0, 60)) {
+        const jk = card.getAttribute('data-jk') || card.querySelector('[data-jk]')?.getAttribute('data-jk');
+        push({
+          title: txt(card, 'h2.jobTitle span[title] | h2.jobTitle | [class*="jobTitle"]'),
+          company: txt(card, '[data-testid="company-name"] | .companyName'),
+          location: txt(card, '[data-testid="text-location"] | .companyLocation'),
+          url: jk ? `https://${location.host}/viewjob?jk=${jk}` : abs((card.querySelector('a') as HTMLAnchorElement | null)?.getAttribute('href')),
+          id: jk || undefined,
+        });
+      }
     }
   }
 
@@ -95,5 +156,12 @@ export function extractJobListFromPage(): { host: string; jobs: ListedJob[] } {
       }
     }
   }
-  return { host, jobs };
+  // Block pages (Akamai, Cloudflare, Google's check, login walls) look like an empty result: say so.
+  const title = document.title || '';
+  const head = (document.body?.innerText || '').slice(0, 600);
+  const blocked =
+    !jobs.length && /access denied|request blocked|you have been blocked|unusual traffic|verify you are human|captcha|attention required|are you a robot/i.test(`${title} ${head}`)
+      ? title || 'blocked'
+      : undefined;
+  return { host, jobs, blocked };
 }

@@ -61,8 +61,6 @@ export async function runJobChecks(job: JobSnapshot, { resume, facts, settings }
             matchingStrengths: fitResult.matchingStrengths,
             skillGaps: fitResult.skillGaps,
             fitEvidence: fitResult.evidence,
-            // Requirement ids change between runs; keep a sprint only once it's done (its fact stays).
-            proofSprint: job.proofSprint?.completedAt ? job.proofSprint : undefined,
           }
         : {}),
       analyzedAt: Date.now(),

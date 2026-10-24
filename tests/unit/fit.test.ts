@@ -12,9 +12,6 @@ vi.mock('../../src/llm/router', () => ({
 }));
 
 const { analyzeJobFit, applyMatches, cleanRequirements, computeFitScore } = await import('../../src/services/fitAdvisor');
-const { applySprintCompletion, cleanSprint, completeProofSprint, generateProofSprint, nextFactId, pickSprintGap, sprintEligible } = await import(
-  '../../src/services/proofSprint'
-);
 const { checkGrounding } = await import('../../src/services/proofWriter');
 const { db } = await import('../../src/db');
 
@@ -172,99 +169,3 @@ describe('analyzeJobFit', () => {
   });
 });
 
-describe('Proof Sprint', () => {
-  const evidence: FitRequirement[] = [
-    { id: 'R1', text: 'React performance work', kind: 'must', factId: 'FACT-01', reason: '', met: true },
-    { id: 'R2', text: 'Experience with GraphQL APIs', kind: 'must', factId: null, reason: '', met: false },
-    { id: 'R3', text: 'Design systems', kind: 'nice', factId: null, reason: '', met: false },
-  ];
-  const job: JobSnapshot = {
-    id: 'linkedin:1',
-    url: 'https://www.linkedin.com/jobs/view/1',
-    title: 'Frontend Engineer',
-    company: 'Zeta',
-    location: '',
-    description: '',
-    analyzedAt: 1,
-    fitEvidence: evidence,
-    fitScore: computeFitScore(evidence), // 2 of 5 → 40
-  };
-
-  it('is offered only for partial fits with a gap, and targets the first missing must-have', () => {
-    expect(job.fitScore).toBe(40);
-    expect(sprintEligible(job)).toBe(true);
-    expect(sprintEligible({ ...job, fitScore: 30 })).toBe(false);
-    expect(sprintEligible({ ...job, fitScore: 75 })).toBe(false);
-    expect(pickSprintGap(evidence)?.id).toBe('R2');
-  });
-
-  it('validates the plan: 3–7 days, no invented metrics in the fact', () => {
-    const plan = cleanSprint(
-      {
-        title: 'GraphQL gateway for UPI status',
-        scope: 'A GraphQL layer over the tracker.',
-        stack: ['Apollo Server', 'TypeScript', 'PostgreSQL'],
-        days: Array.from({ length: 9 }, (_, i) => ({ day: i + 1, task: `Task ${i + 1}` })),
-        deliverable: 'Repo and a short write-up',
-        factClaim: 'Built a GraphQL gateway serving 10,000 users with 99% uptime over a UPI status tracker',
-      },
-      evidence[1],
-      123
-    );
-    expect(plan.days).toHaveLength(7);
-    expect(plan.gapId).toBe('R2');
-    expect(plan.factClaim).toBe('Built GraphQL gateway for UPI status using Apollo Server, TypeScript, PostgreSQL');
-    expect(() => cleanSprint({ title: 'x', days: [{ task: 'a' }], factClaim: 'y' }, evidence[1])).toThrow(/incomplete/);
-  });
-
-  it('generates a plan for the biggest gap', async () => {
-    replies.push({
-      title: 'GraphQL gateway for UPI status',
-      scope: 'Wrap the tracker in GraphQL.',
-      stack: ['Apollo Server', 'TypeScript'],
-      days: ['Schema', 'Resolvers', 'Auth', 'Tests', 'Write-up'],
-      deliverable: 'Repo + demo',
-      factClaim: 'Built a GraphQL API with Apollo Server and TypeScript over my UPI status tracker',
-    });
-    const plan = await generateProofSprint(job, FRONTEND_FACTS);
-    expect(calls.map((c) => c.taskType)).toEqual(['draft_writing']);
-    expect(plan.days.map((d) => d.day)).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it('finishing adds a fact the writer can cite, covers the gap and rescores', async () => {
-    await db.facts.clear();
-    await db.facts.bulkPut(FRONTEND_FACTS);
-    const sprintJob: JobSnapshot = {
-      ...job,
-      proofSprint: cleanSprint(
-        {
-          title: 'GraphQL gateway',
-          days: ['a', 'b', 'c'],
-          factClaim: 'Built a GraphQL API with Apollo Server and TypeScript over my UPI status tracker',
-        },
-        evidence[1],
-        1
-      ),
-    };
-    await db.jobs.put(sprintJob);
-
-    const { job: done, fact } = await completeProofSprint(sprintJob, 'github.com/aarav/upi-graphql');
-    expect(fact.id).toBe('FACT-04');
-    expect(fact.claim).toBe('Built a GraphQL API with Apollo Server and TypeScript over my UPI status tracker (github.com/aarav/upi-graphql)');
-    expect(await db.facts.get('FACT-04')).toEqual(fact);
-    expect(done.fitEvidence?.find((r) => r.id === 'R2')).toMatchObject({ met: true, factId: 'FACT-04' });
-    expect(done.fitScore).toBe(80); // 4 of 5
-    expect(done.fitVerdict).toBe('STRONG_FIT');
-    expect(done.proofSprint?.completedAt).toBeGreaterThan(0);
-
-    const facts = await db.facts.toArray();
-    const g = checkGrounding('I built a GraphQL API over my UPI tracker [FACT-04].', facts);
-    expect(g.unverifiedClaimsCount).toBe(0);
-    expect(g.citedFactIds).toEqual(['FACT-04']);
-  });
-
-  it('nextFactId and applySprintCompletion are safe on odd input', () => {
-    expect(nextFactId([{ id: 'FACT-09' }, { id: 'FACT-12' }])).toBe('FACT-13');
-    expect(applySprintCompletion({ ...job, proofSprint: undefined }, 'FACT-05')).toEqual({ ...job, proofSprint: undefined });
-  });
-});

@@ -5,7 +5,6 @@ import { db } from '../../src/db';
 import { patchSettings } from '../../src/db/settings';
 import { buildProfile, isTraceable } from '../../src/services/resumeImport';
 import { analyzeJobFit, computeFitScore } from '../../src/services/fitAdvisor';
-import { generateProofSprint } from '../../src/services/proofSprint';
 import { checkGrounding, generateProofLinkedDraft } from '../../src/services/proofWriter';
 import { routeLLMRequest } from '../../src/llm/router';
 import { htmlToText } from '../../src/services/discover/hn';
@@ -60,16 +59,6 @@ describe.skipIf(!GROQ && !GEMINI)('real AI flows', () => {
     expect(r.matchScore).toBe(computeFitScore(r.evidence));
     const ids = new Set(facts.map((f) => f.id));
     for (const e of r.evidence) if (e.factId && e.factId !== 'SKILLS') expect(ids.has(e.factId)).toBe(true);
-  }, 180_000);
-
-  it('plans a Proof Sprint for the biggest gap', async () => {
-    const facts = await db.facts.toArray();
-    const r = await analyzeJobFit(jobTitle, 'Razorpay', jd, null, facts, { yearsExperience: 0.5 });
-    if (!r.evidence.some((e) => !e.met)) return;
-    const sprint = await generateProofSprint({ title: jobTitle, company: 'Razorpay', fitEvidence: r.evidence }, facts);
-    console.log(`sprint: ${sprint.title} (${sprint.days.length} days) → "${sprint.factClaim}"`);
-    expect(sprint.days.length).toBeGreaterThanOrEqual(3);
-    expect(sprint.days.length).toBeLessThanOrEqual(7);
   }, 180_000);
 
   it('writes a grounded email that cites only real facts', async () => {

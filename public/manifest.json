@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hirivo: Real Jobs, Right People",
   "short_name": "Hirivo",
-  "version": "2.11.0",
+  "version": "2.12.0",
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -42,7 +42,9 @@
     "https://yc-oss.github.io/*",
     "https://hn.algolia.com/*",
     "https://api.github.com/*",
-    "https://news.google.com/*"
+    "https://news.google.com/*",
+    "https://internshala.com/*",
+    "https://unstop.com/*"
   ],
   "optional_host_permissions": [
     "https://*/*",

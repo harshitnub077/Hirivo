@@ -1,7 +1,7 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 2.11.0
+**Version:** 2.12.0
 **Category:** Productivity
 **Language:** English (India), English
 **Privacy policy:** [docs/privacy.md](docs/privacy.md). Publish it at a public URL (GitHub Pages, or the file's GitHub link) and paste that link into the dashboard.
@@ -15,12 +15,12 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 
 **Start with your resume.** Upload a PDF, Word or text resume. Hirivo fills your profile, keeps only facts it can trace back to the file, and suggests the roles you fit.
 
-**Find real jobs.** Discover pulls open roles from public job boards: Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow, Hacker News "Who is hiring" and YC startups that are hiring. When a company has its own Greenhouse, Lever or Ashby board, Hirivo links there instead of a copy. Every listing names its source. Radar follows the companies you choose and notifies you when a matching role is posted. Each morning, the Daily 5 picks the best verified roles for you.
+**Find real jobs near you.** Set what you want once: internships or jobs, your city and a radius, how recent, work mode, experience and minimum stipend. Hirivo searches LinkedIn's public listings, Naukri, Indeed, Internshala and Unstop from your own browser, plus YC startups, Hacker News "Who is hiring" and remote boards (Remotive, Remote OK, Himalayas, Jobicy, Arbeitnow). Every job shows when it was posted and how far away it is, and the same job on several sites appears once. When a company has its own Greenhouse, Lever or Ashby board, Hirivo links there instead of a copy. Every listing names its source. Radar follows the companies you choose and notifies you when a matching role is posted. Each morning, the Daily 5 picks the best verified roles for you.
 
 **Four answers on every job.** Open a posting on any job site or careers page and press Analyze. The Verdict Strip answers:
 
 - **Real:** is the role on the company's own hiring board, and how long has it been open? Reposted descriptions are recognised.
-- **Fit:** each requirement in the job is matched to a line on your resume, or marked as a gap. The score comes from that table, so a long shot is shown as a long shot. For close calls, Proof Sprint plans a short project that closes the biggest gap.
+- **Fit:** each requirement in the job is matched to a line on your resume, or marked as a gap. The score comes from that table, so a long shot is shown as a long shot.
 - **People:** people you already know there (from your own LinkedIn data export), people on the company's team page and GitHub, and the hiring inbox, ranked by who is most likely to help and why.
 - **Safety:** Scam Shield quotes the exact lines that look like fake-job tricks: registration fees, deposits, OTP or bank requests, chat-app-only contact, a personal email for a company role, a very new domain or one with no mail server.
 
@@ -30,11 +30,11 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 
 **Write to several people.** Pick up to five people at the company (the hiring manager, a recruiter, a founder, the hiring inbox, someone you know) and Hirivo writes each one their own email for their role. Sentences your resume doesn't back are cut before you see them.
 
-**Follow up on time.** The email opens in Gmail for you to send. Hirivo reminds you on day 4 and day 9 and stops when you get a reply. When someone replies, the Interview Pack collects what the company does, likely questions and your strongest points for the role. Optional Gmail power mode, with your own Google app, saves real drafts (with your resume attached if you like), keeps follow-ups in the same thread and spots replies by itself.
+**Follow up on time.** The email opens in Gmail for you to send. Hirivo reminds you on day 4 and day 9 and stops when you get a reply. Optional Gmail power mode, with your own Google app, saves real drafts (with your resume attached if you like), keeps follow-ups in the same thread and spots replies by itself.
 
 **Autopilot, when you want it.** Turn it on, hand it the jobs you choose, and it does the rest: reads each posting, checks the job is real and safe, finds the company's website and the people there, emails everyone with a verified address from your own Gmail (with your resume attached and every claim backed by it), fills the application and submits it. It stops and notifies you only when a form needs your consent tick or a CAPTCHA, and it never emails a guessed address or touches LinkedIn.
 
-**Safe for your LinkedIn account.** Hirivo runs no script on LinkedIn by itself. It reads the page you are viewing only when you press Analyze or Save jobs, and it never clicks, connects, messages or applies there.
+**Safe for your LinkedIn account.** Hirivo never uses your LinkedIn session for searching: it reads LinkedIn's public job listings, the ones anyone sees without signing in. On LinkedIn pages it reads only what you are viewing when you press Analyze or Save jobs, and it never clicks, connects, messages or applies there.
 
 **Private and free.** There is no Hirivo server and no account. Your resume, contacts and history stay in your browser, and you can export or delete all of it in one click. AI runs on your own free Groq, Gemini or OpenRouter key, or on Chrome's built-in AI where your computer supports it. Many checks work with no key at all.
 
@@ -43,8 +43,8 @@ Hirivo is a job-search co-pilot for people who would rather send five good appli
 | File | Caption |
 |---|---|
 | `store/screenshot-1-now.png` | Every job gets four answers: is it real, do you fit, who to ask, is it safe. |
-| `store/screenshot-2-radar.png` | Real roles from public boards and the companies you follow, with reasons. |
-| `store/screenshot-3-pipeline.png` | Follow-ups on day 4 and day 9, and an interview pack when someone replies. |
+| `store/screenshot-2-radar.png` | One search across LinkedIn, Naukri, Indeed, Internshala and more: posted time, distance and reasons. |
+| `store/screenshot-3-pipeline.png` | Follow-ups on day 4 and day 9, stopped when someone replies. |
 | `store/screenshot-4-you.png` | Your resume becomes facts, and Hirivo only claims what they say. |
 
 Small promo tile: `store/promo-small-440x280.png`. Regenerate screenshots with `npm run store:screenshots` (see `scripts/store-screenshots.js`).
@@ -67,8 +67,9 @@ Help a job seeker decide which jobs are worth applying to and reach the right pe
 | Host: `api.groq.com`, `generativelanguage.googleapis.com`, `openrouter.ai` | Sends the user's AI requests straight to the provider they chose, with their own key. |
 | Host: `rdap.org`, `dns.google` | Domain age and mail-server checks for company legitimacy and Scam Shield. |
 | Host: `boards-api.greenhouse.io`, `api.lever.co`, `api.ashbyhq.com` | Reads public job-board feeds to confirm a role is live, read its posting date and power Radar. |
-| Host: `*.linkedin.com`, `*.naukri.com`, `*.indeed.com`, `*.wellfound.com`, `*.instahyre.com`, `*.cutshort.io`, `*.foundit.in` | Reads the job or the visible search results only when the user presses Analyze or Save jobs. No script runs on these sites by itself. |
+| Host: `*.linkedin.com`, `*.naukri.com`, `*.indeed.com`, `*.wellfound.com`, `*.instahyre.com`, `*.cutshort.io`, `*.foundit.in` | Reads the job or the visible search results when the user presses Analyze or Save jobs. The saved search also reads public job listings: LinkedIn's logged-out job search (never with the user's LinkedIn session), and Naukri and Indeed results pages opened in a background tab and closed after reading. Nothing is clicked or posted on these sites. |
 | Host: `*.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`, `apply.workable.com` | Reads job pages on Analyze, and fills application forms with the user's details and resume. The user always submits. |
+| Host: `internshala.com`, `unstop.com` | The saved search reads public internship and job listings on Internshala and Unstop, filtered to the user's roles, city and dates. Each listing links back to its source. |
 | Host: `remotive.com`, `remoteok.com`, `himalayas.app`, `jobicy.com`, `www.arbeitnow.com`, `hn.algolia.com`, `yc-oss.github.io` | Public job APIs and open datasets for Discover. Each listing is credited and links to its source. Hacker News search also finds recent company news for opening lines. |
 | Host: `api.github.com`, `news.google.com` | Public GitHub org members and releases, and Google News headlines, for the contact ladder and opening-line suggestions. |
 | Optional `identity` | Asked only when the user connects Gmail with their own Google OAuth client, to run Google's sign-in window. |
