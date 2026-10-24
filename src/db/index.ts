@@ -297,7 +297,18 @@ export interface UserSettings {
   locationPreference?: 'india' | 'remote' | 'anywhere';
   smallTeamsOnly?: boolean;
   autoFillForms?: boolean;
-  theme?: 'dark' | 'light' | 'system'; // dark is the default // fill ATS forms as soon as they open (the user still submits)
+  theme?: 'dark' | 'light' | 'system'; // dark is the default
+  // Gmail power mode with the user's own OAuth client. Never exported.
+  gmail?: {
+    clientId: string;
+    clientSecret: string;
+    email: string;
+    accessToken: string;
+    expiresAt: number;
+    refreshToken?: string;
+    connectedAt: number;
+    needsReconnect?: boolean;
+  }; // fill ATS forms as soon as they open (the user still submits)
   linkedinUrl?: string;
   githubUrl?: string;
   portfolioUrl?: string;
