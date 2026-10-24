@@ -12,6 +12,8 @@ import {
   getAccessToken,
   GmailNeedsReconnect,
   signInHelp,
+  checkClientInputs,
+  parseClientFile,
   hasRequiredScopes,
   parseAuthRedirect,
   pkceChallenge,
@@ -229,5 +231,28 @@ describe('sign-in errors', () => {
     expect(signInHelp('Gmail access was not granted.')).toMatch(/exact Gmail address/);
     expect(signInHelp('Google sign-in failed (redirect_uri_mismatch).')).toMatch(/redirect address/);
     expect(signInHelp('Network error')).toBe('Network error');
+  });
+});
+
+describe('setup mistakes are caught before Google opens', () => {
+  const id = '614000213654-6bkm0qho3apeamvb01ehle1034rr2d8q.apps.googleusercontent.com';
+  it('the client ID pasted as the secret', () => {
+    expect(checkClientInputs(id, id)).toMatch(/client ID again.*GOCSPX-/);
+  });
+  it('accepts a real-looking pair, new and pre-2021 secrets alike', () => {
+    expect(checkClientInputs(id, 'GOCSPX-abcdefghijklmnopqrstuvwx12')).toBeNull();
+    expect(checkClientInputs(id, 'aBcDeFgHiJkLmNoPqRsTuVwX')).toBeNull();
+    expect(checkClientInputs('my-client', 'GOCSPX-abcdefghijklmnopqrstuvwx12')).toMatch(/isn’t a Google OAuth client ID/);
+  });
+  it('reads Google\'s client JSON and checks the redirect address is on it', () => {
+    const redirect = 'https://hihenpcapnoebhdlfmedmndgjepjmpoo.chromiumapp.org/';
+    const file = (uris: string[], type = 'web') => JSON.stringify({ [type]: { client_id: id, client_secret: 'GOCSPX-abcdefghijklmnopqrstuvwx12', redirect_uris: uris } });
+    expect(parseClientFile(file([redirect]), redirect)).toMatchObject({ clientId: id, redirectOk: true });
+    expect(parseClientFile(file(['https://other.example/']), redirect).redirectOk).toBe(false);
+    expect(() => parseClientFile(file([], 'installed'), redirect)).toThrow(/Desktop app.*Web application/);
+    expect(() => parseClientFile('not json', redirect)).toThrow(/Download JSON/);
+  });
+  it('explains a wrong secret in plain words', () => {
+    expect(signInHelp('The provided client secret is invalid.')).toMatch(/client secret is wrong/);
   });
 });

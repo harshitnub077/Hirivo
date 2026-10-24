@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Check, Copy, ExternalLink, Mail, RefreshCw, Unplug } from 'lucide-react';
+import { Check, Copy, ExternalLink, FileJson, Mail, RefreshCw, Unplug } from 'lucide-react';
 import type { UserSettings } from '../../db';
-import { connectGmail, disconnectGmail } from '../../services/gmail';
+import { checkClientInputs, connectGmail, disconnectGmail, parseClientFile } from '../../services/gmail';
 import { openUrl } from '../../services/outreach';
 import { Callout, Field, Pill, useCopy } from '../ui';
 
@@ -17,6 +17,26 @@ export function GmailSection({ settings }: { settings: UserSettings }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, copy] = useCopy();
+  const [fileNote, setFileNote] = useState<{ tone: 'ok' | 'caution'; text: string } | null>(null);
+
+  const loadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const c = parseClientFile(await file.text(), redirectUrl());
+      setClientId(c.clientId);
+      setSecret(c.clientSecret);
+      setFileNote(
+        c.redirectOk
+          ? { tone: 'ok', text: 'Client loaded, and its redirect address is right. Press Connect Gmail.' }
+          : { tone: 'caution', text: 'Client loaded, but the redirect address in step 4 isn’t on it yet. Add it to the client in Google Cloud, save, then press Connect Gmail.' }
+      );
+    } catch (err: any) {
+      setFileNote({ tone: 'caution', text: err.message });
+    }
+  };
+  const inputProblem = !gmail && (clientId.trim() || secret.trim()) ? checkClientInputs(clientId, secret) : null;
 
   const connect = async () => {
     setBusy(true);
@@ -67,19 +87,20 @@ export function GmailSection({ settings }: { settings: UserSettings }) {
       {!gmail && (
         <ol className="setup-steps">
           <li>
-            In Google Cloud, {link('create a project', '/projectcreate')} (any name, e.g. “Hirivo for me”).
+            {link('Create a Google Cloud project', '/projectcreate')} (any name, e.g. “Hirivo for me”).
           </li>
           <li>
-            Turn on the {link('Gmail API', '/apis/library/gmail.googleapis.com')} for that project.
+            {link('Turn on the Gmail API', '/flows/enableapi?apiid=gmail.googleapis.com')}: one click, pick your project.
           </li>
           <li>
-            Open {link('Google Auth Platform', '/auth/overview')}: choose <b>External</b>, add the <b>exact Gmail address you will sign in with</b> under{' '}
-            {link('Audience → Test users', '/auth/audience')} (otherwise Google shows “Access blocked … has not completed the verification process”), and under{' '}
-            <b>Data access</b> add the scopes <span className="mono">gmail.compose</span> and <span className="mono">gmail.readonly</span>.
-            <span className="muted"> In Testing mode Google signs you out every 7 days; press “Publish app” to avoid that. Google will call it unverified, which is expected for an app only you use.</span>
+            Open {link('Google Auth Platform', '/auth/overview')} → <b>Get started</b>: app name, your email, audience <b>External</b>. Then under{' '}
+            {link('Audience → Test users', '/auth/audience')} add the <b>exact Gmail address you will sign in with</b> (otherwise Google shows “Access blocked … has not
+            completed the verification process”). Under {link('Data access', '/auth/scopes')} add <span className="mono">gmail.compose</span> and{' '}
+            <span className="mono">gmail.readonly</span>.
+            <span className="muted"> Optional: press “Publish app” on the Audience page, or Google signs you out every 7 days.</span>
           </li>
           <li>
-            Under {link('Clients', '/auth/clients')}, create a client of type <b>Web application</b> and add this exact <b>Authorized redirect URI</b>:
+            {link('Create a client', '/auth/clients/create')}: type <b>Web application</b>, and under <b>Authorized redirect URIs</b> add exactly:
             <div className="row" style={{ marginTop: 6 }}>
               <code className="mono redirect">{redirectUrl()}</code>
               <button className="btn sm icon" title="Copy" onClick={() => copy('redirect', redirectUrl())}>
@@ -87,9 +108,20 @@ export function GmailSection({ settings }: { settings: UserSettings }) {
               </button>
             </div>
           </li>
-          <li>Copy the Client ID and Client secret into the boxes below and press Connect. Approve both Gmail permissions.</li>
+          <li>
+            In the dialog that appears, press <b>Download JSON</b> and load that file here. Or copy the Client ID and the Client secret (it starts with{' '}
+            <span className="mono">GOCSPX-</span>) into the boxes below.
+          </li>
         </ol>
       )}
+
+      {!gmail && (
+        <label className="btn" style={{ alignSelf: 'flex-start' }}>
+          <FileJson size={14} /> Load the client JSON file
+          <input type="file" accept=".json,application/json" hidden onChange={loadFile} />
+        </label>
+      )}
+      {fileNote && <Callout tone={fileNote.tone}>{fileNote.text}</Callout>}
 
       <Field label="Client ID">
         <input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="1234-abc.apps.googleusercontent.com" />
@@ -99,9 +131,10 @@ export function GmailSection({ settings }: { settings: UserSettings }) {
           <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="GOCSPX-…" />
         </Field>
       )}
-      <button className="btn primary" onClick={connect} disabled={busy || !clientId.trim() || (!gmail && !secret.trim())}>
+      <button className="btn primary" onClick={connect} disabled={busy || !clientId.trim() || (!gmail && (!secret.trim() || Boolean(inputProblem)))}>
         {busy ? <RefreshCw size={14} className="spin" /> : <Mail size={14} />} {gmail ? 'Reconnect Gmail' : 'Connect Gmail'}
       </button>
+      {inputProblem && !error && clientId.trim() && secret.trim() && <p className="small" style={{ color: 'var(--caution)' }}>{inputProblem}</p>}
       {error && <Callout tone="caution">{error}</Callout>}
       {gmail && <Pill tone="caution">Needs reconnect</Pill>}
     </div>

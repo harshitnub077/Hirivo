@@ -231,6 +231,43 @@ async function api<T>(path: string, init: RequestInit = {}, deps: AuthDeps = def
 
 // ---------- Connect / disconnect (side panel, from a click) ----------
 
+/** Catches the usual copy-paste mistakes before Google is even opened. Returns the problem, or null. */
+export function checkClientInputs(clientId: string, clientSecret: string): string | null {
+  const id = clientId.trim();
+  const secret = clientSecret.trim();
+  if (!/^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(id)) return 'That isn’t a Google OAuth client ID. It looks like 1234-abc….apps.googleusercontent.com.';
+  if (!secret) return 'Paste the client secret too. It stays on this computer.';
+  if (secret === id || secret.endsWith('.apps.googleusercontent.com')) return 'That’s the client ID again. The client secret is the other value on the same page and starts with GOCSPX-.';
+  // New secrets start with GOCSPX-; clients from before 2021 have a plain 24-character one.
+  if (!/^GOCSPX-[\w-]{20,}$/.test(secret) && !/^[\w-]{24,}$/.test(secret)) return 'That doesn’t look like a client secret. It starts with GOCSPX-; copy it from Clients → your client.';
+  return null;
+}
+
+export interface ClientFile {
+  clientId: string;
+  clientSecret: string;
+  /** The redirect address Hirivo needs is listed in the file. */
+  redirectOk: boolean;
+  /** "web" is the type that works; "installed" (Desktop) and others don't allow this redirect. */
+  type: string;
+}
+
+/** Reads the JSON file Google offers with "Download JSON" on a client, so nothing is copied by hand. */
+export function parseClientFile(text: string, redirectUri: string): ClientFile {
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('That file isn’t the client JSON from Google. On Clients → your client, use “Download JSON”.');
+  }
+  const type = Object.keys(data || {})[0] || '';
+  const c = data?.[type] || {};
+  if (!c.client_id || !c.client_secret) throw new Error('That file has no client ID and secret. Download the JSON from Clients → your client.');
+  if (type !== 'web') throw new Error(`This client is the “${type === 'installed' ? 'Desktop app' : type}” type. Create a “Web application” client instead; only that type accepts Hirivo’s redirect address.`);
+  const uris: string[] = Array.isArray(c.redirect_uris) ? c.redirect_uris : [];
+  return { clientId: c.client_id, clientSecret: c.client_secret, redirectOk: uris.some((u) => u.replace(/\/$/, '') === redirectUri.replace(/\/$/, '')), type };
+}
+
 /** Google's "Access blocked: … has not completed the Google verification process" page ends in a
  * closed window with no detail. The usual cause is a Testing-mode app whose test users don't include
  * the account the user signed in with, so say exactly that. */
@@ -239,12 +276,14 @@ export function signInHelp(message: string): string {
     return 'Google didn’t let this account in. If it said “has not completed the Google verification process”, open Google Auth Platform → Audience → Test users and add the exact Gmail address you are signing in with (or press “Publish app”), then press Connect again.';
   }
   if (/redirect_uri_mismatch/i.test(message)) return 'Google rejected the redirect address. Copy the exact address from step 4 into your client’s Authorized redirect URIs.';
+  if (/client secret is invalid|invalid_client/i.test(message)) return 'Google says the client secret is wrong. Copy the Client secret (starts with GOCSPX-) from Clients → your client, or load the client’s JSON file.';
+  if (/client was not found|deleted_client/i.test(message)) return 'Google can’t find that client ID. Check it on Clients in Google Auth Platform (it may have been deleted).';
   return message;
 }
 
 export async function connectGmail(clientId: string, clientSecret: string, override: Partial<AuthDeps> = {}): Promise<GmailState> {
-  if (!/\.apps\.googleusercontent\.com$/.test(clientId.trim())) throw new Error('That doesn’t look like a Google OAuth client ID (it ends in .apps.googleusercontent.com).');
-  if (!clientSecret.trim()) throw new Error('Paste the client secret too. It stays on this computer.');
+  const problem = checkClientInputs(clientId, clientSecret);
+  if (problem) throw new Error(problem);
   if (typeof chrome !== 'undefined' && chrome.permissions) {
     // Optional permissions: asked only here, so nothing changes for people who never connect.
     const ok = await chrome.permissions.request({ permissions: ['identity'], origins: GMAIL_ORIGINS });
