@@ -49,7 +49,9 @@ export function describe(el: Field): string {
       group = box.querySelector('label, legend')?.textContent || '';
     }
   }
-  return [el.name, id, el.getAttribute('placeholder'), el.getAttribute('aria-label'), el.getAttribute('autocomplete'), byFor, wrapping, labelledBy, group]
+  // Workday and other React-heavy systems label fields with test ids like "legalNameSection_firstName".
+  const automation = (el.getAttribute('data-automation-id') || el.getAttribute('data-testid') || '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
+  return [el.name, id, el.getAttribute('placeholder'), el.getAttribute('aria-label'), el.getAttribute('autocomplete'), automation, byFor, wrapping, labelledBy, group]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()

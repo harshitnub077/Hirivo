@@ -1,4 +1,5 @@
-// Content script for ATS application pages (Greenhouse, Lever, Ashby, Workable) only.
+// Content script for ATS application pages only (Greenhouse, Lever, Ashby, Workable, Workday,
+// SmartRecruiters, iCIMS, Recruitee, BambooHR, Keka, Darwinbox, Zoho Recruit, Freshteam).
 // It never runs on LinkedIn. It fills fields the user has saved and attaches their resume,
 // never overwrites what the user typed, and never presses Submit.
 // Job-page reading lives in extractJob.ts and runs only when the user clicks Analyze.

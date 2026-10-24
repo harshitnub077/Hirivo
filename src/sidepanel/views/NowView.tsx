@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Clock, MapPin, RefreshCw, ScanSearch, ShieldCheck } from 'lucide-react';
-import { JobSnapshot, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
+import { CheckCircle2, Circle, Clock, MapPin, RefreshCw, ScanSearch, ShieldCheck } from 'lucide-react';
+import { db, JobSnapshot, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
 import { checkGhostJob } from '../../services/ghostJobShield';
 import { checkLegitimacy, extractDomainFromUrl } from '../../services/legitimacyScorer';
 import { analyzeJobFit } from '../../services/fitAdvisor';
@@ -9,15 +9,16 @@ import { findWarmPaths } from '../../services/warmPathMatcher';
 import { daysSince } from '../../services/atsFeeds';
 import { checkScam } from '../../services/scamShield';
 import { recordFingerprint } from '../../services/repostFingerprint';
-import { Callout, Empty, Pill, Segmented, Tone, toneForScore } from '../ui';
+import { Callout, Empty, Meter, Pill, Segmented, Tone, toneForScore } from '../ui';
 import type { ActivePage } from '../page';
 import type { ViewId } from '../App';
 import { EvidencePanel } from './EvidencePanel';
 import { PeoplePanel } from './PeoplePanel';
 import { WritePanel } from './WritePanel';
 import { ResumeImport } from './ResumeImport';
+import { AnswerPanel } from './AnswerPanel';
 
-type Panel = 'evidence' | 'people' | 'write';
+type Panel = 'evidence' | 'people' | 'write' | 'answers';
 
 const TONE_RANK: Record<Tone, number> = { neutral: 0, ok: 1, caution: 2, risk: 3 };
 const worstTone = (a: Tone, b: Tone): Tone => (TONE_RANK[a] >= TONE_RANK[b] ? a : b);
@@ -43,6 +44,47 @@ interface Props {
   goTo: (v: ViewId) => void;
 }
 
+/** First-run checklist. Disappears once the essentials are done. */
+function GettingStarted({ hasResume, hasKey, settings, goTo }: { hasResume: boolean; hasKey: boolean; settings: UserSettings; goTo: (v: ViewId) => void }) {
+  const connections = useLiveQuery(() => db.connections.count(), []) ?? 0;
+  const steps = [
+    { done: hasResume, label: 'Upload your resume', hint: 'Fills your profile and finds your achievements.', go: undefined as ViewId | undefined },
+    { done: (settings.targetRoles?.length ?? 0) > 0, label: 'Pick the roles you want', hint: 'Discover finds jobs for them every 12 hours.', go: 'radar' as ViewId },
+    { done: hasKey, label: 'Add a free AI key', hint: 'For fit scores, emails and answers. Groq takes a minute.', go: 'you' as ViewId },
+    { done: connections > 0, label: 'Import your LinkedIn connections', hint: 'Shows people you already know at each company.', go: 'you' as ViewId },
+  ];
+  const done = steps.filter((s) => s.done).length;
+  if (done === steps.length) return null;
+  return (
+    <section className="card stack">
+      <div className="row between">
+        <div className="h1">Get set up</div>
+        <span className="small muted num">{done} of {steps.length}</span>
+      </div>
+      <Meter value={(done / steps.length) * 100} label="Setup progress" />
+      <ul className="checklist">
+        {steps.map((s) => (
+          <li key={s.label} className={s.done ? 'ok' : 'neutral'}>
+            {s.done ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+            <span className="grow">
+              {s.go && !s.done ? (
+                <button className="linklike" onClick={() => goTo(s.go!)}>
+                  {s.label}
+                </button>
+              ) : (
+                <b style={{ fontWeight: s.done ? 400 : 600 }}>{s.label}</b>
+              )}
+              {!s.done && <span className="muted"> · {s.hint}</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {!hasResume && <ResumeImport compact onDone={() => goTo('radar')} />}
+      <p className="small muted">Tip: press Alt+H on any page to open Hirivo.</p>
+    </section>
+  );
+}
+
 export function NowView(props: Props) {
   const { job, page, scanning, scanError, onAnalyze, onUpdateJob, settings, resume, facts } = props;
   const [panel, setPanel] = useState<Panel>('evidence');
@@ -63,15 +105,7 @@ export function NowView(props: Props) {
   if (!job) {
     return (
       <div className="view">
-        {facts.length === 0 && !resume && (
-          <section className="stack">
-            <div>
-              <div className="h1">Start with your resume</div>
-              <p className="small muted">Hirivo fills your profile, picks roles that fit, and starts finding jobs for you.</p>
-            </div>
-            <ResumeImport onDone={() => props.goTo('radar')} />
-          </section>
-        )}
+        <GettingStarted hasResume={facts.length > 0 || !!resume} hasKey={hasKey} settings={settings} goTo={props.goTo} />
         <Empty
           icon={<ScanSearch size={30} />}
           title={page ? 'Analyze this job' : 'Open a job posting'}
@@ -243,6 +277,7 @@ export function NowView(props: Props) {
           { value: 'evidence', label: 'Evidence' },
           { value: 'people', label: 'People' },
           { value: 'write', label: 'Write' },
+          { value: 'answers', label: 'Answers' },
         ]}
       />
 
@@ -270,6 +305,9 @@ export function NowView(props: Props) {
             setPanel('write');
           }}
         />
+      </div>
+      <div hidden={panel !== 'answers'}>
+        <AnswerPanel job={job} facts={facts} voiceProfile={props.voiceProfile} settings={settings} hasKey={hasKey} goTo={props.goTo} />
       </div>
       <div hidden={panel !== 'write'}>
         <WritePanel

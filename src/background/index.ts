@@ -72,7 +72,26 @@ async function discoverInBackground() {
   });
 }
 
+/** A week after applying with no outreach logged, suggest messaging someone on the team. Once per job. */
+async function nudgeAfterApplying() {
+  const week = 7 * 86_400_000;
+  const applied = await db.discovered.where('status').equals('applied').toArray();
+  const contacted = new Set((await db.outreach.toArray()).map((r) => r.companyName.toLowerCase()));
+  const due = applied.filter((j) => j.appliedAt && Date.now() - j.appliedAt >= week && !j.nudgedAt && !contacted.has(j.company.toLowerCase()));
+  for (const j of due.slice(0, 3)) {
+    chrome.notifications.create(`nudge:${j.id}`, {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: `No word from ${j.company}?`,
+      message: `You applied for ${j.title} a week ago. A short note to someone on the team helps your application get read. Open the job and press Analyze, then People.`,
+      priority: 1,
+    });
+    await db.discovered.update(j.id, { nudgedAt: Date.now() });
+  }
+}
+
 async function checkFollowups() {
+  await nudgeAfterApplying();
   const open = await db.outreach.where('status').equals('SENT').toArray();
   for (const r of open) {
     const stage = dueFollowupStage(r);

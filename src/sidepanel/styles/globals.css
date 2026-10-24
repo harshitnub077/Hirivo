@@ -902,3 +902,18 @@ details.section[open] > summary {
   flex: 1;
   min-width: 0;
 }
+
+.linklike {
+  font: inherit;
+  font-weight: 600;
+  color: var(--brand);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.linklike:hover {
+  text-decoration: underline;
+}

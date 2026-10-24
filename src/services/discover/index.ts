@@ -83,61 +83,83 @@ export interface DiscoverResult {
   newTopMatches: DiscoveredJob[];
 }
 
+const DIRECT_SOURCES = new Set<JobSource>(['watchlist', 'yc']);
+
+function toRow(raw: RawJob, result: { score: number; reasons: string[] }, prev: DiscoveredJob | undefined, now: number): DiscoveredJob {
+  return {
+    id: `${raw.source}:${raw.sourceId}`,
+    source: raw.source,
+    sourceLabel: raw.sourceLabel,
+    sourceUrl: raw.sourceUrl,
+    kind: raw.kind || 'job',
+    title: raw.title,
+    company: raw.company,
+    location: raw.location,
+    remote: raw.remote,
+    url: raw.url,
+    postedAt: raw.postedAt,
+    salary: raw.salary,
+    tags: raw.tags.slice(0, 8),
+    snippet: raw.snippet?.slice(0, 400),
+    teamSize: raw.teamSize,
+    smallTeamReason: raw.smallTeamReason,
+    score: result.score,
+    matchReasons: result.reasons,
+    status: prev?.status || 'new',
+    firstSeenAt: prev?.firstSeenAt || now,
+    appliedAt: prev?.appliedAt,
+    nudgedAt: prev?.nudgedAt,
+  };
+}
+
+/**
+ * Runs in two phases so results appear fast: quick public feeds first, then YC startup boards
+ * (which need many small lookups). When the same job appears in both, the direct company
+ * board replaces the aggregator copy.
+ */
 export async function runDiscover({ force = false } = {}): Promise<DiscoverResult> {
   const profile = await getMatchProfile();
-  const batches = await Promise.all(SOURCES.map((s) => loadSource(s, profile, force)));
-
-  const seen = new Set<string>();
-  const scored: DiscoveredJob[] = [];
   const existing = new Map((await db.discovered.toArray()).map((j) => [j.id, j]));
   const now = Date.now();
+  const byKey = new Map<string, DiscoveredJob>();
 
-  for (const raw of batches.flat()) {
-    if (!raw.title || !raw.company || !raw.url) continue;
-    const key = dedupeKey(raw);
-    if (seen.has(key)) continue;
-    const result = scoreJob(raw, profile, now);
-    if (!result || result.score < 25) continue;
-    seen.add(key);
-    const id = `${raw.source}:${raw.sourceId}`;
-    const prev = existing.get(id);
-    scored.push({
-      id,
-      source: raw.source,
-      sourceLabel: raw.sourceLabel,
-      sourceUrl: raw.sourceUrl,
-      kind: raw.kind || 'job',
-      title: raw.title,
-      company: raw.company,
-      location: raw.location,
-      remote: raw.remote,
-      url: raw.url,
-      postedAt: raw.postedAt,
-      salary: raw.salary,
-      tags: raw.tags.slice(0, 8),
-      snippet: raw.snippet?.slice(0, 400),
-      teamSize: raw.teamSize,
-      smallTeamReason: raw.smallTeamReason,
-      score: result.score,
-      matchReasons: result.reasons,
-      status: prev?.status || 'new',
-      firstSeenAt: prev?.firstSeenAt || now,
-      appliedAt: prev?.appliedAt,
+  const ingest = async (raws: RawJob[]) => {
+    const replaced: string[] = [];
+    const rows: DiscoveredJob[] = [];
+    for (const raw of raws) {
+      if (!raw.title || !raw.company || !raw.url) continue;
+      const key = dedupeKey(raw);
+      const have = byKey.get(key);
+      if (have && !(DIRECT_SOURCES.has(raw.source) && !DIRECT_SOURCES.has(have.source))) continue;
+      const result = scoreJob(raw, profile, now);
+      if (!result || result.score < 25) continue;
+      const row = toRow(raw, result, existing.get(`${raw.source}:${raw.sourceId}`), now);
+      if (have) replaced.push(have.id);
+      byKey.set(key, row);
+      rows.push(row);
+    }
+    await db.transaction('rw', db.discovered, async () => {
+      // Never drop something the user acted on, even if a better copy turned up.
+      await db.discovered.bulkDelete(replaced.filter((id) => (existing.get(id)?.status || 'new') === 'new'));
+      await db.discovered.bulkPut(rows);
     });
-  }
+  };
 
-  // Keep anything the user acted on; replace the untouched "new" feed with this run.
-  const keepIds = new Set(scored.map((j) => j.id));
+  const quick = SOURCES.filter((s) => s.id !== 'yc');
+  const slow = SOURCES.filter((s) => s.id === 'yc');
+  await ingest((await Promise.all(quick.map((s) => loadSource(s, profile, force)))).flat());
+  await ingest((await Promise.all(slow.map((s) => loadSource(s, profile, force)))).flat());
+
+  // Replace the untouched "new" feed with this run; keep anything the user acted on.
+  const keepIds = new Set([...byKey.values()].map((j) => j.id));
   const stale = [...existing.values()].filter((j) => j.status === 'new' && !keepIds.has(j.id)).map((j) => j.id);
-  await db.transaction('rw', db.discovered, async () => {
-    await db.discovered.bulkDelete(stale);
-    await db.discovered.bulkPut(scored.map((j) => ({ ...j, status: existing.get(j.id)?.status || j.status })));
-  });
+  await db.discovered.bulkDelete(stale);
 
-  const added = scored.filter((j) => !existing.has(j.id));
+  const all = [...byKey.values()];
+  const added = all.filter((j) => !existing.has(j.id));
   return {
     added: added.length,
-    total: scored.length,
+    total: all.length,
     newTopMatches: added.filter((j) => j.kind === 'job' && j.score >= 60 && matchesTargets(j.title, profile.targets)).sort((a, b) => b.score - a.score),
   };
 }

@@ -77,3 +77,16 @@ describe('SUCCESS_TEXT', () => {
     expect(SUCCESS_TEXT.test('Apply for this job. Submit application')).toBe(false);
   });
 });
+
+describe('Workday-style fields', () => {
+  it('reads data-automation-id labels', () => {
+    document.body.innerHTML = `
+      <input data-automation-id="legalNameSection_firstName" type="text">
+      <input data-automation-id="legalNameSection_lastName" type="text">
+      <input data-automation-id="email" type="text">
+      <input data-automation-id="phone-number" type="text">`;
+    fillFields(profile);
+    const v = (id: string) => (document.querySelector(`[data-automation-id="${id}"]`) as HTMLInputElement).value;
+    expect([v('legalNameSection_firstName'), v('legalNameSection_lastName'), v('email'), v('phone-number')]).toEqual(['Aarav', 'Mehta', 'aarav@example.com', '+91 98765 43210']);
+  });
+});

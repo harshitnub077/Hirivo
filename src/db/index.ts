@@ -123,6 +123,7 @@ export interface DiscoveredJob {
   status: 'new' | 'saved' | 'applying' | 'applied' | 'dismissed';
   firstSeenAt: number;
   appliedAt?: number;
+  nudgedAt?: number; // when we suggested messaging someone after applying
 }
 
 export interface AtsBoardProbe {

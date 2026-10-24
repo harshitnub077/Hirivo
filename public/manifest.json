@@ -68,7 +68,17 @@
         "https://job-boards.greenhouse.io/*",
         "https://jobs.lever.co/*",
         "https://jobs.ashbyhq.com/*",
-        "https://apply.workable.com/*"
+        "https://apply.workable.com/*",
+        "https://*.myworkdayjobs.com/*",
+        "https://*.smartrecruiters.com/*",
+        "https://*.icims.com/*",
+        "https://*.recruitee.com/*",
+        "https://*.bamboohr.com/*",
+        "https://*.keka.com/*",
+        "https://*.darwinbox.in/*",
+        "https://*.zohorecruit.com/*",
+        "https://*.zohorecruit.in/*",
+        "https://*.freshteam.com/*"
       ],
       "js": [
         "content.js"
@@ -81,5 +91,14 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+H",
+        "mac": "Alt+H"
+      },
+      "description": "Open Hirivo"
+    }
   }
 }

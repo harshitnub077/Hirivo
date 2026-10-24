@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleHelp, RefreshCw, XCircle } from 'lucide-react';
-import { JobSnapshot } from '../../db';
-import { Callout, Field } from '../ui';
+import { db, JobSnapshot } from '../../db';
+import { keywordMatch } from '../../services/keywordMatch';
+import { Callout, Field, Pill } from '../ui';
 import { EvidenceTable, ProofSprintCard } from './FitPanel';
 import type { ViewId } from '../App';
 
@@ -86,6 +88,35 @@ function scamLines(job: JobSnapshot): Line[] {
     lines.push({ tone: 'neutral', text: 'Never pay a "registration", "training" or "security" fee for a job. Real employers do not ask.' });
   }
   return lines;
+}
+
+function KeywordCard({ job }: { job: JobSnapshot }) {
+  const resume = useLiveQuery(() => db.resumes.get('primary'), []);
+  const facts = useLiveQuery(() => db.facts.toArray(), []) ?? [];
+  const match = useMemo(
+    () => (resume?.rawText || facts.length ? keywordMatch(`${job.title}\n${job.description}`, `${resume?.rawText || ''}\n${facts.map((f) => f.claim).join('\n')}`) : null),
+    [job.title, job.description, resume?.rawText, facts]
+  );
+  if (!match || match.present.length + match.missing.length === 0) return null;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div className="h2">Resume keywords</div>
+        <Pill tone={match.share >= 70 ? 'ok' : match.share >= 40 ? 'caution' : 'risk'}>{match.share}% match</Pill>
+      </div>
+      <p className="small muted" style={{ marginBottom: 8 }}>
+        Recruiters search for exact words. Add a missing one to your resume only if it's true.
+      </p>
+      <div className="row wrap" style={{ gap: 5 }}>
+        {match.present.map((k) => (
+          <Pill key={k} tone="ok">✓ {k}</Pill>
+        ))}
+        {match.missing.map((k) => (
+          <Pill key={k}>{k}</Pill>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRecheck, onUpdateJob, goTo, onWrite }: Props) {
@@ -191,6 +222,8 @@ export function EvidencePanel({ job, analyzed, checking, hasKey, hasResume, onRe
           </div>
         )}
       </section>
+
+      <KeywordCard job={job} />
 
       {doNotApply ? (
         <Callout tone="risk">

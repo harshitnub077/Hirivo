@@ -62,6 +62,20 @@ describe('runDiscover', () => {
   });
 });
 
+describe('de-duplication across phases', () => {
+  it('keeps the company-board copy when an aggregator lists the same job', async () => {
+    const original = routes[0];
+    routes[0] = [/remotive\.com/, () => ({ jobs: [{ id: 70, title: 'Frontend Engineer', company_name: 'Cardboard', candidate_required_location: 'Worldwide', url: 'https://remotive.com/j/70', publication_date: iso(1), tags: [] }] })];
+    try {
+      await runDiscover({ force: true });
+      const cardboard = (await db.discovered.toArray()).filter((j) => j.company === 'Cardboard' && j.title === 'Frontend Engineer');
+      expect(cardboard.map((j) => j.source)).toEqual(['yc']);
+    } finally {
+      routes[0] = original;
+    }
+  });
+});
+
 describe('watchlist', () => {
   it('reads a real-shaped board and flags only roles that are new since the last check', async () => {
     const company = await addCompany('https://job-boards.greenhouse.io/acme');

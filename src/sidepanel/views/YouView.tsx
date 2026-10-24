@@ -128,6 +128,32 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  const importAll = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const dump = JSON.parse(await file.text());
+      if (dump?.app !== 'hirivo') throw new Error('That file is not a Hirivo export.');
+      if (!confirm('Import this backup? Matching items are replaced; your AI keys stay as they are.')) return;
+      let rows = 0;
+      for (const table of db.tables) {
+        if (table.name === 'llmCache' || table.name === 'settings' || !Array.isArray(dump[table.name])) continue;
+        await table.bulkPut(dump[table.name]);
+        rows += dump[table.name].length;
+      }
+      const saved = Array.isArray(dump.settings) ? dump.settings[0] : undefined;
+      if (saved) {
+        const { groqApiKey, geminiApiKey, openrouterApiKey, id, ...rest } = saved;
+        void groqApiKey, geminiApiKey, openrouterApiKey, id;
+        await patchSettings(rest);
+      }
+      flash(`Imported ${rows} items from ${file.name}.`);
+    } catch (err: any) {
+      flash(err.message || 'Could not read that file.');
+    }
+  };
+
   const deleteAll = async () => {
     if (!confirm('Delete your resume, connections, outreach history, watchlist and keys from this computer? This cannot be undone.')) return;
     await Promise.all(db.tables.map((t) => t.clear()));
@@ -280,7 +306,11 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
           <li className="ok"><CheckCircle2 size={14} /><span>On LinkedIn, Hirivo only reads the job you are viewing, and only when you press Analyze. It never clicks, connects or sends.</span></li>
         </ul>
         <div className="row">
-          <button className="btn" onClick={exportAll}><Download size={14} /> Export my data</button>
+          <button className="btn" onClick={exportAll}><Download size={14} /> Export</button>
+          <label className="btn">
+            <Upload size={14} /> Import
+            <input type="file" accept="application/json,.json" hidden onChange={importAll} />
+          </label>
           <button className="btn danger" onClick={deleteAll}><Trash2 size={14} /> Delete everything</button>
         </div>
       </Section>
