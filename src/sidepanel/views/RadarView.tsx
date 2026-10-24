@@ -28,6 +28,7 @@ export function RadarView({ watchlist, settings, hasResume }: { watchlist: Watch
   return (
     <div className="view">
       <Segmented
+        variant="tabs"
         label="Radar"
         value={mode}
         onChange={setMode}

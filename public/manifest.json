@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hirivo: Real Jobs, Right People",
   "short_name": "Hirivo",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Finds internships and jobs near you on LinkedIn, Naukri and more, emails the right people, and fills every application for you.",
   "minimum_chrome_version": "116",
   "permissions": [

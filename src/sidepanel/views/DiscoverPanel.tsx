@@ -99,20 +99,23 @@ export function DiscoverPanel({ settings, hasResume }: { settings: UserSettings;
 
   return (
     <div className="stack">
-      <Daily5Card />
-      <SearchCard settings={settings} running={running} onSearch={() => refresh(true)} />
-      <section className="card stack">
+      <SearchCard settings={settings} running={running} onSearch={() => refresh(true)}>
         <label className="row small">
           <input type="checkbox" checked={Boolean(settings.smallTeamsOnly)} onChange={(e) => patchSettings({ smallTeamsOnly: e.target.checked })} />
           Only small teams (under 100 people). Fewer applicants, more impact.
         </label>
-        {pageHost && (
-          <button className="btn block" onClick={savePage}>
-            <Download size={14} /> Save jobs listed on {pageHost}
-          </button>
-        )}
-        {message && <Callout tone={message.tone}>{message.text}</Callout>}
-      </section>
+      </SearchCard>
+      {(pageHost || message) && (
+        <section className="card stack">
+          {pageHost && (
+            <button className="btn block" onClick={savePage}>
+              <Download /> Save jobs listed on {pageHost}
+            </button>
+          )}
+          {message && <Callout tone={message.tone}>{message.text}</Callout>}
+        </section>
+      )}
+      <Daily5Card />
 
       <Segmented<Filter>
         label="Show"
@@ -233,7 +236,7 @@ function JobRow({ job, settings, onApply }: { job: DiscoveredJob; settings: User
         ) : job.status === 'applied' ? (
           <Pill tone="ok">Applied {job.appliedAt ? timeAgo(job.appliedAt) : ''}</Pill>
         ) : (
-          <button className="btn sm primary" onClick={onApply}>
+          <button className="btn sm" onClick={onApply}>
             {job.kind === 'company' ? <ExternalLink size={12} /> : <Send size={12} />} {job.kind === 'company' ? 'See roles' : 'Apply'}
           </button>
         )}

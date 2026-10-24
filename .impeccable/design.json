@@ -1,0 +1,515 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-24T00:00:00Z",
+  "title": "Design System: Hirivo",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Instrument Jade",
+        "canonical": "oklch(75.2% 0.136 162)",
+        "tonalRamp": [
+          "#001700",
+          "#003310",
+          "#005428",
+          "#007445",
+          "#009564",
+          "#36b884",
+          "#64dfa9",
+          "#a0ffd6"
+        ]
+      },
+      "light-brand": {
+        "role": "primary",
+        "displayName": "Instrument Jade (light)",
+        "canonical": "oklch(50.3% 0.111 160)",
+        "tonalRamp": [
+          "#001600",
+          "#00320f",
+          "#00502a",
+          "#007048",
+          "#329166",
+          "#58b487",
+          "#7fdbac",
+          "#aaffd5"
+        ]
+      },
+      "caution": {
+        "role": "secondary",
+        "displayName": "Caution Amber",
+        "canonical": "oklch(80.6% 0.135 78)",
+        "tonalRamp": [
+          "#230000",
+          "#411500",
+          "#653100",
+          "#865000",
+          "#a87100",
+          "#cc9225",
+          "#f4b854",
+          "#ffe58f"
+        ]
+      },
+      "light-caution": {
+        "role": "secondary",
+        "displayName": "Caution Amber (light)",
+        "canonical": "oklch(52.5% 0.120 63)",
+        "tonalRamp": [
+          "#280000",
+          "#490a00",
+          "#6a2b00",
+          "#8c4b00",
+          "#af6b22",
+          "#d38d48",
+          "#fbb26e",
+          "#ffdd98"
+        ]
+      },
+      "risk": {
+        "role": "tertiary",
+        "displayName": "Risk Coral",
+        "canonical": "oklch(71.2% 0.154 29)",
+        "tonalRamp": [
+          "#2d0000",
+          "#4f0000",
+          "#7e0000",
+          "#a32e24",
+          "#c85244",
+          "#ef7464",
+          "#ff9a89",
+          "#ffd0c0"
+        ]
+      },
+      "light-risk": {
+        "role": "tertiary",
+        "displayName": "Risk Coral (light)",
+        "canonical": "oklch(52.6% 0.187 30)",
+        "tonalRamp": [
+          "#2d0000",
+          "#4f0000",
+          "#880000",
+          "#af1409",
+          "#d64232",
+          "#fd6754",
+          "#ff8e79",
+          "#ffd0bf"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Signal White",
+        "canonical": "oklch(94.7% 0.003 286)",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242425",
+          "#3f3f41",
+          "#5d5d5f",
+          "#7d7d7f",
+          "#9e9ea0",
+          "#c4c4c6",
+          "#eeeef0"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Panel Black",
+        "canonical": "oklch(13.9% 0.003 246)",
+        "tonalRamp": [
+          "#08090a",
+          "#0e0f11",
+          "#141518",
+          "#1b1c20",
+          "#2a2b31",
+          "#8b8c94",
+          "#b6b7bd",
+          "#ededef"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Soft Graphite Text"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Quiet Graphite"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface 1"
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Surface 2"
+      },
+      "surface-3": {
+        "role": "neutral",
+        "displayName": "Surface 3"
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Well"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline"
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline"
+      },
+      "brand-strong": {
+        "role": "primary",
+        "displayName": "Lit Jade"
+      },
+      "brand-ink": {
+        "role": "primary",
+        "displayName": "Jade Ink"
+      },
+      "brand-soft": {
+        "role": "primary",
+        "displayName": "Jade Wash"
+      },
+      "brand-line": {
+        "role": "primary",
+        "displayName": "Jade Rule"
+      },
+      "caution-soft": {
+        "role": "secondary",
+        "displayName": "Amber Wash"
+      },
+      "risk-soft": {
+        "role": "tertiary",
+        "displayName": "Coral Wash"
+      },
+      "hover": {
+        "role": "neutral",
+        "displayName": "Hover Veil"
+      },
+      "press": {
+        "role": "neutral",
+        "displayName": "Press Veil"
+      }
+    },
+    "typographyMeta": {
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "Lowercase \"hirivo\" beside the mark in the top bar."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "The job title on Now; one top heading per view."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings, row names, empty-state titles. Ink, never muted."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text and controls."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Checklists, evidence rows, empty-state copy."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, segmented options, small buttons."
+      },
+      "value": {
+        "displayName": "Value",
+        "purpose": "The answer in each verdict cell; carries the state colour."
+      },
+      "score": {
+        "displayName": "Score",
+        "purpose": "The fit percentage."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Every count and number; tabular figures."
+      },
+      "mono-small": {
+        "displayName": "Mono Small",
+        "purpose": "Host chip, kbd keys, fact tags, timeline days."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sheen",
+        "value": "inset 0 1px 0 rgb(255 255 255 / 0.04)",
+        "purpose": "Top-edge highlight on raised controls in dark; none in light."
+      },
+      {
+        "name": "primary-lift",
+        "value": "inset 0 1px 0 rgb(255 255 255 / 0.18), 0 1px 2px rgb(0 0 0 / 0.25)",
+        "purpose": "The jade primary button only."
+      },
+      {
+        "name": "float",
+        "value": "0 0 0 1px var(--line-strong), 0 12px 32px -12px rgb(0 0 0 / 0.75), 0 2px 6px -2px rgb(0 0 0 / 0.5)",
+        "purpose": "Floating layers only (light: 0 0 0 1px var(--line), 0 12px 32px -14px rgb(10 10 12 / 0.25), 0 2px 6px -2px rgb(10 10 12 / 0.08))."
+      },
+      {
+        "name": "focus",
+        "value": "0 0 0 2px var(--paper), 0 0 0 4px rgb(75 201 148 / 0.6)",
+        "purpose": "Keyboard focus ring on every control (light: jade at 45%)."
+      },
+      {
+        "name": "input-focus",
+        "value": "0 0 0 3px var(--brand-soft)",
+        "purpose": "Halo with a jade border on focused inputs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Ease-out-expo; every transition and entry."
+      },
+      {
+        "name": "ease-in-out",
+        "value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "purpose": "Defined for symmetric moves."
+      },
+      {
+        "name": "t-fast",
+        "value": "140ms",
+        "purpose": "Colour, border, background, press scale."
+      },
+      {
+        "name": "t",
+        "value": "200ms",
+        "purpose": "Movement: sliding indicators, view entry, chevrons, checkbox tick, badge dot."
+      },
+      {
+        "name": "view-in",
+        "value": "200ms; from opacity 0.25, translateY(6px)",
+        "purpose": "View and section-body entry."
+      },
+      {
+        "name": "row-in",
+        "value": "260ms; from opacity 0.2, translateY(4px); 18ms stagger, first 8 rows",
+        "purpose": "List row entry."
+      },
+      {
+        "name": "value-in",
+        "value": "360ms; from opacity 0.2, translateY(3px), blur(3px); 60ms stagger",
+        "purpose": "Verdict values on a fresh result."
+      },
+      {
+        "name": "draw",
+        "value": "520ms stroke-dashoffset 24 to 0; 70ms stagger",
+        "purpose": "Verified check draws once."
+      },
+      {
+        "name": "meter",
+        "value": "520ms scaleX",
+        "purpose": "Meter fill."
+      },
+      {
+        "name": "rule-in",
+        "value": "600ms scaleX",
+        "purpose": "Done follow-up rails."
+      },
+      {
+        "name": "count-up",
+        "value": "650ms, quartic ease-out, settle timer +150ms",
+        "purpose": "Numbers that were just measured; static when reduced motion or document.hidden."
+      },
+      {
+        "name": "shimmer",
+        "value": "1.1s linear infinite",
+        "purpose": "Skeletons and loading verdict values."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.98)",
+        "purpose": "Button press."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation and transition durations 0.01ms, delays 0",
+        "purpose": "Applied globally under prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "panel-min",
+        "value": "360px"
+      },
+      {
+        "name": "panel-max",
+        "value": "420px"
+      },
+      {
+        "name": "content-max",
+        "value": "560px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one jade action per view state.",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg class=\"ds-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 8V4H8\"/><rect width=\"16\" height=\"12\" x=\"4\" y=\"8\" rx=\"2\"/><path d=\"M2 14h2M20 14h2M15 13v2M9 13v2\"/></svg>Hand to Autopilot</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;font:500 13px/1 var(--font);letter-spacing:-0.005em;border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--surface-2);box-shadow:var(--sheen);color:var(--ink);cursor:pointer;transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}.ds-ico{width:16px;height:16px;flex-shrink:0}.ds-btn-primary{background:var(--brand);border-color:transparent;color:var(--brand-ink);font-weight:600;box-shadow:inset 0 1px 0 rgb(255 255 255 / 0.18),0 1px 2px rgb(0 0 0 / 0.25)}.ds-btn-primary:hover{background:var(--brand-strong)}.ds-btn:active{transform:scale(0.98)}.ds-btn:focus-visible{outline:none;box-shadow:var(--focus)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Default button: surface fill, strong hairline, sheen.",
+      "html": "<button class=\"ds-btn-2\"><svg class=\"ds-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 20h9\"/><path d=\"M16.4 3.6a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z\"/></svg>Write</button>",
+      "css": ".ds-btn-2{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;font:500 13px/1 var(--font);border-radius:var(--r-md);border:1px solid var(--line-strong);background:var(--surface-2);box-shadow:var(--sheen);color:var(--ink);cursor:pointer;transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),transform var(--t-fast) var(--ease)}.ds-btn-2:hover{background:var(--surface-3);border-color:color-mix(in srgb,var(--muted) 60%,var(--line-strong))}.ds-btn-2:active{transform:scale(0.98)}.ds-btn-2:focus-visible{outline:none;box-shadow:var(--focus)}.ds-ico{width:16px;height:16px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary action; no fill until hover.",
+      "html": "<button class=\"ds-btn-ghost\">Recheck</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;font:500 13px/1 var(--font);border-radius:var(--r-md);border:1px solid transparent;background:transparent;color:var(--ink-2);cursor:pointer;transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease)}.ds-btn-ghost:hover{background:var(--hover);color:var(--ink)}.ds-btn-ghost:focus-visible{outline:none;box-shadow:var(--focus)}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Field with label and hint; recessed well, jade focus.",
+      "html": "<label class=\"ds-field\"><span>City</span><input class=\"ds-input\" placeholder=\"Bengaluru\"/><small>Within 25 km</small></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:5px;font-family:var(--font)}.ds-field>span{font-size:12px;font-weight:500;color:var(--ink-2)}.ds-field>small{font-size:11.5px;color:var(--muted)}.ds-input{font:13px var(--font);color:var(--ink);background:var(--well);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:6px 10px;min-height:32px;transition:border-color var(--t-fast) var(--ease),box-shadow var(--t-fast) var(--ease)}.ds-input::placeholder{color:var(--muted)}.ds-input:hover:not(:focus){border-color:color-mix(in srgb,var(--muted) 55%,var(--line-strong))}.ds-input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}"
+    },
+    {
+      "name": "Verdict Strip",
+      "kind": "custom",
+      "refersTo": "verdict-strip",
+      "description": "Four answers in one hairline-split instrument; state colour on the value only.",
+      "html": "<div class=\"ds-verdict\"><button class=\"ds-cell ok\"><small>Real</small><b>Live</b></button><button class=\"ds-cell caution\"><small>Fit</small><b class=\"ds-num\">63%</b></button><button class=\"ds-cell\"><small>People</small><b>Find</b></button><button class=\"ds-cell ok\"><small>Safety</small><b>Clear</b></button></div>",
+      "css": ".ds-verdict{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line-strong);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sheen);overflow:hidden;font-family:var(--font)}.ds-cell{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:6px;min-height:58px;padding:9px 10px 10px;border:0;background:transparent;color:var(--ink);cursor:pointer;transition:background var(--t-fast) var(--ease)}.ds-cell+.ds-cell{border-left:1px solid var(--line)}.ds-cell:hover{background:var(--hover)}.ds-cell:focus-visible{outline:none;box-shadow:var(--focus)}.ds-cell small{font-size:11px;font-weight:500;color:var(--muted)}.ds-cell b{font-size:14px;font-weight:600;line-height:1.15;letter-spacing:-0.015em}.ds-num{font-family:var(--mono);font-variant-numeric:tabular-nums}.ds-cell.ok b{color:var(--brand)}.ds-cell.caution b{color:var(--caution)}.ds-cell.risk b{color:var(--risk)}"
+    },
+    {
+      "name": "Underline Tabs",
+      "kind": "nav",
+      "refersTo": "segmented",
+      "description": "Sticky sub-navigation with one sliding 2px jade underline.",
+      "html": "<div class=\"ds-tabs\" style=\"--x:0px;--w:72px\"><button aria-pressed=\"true\">Evidence</button><button>People</button><button>Write</button><button>Resume</button></div>",
+      "css": ".ds-tabs{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-bottom:1px solid var(--line);font-family:var(--font)}.ds-tabs::before{content:\"\";position:absolute;bottom:-1px;left:0;height:2px;width:var(--w);transform:translateX(var(--x));border-radius:2px;background:var(--brand);transition:transform var(--t) var(--ease),width var(--t) var(--ease)}.ds-tabs button{padding:11px 4px 10px;border:0;background:transparent;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:color var(--t-fast) var(--ease)}.ds-tabs button:hover{color:var(--ink-2)}.ds-tabs button[aria-pressed=\"true\"]{color:var(--ink)}.ds-tabs button:focus-visible{outline:none;box-shadow:var(--focus)}"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "tabbar-indicator",
+      "description": "Four places, one sliding surface indicator, jade active icon, badge dots.",
+      "html": "<nav class=\"ds-tabbar\" style=\"--i:0\"><button aria-current=\"page\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z\"/></svg>Now</button><button><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M4.9 19.1a10 10 0 1 1 14.2 0\"/></svg>Radar<span class=\"ds-dot fresh\"></span></button><button><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m22 2-7 20-4-9-9-4Z\"/><path d=\"M22 2 11 13\"/></svg>Pipeline<span class=\"ds-dot caution\"></span></button><button><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/></svg>You</button></nav>",
+      "css": ".ds-tabbar{position:relative;display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px 8px;border-top:1px solid var(--line);background:var(--paper);font-family:var(--font)}.ds-tabbar::before{content:\"\";position:absolute;top:6px;bottom:8px;left:8px;width:calc((100% - 16px)/4);border-radius:var(--r-md);background:var(--surface-2);box-shadow:var(--sheen),0 0 0 1px var(--line);transform:translateX(calc(var(--i)*100%));transition:transform var(--t) var(--ease)}.ds-tabbar button{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0 6px;border:0;background:none;border-radius:var(--r-md);font-size:11.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:color var(--t-fast) var(--ease)}.ds-tabbar svg{width:16px;height:16px;transition:transform var(--t) var(--ease)}.ds-tabbar button:hover{color:var(--ink-2)}.ds-tabbar button[aria-current=\"page\"]{color:var(--ink)}.ds-tabbar button[aria-current=\"page\"] svg{color:var(--brand);transform:translateY(-1px)}.ds-tabbar button:focus-visible{outline:none;box-shadow:var(--focus)}.ds-dot{position:absolute;top:5px;left:calc(50% + 7px);width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 2px var(--paper)}.ds-dot.fresh{background:var(--brand)}.ds-dot.caution{background:var(--caution)}"
+    },
+    {
+      "name": "Pill",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Small status tag at 6px; tone swaps wash, border and text.",
+      "html": "<span class=\"ds-pill\">Internship</span> <span class=\"ds-pill ok\">Verified</span> <span class=\"ds-pill caution\">Due today</span> <span class=\"ds-pill risk\">Fee asked</span>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;font:500 11.5px var(--font);border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface-2);color:var(--ink-2)}.ds-pill.ok{background:var(--brand-soft);color:var(--brand);border-color:var(--brand-line)}.ds-pill.caution{background:var(--caution-soft);color:var(--caution);border-color:color-mix(in srgb,var(--caution) 30%,transparent)}.ds-pill.risk{background:var(--risk-soft);color:var(--risk);border-color:color-mix(in srgb,var(--risk) 30%,transparent)}"
+    },
+    {
+      "name": "Toggle Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filter toggle; on state adds jade wash and a 6px dot.",
+      "html": "<button class=\"ds-chip on\">Remote</button> <button class=\"ds-chip\">Hybrid</button>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid var(--line-strong);background:transparent;color:var(--ink-2);border-radius:var(--r-sm);font:12px var(--font);cursor:pointer;transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),color var(--t-fast) var(--ease)}.ds-chip:hover{background:var(--hover)}.ds-chip.on{border-color:var(--brand-line);background:var(--brand-soft);color:var(--ink)}.ds-chip.on::before{content:\"\";width:6px;height:6px;border-radius:50%;background:var(--brand)}.ds-chip:focus-visible{outline:none;box-shadow:var(--focus)}"
+    },
+    {
+      "name": "Callout",
+      "kind": "card",
+      "refersTo": "callout",
+      "description": "Inline message; tone swaps to the matching wash.",
+      "html": "<div class=\"ds-callout caution\">Your Gmail connection expired. <b>Reconnect</b> to keep sending.</div>",
+      "css": ".ds-callout{border-radius:var(--r-md);padding:10px 12px;font:12px/1.5 var(--font);color:var(--ink-2);border:1px solid var(--line);background:var(--surface)}.ds-callout b{color:var(--ink)}.ds-callout.ok{background:var(--brand-soft);border-color:var(--brand-line);color:var(--ink)}.ds-callout.caution{background:var(--caution-soft);border-color:color-mix(in srgb,var(--caution) 34%,transparent);color:var(--ink)}.ds-callout.risk{background:var(--risk-soft);border-color:color-mix(in srgb,var(--risk) 34%,transparent);color:var(--ink)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Precise Dark Instrument",
+    "overview": "Hirivo's side panel is a measuring instrument, not a stack of cards. A neutral near-black ground carries three surface steps that are told apart by 1px hairlines rather than shadows; every number is set in Geist Mono with tabular figures, and colour is spent only where it carries meaning: jade for verified, primary and selected, amber for caution, coral for risk. The craft benchmark is the category standard for a dark productivity tool: Linear's calm hierarchy, Raycast's dense lists, Geist's strictness.\n\nThe panel lives at 360-420px, so density is the point. Top-level blocks run full-bleed and are split by a hairline; lists are rows with a hover fill and inset dividers, not boxes. Headings are ink, not muted labels. Motion follows one grammar (a 140ms state change, a 200ms movement, ease-out-expo), with longer reveals kept for data that has just been measured, and all of it collapses under reduced motion.\n\nDark is the default. The light theme is a full, independently tuned token set (deeper jade, darker amber and coral for AA on white), not an inversion. The green check mark and the lowercase \"hirivo\" wordmark are fixed brand assets and stay as they are. Rejected on purpose: every block boxed in a rounded, shadowed card; gradient glows; pill soup; neon-hacker styling.",
+    "keyCharacteristics": [
+      "Neutral near-black ground with three surface steps and 1px hairlines; flat by default.",
+      "Geist for text, Geist Mono tabular figures for every number.",
+      "One jade primary action per view; state colour sits on values, not surfaces.",
+      "Full-bleed hairline sections and row lists instead of cards.",
+      "Lucide icons at 1.75 stroke on a two-step scale (16px / 14px).",
+      "One motion grammar: 140ms / 200ms, cubic-bezier(0.16, 1, 0.3, 1), sliding indicators, all off under reduced motion."
+    ],
+    "rules": [
+      {
+        "name": "The One Jade Rule",
+        "body": "Each view state shows one jade primary button; everything else is a secondary (surface) or ghost button. Jade elsewhere means verified or selected, never decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Value Carries the State Rule",
+        "body": "In the verdict strip and the fit score, amber, coral or jade colours the value and its icon only; the cell, its label and its background stay neutral. Tinted washes appear only on elements that are themselves the message (callouts, pills, chosen chips).",
+        "section": "colors"
+      },
+      {
+        "name": "The Badge Dot Rule",
+        "body": "On the bottom nav, a jade dot means something new to see, an amber dot means something waiting on the user. Coral is reserved for risk and is never a dot.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Figures Rule",
+        "body": "Every number on screen is Geist Mono with tabular figures, so columns of counts and scores align and read as measured.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ink Heading Rule",
+        "body": "A section is headed by a 13.5px semibold ink title. Small muted text over a section reads as an eyebrow and is not a heading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Section Rule",
+        "body": "A top-level block is a full-bleed section split by a 1px hairline, never a rounded, bordered card floating in the gutter.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat-by-Default Rule",
+        "body": "Surfaces never cast shadows at rest. A shadow means the element floats above the panel or has keyboard focus.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Two-Step Icon Rule",
+        "body": "Icons are 16px or 14px at 1.75 stroke, nothing else; the size follows the text they sit with.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Still Number Rule",
+        "body": "A count that cannot run must never leave a wrong value on screen. CountUp shows the real number at once when reduced motion is set or the document is hidden, and a settle timer lands it on the value if frames stop mid-count.",
+        "section": "components"
+      },
+      {
+        "name": "The Reduced Motion Rule",
+        "body": "Under `prefers-reduced-motion: reduce`, every animation and transition collapses to 0.01ms with no delay. Nothing depends on motion to be understood.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do build every colour from the theme tokens and give each new token a light value tuned for AA, not an inversion.",
+      "Do split top-level blocks with a 1px hairline and run them full-bleed.",
+      "Do keep one jade primary per view state; make the rest secondary or ghost.",
+      "Do put state colour on the value and its icon, and leave labels muted.",
+      "Do set every number in Geist Mono with tabular figures.",
+      "Do use Lucide at 1.75 stroke, 16px with controls and rows, 14px with small text.",
+      "Do move things with 140ms / 200ms on cubic-bezier(0.16, 1, 0.3, 1), and slide one indicator rather than swapping highlights.",
+      "Do head sections with 13.5px semibold ink titles.",
+      "Do keep the check-mark logo and the lowercase \"hirivo\" wordmark exactly as they are."
+    ],
+    "donts": [
+      "Don't box top-level blocks in rounded, bordered, shadowed cards.",
+      "Don't cast shadows on resting surfaces; shadows are for floating layers and focus.",
+      "Don't use gradient glows or neon accents; the only gradient is the loading shimmer.",
+      "Don't use fully rounded capsule badges; pills and chips are 6px.",
+      "Don't put small muted or uppercase labels above sections as headings.",
+      "Don't use coral for anything but risk, or a badge dot for anything but new (jade) or waiting (amber).",
+      "Don't show keyboard hints for shortcuts that don't exist.",
+      "Don't ship motion that survives reduced motion, or a counter that can rest on a wrong number."
+    ]
+  }
+}

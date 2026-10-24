@@ -5,3 +5,7 @@ dist/
 
 # End-to-end run output (screenshots, generated resume PDF, log)
 tests/e2e/shots/
+# Design-review captures and decision pages (local working files)
+.impeccable/review/
+.impeccable/decision/
+.impeccable/mocks/

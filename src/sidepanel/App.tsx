@@ -128,13 +128,13 @@ export const App: React.FC = () => {
         {view === 'you' && <YouView settings={settings} resume={resume ?? null} facts={facts} voiceProfile={voiceProfile} />}
       </main>
 
-      <nav className="tabbar" aria-label="Sections">
+      <nav className="tabbar" aria-label="Sections" style={{ '--i': TABS.findIndex((t) => t.id === view) } as React.CSSProperties}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} type="button" aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)}>
-            <Icon size={18} strokeWidth={view === id ? 2.2 : 1.8} />
+            <Icon size={18} />
             {label}
-            {id === 'pipeline' && followupsDue > 0 && <span className="dot" aria-label={`${followupsDue} follow-ups due`} />}
-            {id === 'radar' && newRoles > 0 && <span className="dot" aria-label={`${newRoles} new roles`} />}
+            {id === 'pipeline' && followupsDue > 0 && <span className="dot caution" aria-label={`${followupsDue} follow-ups due`} />}
+            {id === 'radar' && newRoles > 0 && <span className="dot fresh" aria-label={`${newRoles} new roles`} />}
           </button>
         ))}
       </nav>

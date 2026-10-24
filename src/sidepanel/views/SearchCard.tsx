@@ -1,6 +1,7 @@
+import type React from 'react';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CircleAlert, CircleCheck, RefreshCw } from 'lucide-react';
+import { ChevronDown, CircleAlert, CircleCheck, RefreshCw } from 'lucide-react';
 import { db, type SearchProfile, type UserSettings } from '../../db';
 import { patchSettings } from '../../db/settings';
 import { searchDefaults, searchQueries, SOURCES } from '../../services/discover';
@@ -9,9 +10,12 @@ import { openUrl } from '../../services/outreach';
 import { Field, Segmented, timeAgo } from '../ui';
 
 /** One place to say what you want; every search, alert and Autopilot run uses it. */
-export function SearchCard({ settings, running, onSearch }: { settings: UserSettings; running: boolean; onSearch: () => void }) {
+export function SearchCard({ settings, running, onSearch, children }: { settings: UserSettings; running: boolean; onSearch: () => void; children?: React.ReactNode }) {
   const s = searchDefaults(settings);
   const [city, setCity] = useState(s.city);
+  // Once there are roles to search for, the search folds to one line so Radar leads with the
+  // jobs; a new user with no roles sees the whole form.
+  const [editing, setEditing] = useState(() => searchQueries(settings, s).length === 0);
   const set = (patch: Partial<SearchProfile>) => patchSettings({ search: { ...s, ...patch } });
   const queries = searchQueries(settings, s);
   const toggleMode = (m: SearchProfile['workModes'][number]) => {
@@ -19,20 +23,36 @@ export function SearchCard({ settings, running, onSearch }: { settings: UserSett
     if (next.length) set({ workModes: next });
   };
   const where = s.scope === 'radius' ? String(s.radiusKm) : s.scope;
+  const summary = [
+    s.jobType === 'internship' ? 'Internships' : s.jobType === 'fulltime' ? 'Jobs' : 'Internships and jobs',
+    s.scope === 'remote' ? 'remote' : s.scope === 'india' || !s.city ? 'anywhere in India' : `${s.city}, ${s.radiusKm} km`,
+    s.postedWithinDays === 1 ? 'last 24 h' : `last ${s.postedWithinDays} days`,
+  ].join(' · ');
 
   return (
     <section className="card stack">
-      <div className="row between">
+      <div className="row between" style={{ alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0 }}>
-          <div className="h2">Search</div>
-          <div className="small muted truncate" title={queries.join(' · ')}>
-            {queries.join(' · ')}
-          </div>
+          <div className="h2">{queries.join(' · ') || 'Search'}</div>
+          <div className="small muted">{summary}</div>
         </div>
-        <button className="btn sm primary" onClick={onSearch} disabled={running}>
-          <RefreshCw size={12} className={running ? 'spin' : ''} /> {running ? 'Searching…' : 'Search now'}
-        </button>
+        <div className="row" style={{ gap: 4, flexShrink: 0 }}>
+          <button
+            className="btn sm icon ghost"
+            onClick={() => setEditing(!editing)}
+            aria-expanded={editing}
+            aria-label={editing ? 'Hide the search settings' : 'Edit the search'}
+            title={editing ? 'Hide the search settings' : 'Edit the search'}
+          >
+            <ChevronDown style={{ transform: editing ? 'rotate(180deg)' : undefined, transition: 'transform var(--t) var(--ease)' }} />
+          </button>
+          <button className="btn sm primary" onClick={onSearch} disabled={running}>
+            <RefreshCw className={running ? 'spin' : ''} /> {running ? 'Searching…' : 'Search now'}
+          </button>
+        </div>
       </div>
+      {editing && (
+        <div className="stack fade-in">
 
       <Segmented<SearchProfile['jobType']>
         label="Looking for"
@@ -114,7 +134,10 @@ export function SearchCard({ settings, running, onSearch }: { settings: UserSett
           onBlur={(e) => set({ minMonthlyPay: Number(e.target.value) || undefined })}
         />
       </Field>
+      {children}
       <SourceHealth />
+        </div>
+      )}
     </section>
   );
 }
@@ -127,7 +150,7 @@ function SourceHealth() {
   return (
     <details className="small" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary className="muted">
-        Sources: {rows.filter((r) => r.f && !r.f.error).length} working{blocked.length ? `, ${blocked.length} need attention` : ''}
+        Sources: {rows.filter((r) => r.f && !r.f.error).length} working{blocked.length ? `, ${blocked.length} ${blocked.length === 1 ? 'needs' : 'need'} attention` : ''}
       </summary>
       <ul className="checklist" style={{ marginTop: 6 }}>
         {rows.map(({ src, f }) => (

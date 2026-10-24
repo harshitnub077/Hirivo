@@ -22,7 +22,7 @@ export function Daily5Card() {
   const time = today ? new Date(today.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
 
   return (
-    <section className="card raised stack">
+    <section className="card stack">
       <div className="row between">
         <div className="row" style={{ gap: 8 }}>
           <Sun size={16} style={{ color: 'var(--brand)' }} aria-hidden="true" />
@@ -36,15 +36,12 @@ export function Daily5Card() {
       </div>
 
       {!today ? (
-        <>
-          <p className="small muted">
-            Every morning at 8, Hirivo picks the five best open roles from your feed and the jobs you've analyzed: best fit, freshest, and ones where you know
-            someone. Anything that looks stale or unsafe is left out.
-          </p>
-          <button className="btn primary block" onClick={build} disabled={busy}>
-            {busy ? <RefreshCw size={14} className="spin" /> : <Sun size={14} />} Pick my 5 now
+        <div className="row between">
+          <p className="small muted">Every morning at 8: the best, freshest, safe roles.</p>
+          <button className="btn sm" onClick={build} disabled={busy}>
+            {busy ? <RefreshCw className="spin" /> : <Sun />} Pick now
           </button>
-        </>
+        </div>
       ) : today.picks.length === 0 ? (
         <p className="small muted">Nothing passed the checks today. Analyze a few jobs, refresh Discover, or widen your roles.</p>
       ) : (

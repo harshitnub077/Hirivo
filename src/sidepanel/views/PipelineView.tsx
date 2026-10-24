@@ -63,7 +63,12 @@ export function PipelineView({ outreach, settings }: { outreach: OutreachRecord[
   const gotReply = async (r: OutreachRecord) => {
     const first = (await db.outreach.where('status').equals('REPLIED').count()) === 0;
     await setOutreachStatus(r, 'REPLIED');
-    if (first) confetti({ particleCount: 70, spread: 70, origin: { y: 0.7 }, colors: ['#3FD69B', '#4BC994', '#E6ECE8'] });
+    // One small celebration for the first reply, in the theme's own colours; none under reduced motion.
+    if (first && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const css = getComputedStyle(document.documentElement);
+      const colors = ['--brand', '--brand-strong', '--ink'].map((v) => css.getPropertyValue(v).trim()).filter(Boolean);
+      confetti({ particleCount: 70, spread: 70, origin: { y: 0.7 }, colors, disableForReducedMotion: true });
+    }
   };
 
   const row = (r: OutreachRecord) => {

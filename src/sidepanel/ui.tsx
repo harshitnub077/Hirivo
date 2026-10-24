@@ -60,19 +60,43 @@ export function Field({ label, hint, children }: { label: string; hint?: React.R
   );
 }
 
+/** A segmented control (or underline tabs) with one indicator that slides to the chosen option. */
 export function Segmented<T extends string>({
   options,
   value,
   onChange,
   label,
+  variant,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
   label: string;
+  variant?: 'tabs';
 }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [ready, setReady] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const place = () => {
+      const on = el.querySelector<HTMLElement>('button[aria-pressed="true"]');
+      if (!on) return;
+      el.style.setProperty('--x', `${on.offsetLeft}px`);
+      el.style.setProperty('--w', `${on.offsetWidth}px`);
+    };
+    place();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : undefined;
+    ro?.observe(el);
+    // The first placement doesn't animate; every change after it slides.
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => {
+      ro?.disconnect();
+      cancelAnimationFrame(id);
+    };
+  }, [value, options.length]);
   return (
-    <div className="seg" role="group" aria-label={label}>
+    <div ref={ref} className={clsx('seg', variant, ready && 'ready')} role="group" aria-label={label}>
       {options.map((o) => (
         <button key={o.value} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
           {o.label}
@@ -100,6 +124,41 @@ export function Empty({
       {children && <p>{children}</p>}
       {action}
     </div>
+  );
+}
+
+const reducedMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** A number that counts up to its value once, so a fresh result reads as just measured. */
+export function CountUp({ value, suffix = '', duration = 650 }: { value: number; suffix?: string; duration?: number }) {
+  // A hidden or motion-reduced panel shows the real number at once: a count that never runs must
+  // never leave a wrong value (0%) on screen.
+  const still = () => reducedMotion() || (typeof document !== 'undefined' && document.hidden);
+  const [shown, setShown] = React.useState(() => (still() ? value : 0));
+  React.useEffect(() => {
+    if (still()) return setShown(value);
+    // If frames stop (panel hidden mid-count), land on the value anyway.
+    const settle = setTimeout(() => setShown(value), duration + 150);
+    let raf = 0;
+    const start = performance.now();
+    const from = 0;
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / duration);
+      const eased = 1 - Math.pow(1 - k, 4);
+      setShown(Math.round(from + (value - from) * eased));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(settle);
+    };
+  }, [value, duration]);
+  return (
+    <span className="num" aria-label={`${value}${suffix}`}>
+      {shown}
+      {suffix}
+    </span>
   );
 }
 

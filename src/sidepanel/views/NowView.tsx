@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { CheckCircle2, Circle, Clock, MapPin, RefreshCw, ScanSearch, ShieldCheck } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, Circle, Clock, Gauge, MapPin, PenLine, RefreshCw, ScanSearch, ShieldCheck, Users } from 'lucide-react';
 import { db, JobSnapshot, ResumeFact, ResumeRecord, UserSettings, VoiceProfile } from '../../db';
 import { findWarmPaths } from '../../services/warmPathMatcher';
 import { daysSince } from '../../services/atsFeeds';
 import { realVerdict, safetyVerdict } from '../../services/verdicts';
 import { runJobChecks } from '../../services/jobChecks';
-import { Callout, Empty, loadSession, Meter, Pill, saveSession, Segmented, toneForScore } from '../ui';
+import { Callout, CountUp, Empty, loadSession, Meter, Pill, saveSession, Segmented, toneForScore } from '../ui';
 import type { ActivePage } from '../page';
 import type { ViewId } from '../App';
 import { EvidencePanel } from './EvidencePanel';
@@ -79,7 +79,10 @@ function GettingStarted({ hasResume, hasKey, settings, goTo }: { hasResume: bool
         ))}
       </ul>
       {!hasResume && <ResumeImport compact onDone={() => goTo('radar')} />}
-      <p className="small muted">Tip: press Alt+H on any page to open Hirivo.</p>
+      <p className="small muted row" style={{ gap: 6 }}>
+        Press <span className="kbd">Alt</span>
+        <span className="kbd">H</span> on any page to open Hirivo.
+      </p>
     </section>
   );
 }
@@ -182,27 +185,38 @@ export function NowView(props: Props) {
           </button>
         </div>
 
-        <div className={`verdict-strip${analyzed ? ' ready' : ''}`} key={job.analyzedAt} style={{ marginTop: 12 }}>
+        <div className={`verdict-strip${analyzed ? ' ready' : ''}${checking ? ' loading' : ''}`} key={job.analyzedAt} style={{ marginTop: 14 }}>
           <Pill tone={ghostTone} onClick={() => setPanel('evidence')} title="Is the job real and still open?">
-            <small>Real</small>
+            <small>
+              <BadgeCheck /> Real
+            </small>
             <b>{realLabel}</b>
           </Pill>
           <Pill tone={fitTone} onClick={() => setPanel('evidence')} title="How well your resume matches">
-            <small>Fit</small>
-            <b className="num">{job.fitScore !== undefined ? `${job.fitScore}%` : '—'}</b>
+            <small>
+              <Gauge /> Fit
+            </small>
+            <b>{job.fitScore !== undefined ? <CountUp value={job.fitScore} suffix="%" /> : '—'}</b>
           </Pill>
           <Pill tone={warmCount > 0 ? 'ok' : 'neutral'} onClick={() => setPanel('people')} title="People you know there">
-            <small>People</small>
+            <small>
+              <Users /> People
+            </small>
             <b>{warmCount > 0 ? `${warmCount} warm` : 'Find'}</b>
           </Pill>
           <Pill tone={safetyTone} onClick={() => setPanel('evidence')} title="Company and scam checks">
-            <small>Safety</small>
+            <small>
+              <ShieldCheck /> Safety
+            </small>
             <b>{safetyLabel}</b>
           </Pill>
         </div>
 
-        <div className="stack" style={{ marginTop: 10, alignItems: 'flex-start' }}>
-          <AutopilotButton jobs={[{ url: job.atsUrl || job.url, title: job.title, company: job.company }]} settings={settings} label="Hand to Autopilot" />
+        <div className="row wrap" style={{ marginTop: 12 }}>
+          <AutopilotButton className={analyzed ? 'btn primary' : 'btn'} jobs={[{ url: job.atsUrl || job.url, title: job.title, company: job.company }]} settings={settings} label="Hand to Autopilot" />
+          <button className="btn" onClick={() => setPanel('write')}>
+            <PenLine /> Write
+          </button>
         </div>
         {!analyzed && (
           <button className="btn primary block" style={{ marginTop: 12 }} onClick={runChecks} disabled={checking}>
@@ -215,6 +229,7 @@ export function NowView(props: Props) {
       </section>
 
       <Segmented<Panel>
+        variant="tabs"
         label="Job sections"
         value={panel}
         onChange={setPanel}
