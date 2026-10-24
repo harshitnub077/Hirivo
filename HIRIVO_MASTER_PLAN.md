@@ -43,7 +43,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v2.8, built and verified)
+## 3. What exists today (v2.9, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -75,13 +75,15 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Interview Pack on "Got a reply": company brief from its homepage and linked news (figures must be in the sources), 8 likely questions, 3 strongest facts (only the user's), 3 questions to ask; works without AI | Done (Phase E) | `src/services/interviewPack.ts`, `views/PipelineView.tsx` |
 | Gmail power mode (optional, user's own OAuth client): code + PKCE via launchWebAuthFlow, real drafts, follow-ups in-thread, replies detected every 3 h or on Check now, follow-ups stop on reply; permissions requested only on Connect | Done (Phase F) | `src/services/gmail.ts`, `views/GmailSection.tsx` |
 | Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
-| Tests: 171 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Store launch kit: listing with every permission justified, data-use answers, privacy policy, four 1280×800 screenshots rendered from the demo panel; a unit test fails if any manifest permission is unused in code or missing from the listing | Done (Phase G) | `CHROMEWEBSTORE.md`, `docs/privacy.md`, `scripts/store-screenshots.js`, `tests/unit/manifest.test.ts` |
+| Tests: 216 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 
 ```
 npm run build           # tsc + vite → dist/ (load unpacked in chrome://extensions)
 npm run generate-icons  # brand SVG → PNG icons + store tile
+npm run store:screenshots  # four 1280×800 store screenshots from the demo panel (needs Chrome)
 npm run verify-seeds    # re-check the Radar suggestion list against live boards
 npm run preview:panel   # dev server; open /sidepanel.html?demo for sample data
 npm test                # unit tests (runs in CI on every push)
@@ -206,7 +208,7 @@ Paste each prompt as is. Each one assumes the rules in section 1 and ends with a
 > - Without setup, nothing changes.
 > - With setup, a reply in Gmail flips the record to Replied within one poll.
 
-### Phase G: Store launch
+### Phase G: Store launch — ✅ done in v2.9 (`tests/unit/manifest.test.ts` enforces the acceptance rule on every push; screenshots come from `npm run store:screenshots`)
 
 > Update `CHROMEWEBSTORE.md`: rewrite the listing from section 2 and 3 of this file, justify every permission in `public/manifest.json`, and make no unverifiable numbers ("10x", "23% ban rate").
 >

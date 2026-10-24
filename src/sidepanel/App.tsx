@@ -21,8 +21,14 @@ const TABS: { id: ViewId; label: string; icon: typeof Compass }[] = [
   { id: 'you', label: 'You', icon: UserRound },
 ];
 
+/** Dev preview only: ?demo&view=radar opens a tab directly, for store screenshots. */
+const startView = (): ViewId => {
+  const v = import.meta.env.DEV ? new URLSearchParams(location.search).get('view') : null;
+  return TABS.some((t) => t.id === v) ? (v as ViewId) : 'now';
+};
+
 export const App: React.FC = () => {
-  const [view, setView] = useState<ViewId>('now');
+  const [view, setView] = useState<ViewId>(startView);
   const [job, setJob] = useState<JobSnapshot | null>(null);
   const [page, setPage] = useState<ActivePage | null>(null);
   const [scanning, setScanning] = useState(false);

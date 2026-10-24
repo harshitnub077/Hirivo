@@ -1,7 +1,7 @@
 {
   "name": "hirivo",
   "displayName": "Hirivo: Real Jobs, Right People",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "private": true,
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "type": "module",
@@ -12,6 +12,7 @@
     "generate-icons": "node scripts/generate-icons.js",
     "preview:panel": "vite --port 5199 --strictPort",
     "verify-seeds": "node scripts/verify-seeds.js",
+    "store:screenshots": "node scripts/store-screenshots.js",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts"
   },

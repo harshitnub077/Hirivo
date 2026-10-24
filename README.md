@@ -42,7 +42,7 @@ Optional: add a free [Groq key](https://console.groq.com/keys) under **You → A
 - **Never automates LinkedIn.** No auto-click, connect, message or apply. On LinkedIn or Naukri pages, Hirivo reads only what you're viewing, and only when you click.
 - **Never submits anything for you.** Forms are filled; you press Submit. Emails open in Gmail; you press Send.
 - **No fake data.** Scores come with reasons. Facts must trace back to your resume. Guessed emails are labelled as guesses.
-- **Local-first.** Everything is stored in your browser. There is no Hirivo server. AI calls go straight to the provider you choose, with your key.
+- **Local-first.** Everything is stored in your browser. There is no Hirivo server. AI calls go straight to the provider you choose, with your key. Full details in the [privacy policy](docs/privacy.md).
 - **Credits its sources.** Every listing links back to where it came from, and each API is called within its stated limits.
 
 ## Development
@@ -53,6 +53,7 @@ npm test                # unit tests (form filling against a real Greenhouse for
 npm run test:live       # checks every live job source still answers in the expected shape
 npm run verify-seeds    # re-checks the watchlist suggestion list against live boards
 npm run generate-icons  # brand SVGs → PNG icons and store tile
+npm run store:screenshots  # Chrome Web Store screenshots from the demo panel (needs Chrome)
 ```
 
 See [HIRIVO_MASTER_PLAN.md](HIRIVO_MASTER_PLAN.md) for the roadmap, the rules every contributor follows, and ready-to-paste prompts for each next phase.

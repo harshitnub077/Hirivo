@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hirivo store screenshot</title>
+    <!-- Dev only: npm run store:screenshots renders this at 1280×800 for each view. -->
+    <style>
+      :root {
+        --paper: #0b0e0d;
+        --surface: #121715;
+        --line: #222b27;
+        --ink: #e6ece8;
+        --muted: #8d9a93;
+        --brand: #4bc994;
+      }
+      * { box-sizing: border-box; margin: 0; }
+      html, body { width: 1280px; height: 800px; overflow: hidden; background: var(--paper); }
+      body {
+        font-family: 'Geist Variable', system-ui, sans-serif;
+        color: var(--ink);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        -webkit-font-smoothing: antialiased;
+      }
+      .caption {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        height: 112px;
+        font-size: 27px;
+        font-weight: 560;
+        letter-spacing: -0.02em;
+        text-wrap: balance;
+      }
+      .caption img { width: 30px; height: 30px; }
+      .panel {
+        width: 402px;
+        height: 664px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--surface);
+        box-shadow: 0 24px 64px rgb(0 0 0 / 0.45);
+      }
+      .panel iframe { display: block; width: 400px; height: 662px; border: 0; }
+    </style>
+    <script type="module">
+      import '@fontsource-variable/geist';
+      const q = new URLSearchParams(location.search);
+      document.getElementById('caption').textContent = q.get('caption') || 'Hirivo';
+      document.getElementById('panel').src = `/sidepanel.html?demo&view=${encodeURIComponent(q.get('view') || 'now')}`;
+    </script>
+  </head>
+  <body>
+    <div class="caption"><img src="/brand/hirivo-mark-dark.svg" alt="" /><span id="caption"></span></div>
+    <div class="panel"><iframe id="panel" title="Hirivo side panel"></iframe></div>
+  </body>
+</html>
