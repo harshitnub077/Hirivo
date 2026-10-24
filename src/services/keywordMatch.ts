@@ -44,3 +44,12 @@ export function keywordMatch(jobText: string, resumeText: string): KeywordMatch 
   const missing = named.filter((k) => !resume.match(k.re)).map((k) => k.term);
   return { present, missing, share: named.length ? Math.round((present.length / named.length) * 100) : 0 };
 }
+
+/** The technologies and skills a piece of text names (canonical names). */
+export function termsIn(text: string): string[] {
+  const t = text.toLowerCase();
+  return PATTERNS.filter(({ re }) => {
+    re.lastIndex = 0;
+    return re.test(t);
+  }).map((p) => p.term);
+}
