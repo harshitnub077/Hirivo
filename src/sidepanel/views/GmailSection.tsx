@@ -134,6 +134,7 @@ export function GmailSection({ settings }: { settings: UserSettings }) {
       <button className="btn primary" onClick={connect} disabled={busy || !clientId.trim() || (!gmail && (!secret.trim() || Boolean(inputProblem)))}>
         {busy ? <RefreshCw size={14} className="spin" /> : <Mail size={14} />} {gmail ? 'Reconnect Gmail' : 'Connect Gmail'}
       </button>
+      {busy && <p className="small muted">Finish in the Google window that opened (it may be behind this one). Closing it cancels.</p>}
       {inputProblem && !error && clientId.trim() && secret.trim() && <p className="small" style={{ color: 'var(--caution)' }}>{inputProblem}</p>}
       {error && <Callout tone="caution">{error}</Callout>}
       {gmail && <Pill tone="caution">Needs reconnect</Pill>}

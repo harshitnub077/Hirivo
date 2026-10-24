@@ -176,7 +176,12 @@ const defaultDeps = (): AuthDeps => ({
   fetch: (...a) => fetch(...a),
   launch:
     typeof chrome !== 'undefined' && chrome.identity?.launchWebAuthFlow
-      ? (url, interactive) => chrome.identity.launchWebAuthFlow({ url, interactive }).then((r) => r || Promise.reject(new Error('Sign-in was closed.')))
+      ? (url, interactive) =>
+          // Chrome runs one sign-in window per extension at a time. Silent refreshes give up fast so
+          // they can never hold that slot while the user is trying to connect.
+          chrome.identity
+            .launchWebAuthFlow({ url, interactive, ...(interactive ? {} : { abortOnLoadForNonInteractive: true, timeoutMsForNonInteractive: 8000 }) } as chrome.identity.WebAuthFlowDetails)
+            .then((r) => r || Promise.reject(new Error('Sign-in was closed.')))
       : undefined,
   redirectUri: typeof chrome !== 'undefined' && chrome.identity?.getRedirectURL ? chrome.identity.getRedirectURL() : undefined,
   now: () => Date.now(),
@@ -272,6 +277,9 @@ export function parseClientFile(text: string, redirectUri: string): ClientFile {
  * closed window with no detail. The usual cause is a Testing-mode app whose test users don't include
  * the account the user signed in with, so say exactly that. */
 export function signInHelp(message: string): string {
+  if (/only one web auth flow/i.test(message)) {
+    return 'A Google sign-in window from your last try is still open (it may be behind this window, or in another Chrome window). Close it, then press Connect again.';
+  }
   if (/did not approve|was closed|not granted|access_denied|canceled|cancelled/i.test(message)) {
     return 'Google didn’t let this account in. If it said “has not completed the Google verification process”, open Google Auth Platform → Audience → Test users and add the exact Gmail address you are signing in with (or press “Publish app”), then press Connect again.';
   }
@@ -281,7 +289,15 @@ export function signInHelp(message: string): string {
   return message;
 }
 
-export async function connectGmail(clientId: string, clientSecret: string, override: Partial<AuthDeps> = {}): Promise<GmailState> {
+let connecting: Promise<GmailState> | null = null;
+
+/** One Connect at a time: a second click while Google's window is open would only fail. */
+export function connectGmail(clientId: string, clientSecret: string, override: Partial<AuthDeps> = {}): Promise<GmailState> {
+  if (!connecting) connecting = connectOnce(clientId, clientSecret, override).finally(() => (connecting = null));
+  return connecting;
+}
+
+async function connectOnce(clientId: string, clientSecret: string, override: Partial<AuthDeps> = {}): Promise<GmailState> {
   const problem = checkClientInputs(clientId, clientSecret);
   if (problem) throw new Error(problem);
   if (typeof chrome !== 'undefined' && chrome.permissions) {

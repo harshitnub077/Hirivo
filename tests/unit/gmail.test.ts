@@ -231,6 +231,7 @@ describe('sign-in errors', () => {
     expect(signInHelp('Gmail access was not granted.')).toMatch(/exact Gmail address/);
     expect(signInHelp('Google sign-in failed (redirect_uri_mismatch).')).toMatch(/redirect address/);
     expect(signInHelp('Network error')).toBe('Network error');
+    expect(signInHelp('Only one web auth flow is allowed at a time.')).toMatch(/sign-in window from your last try is still open/);
   });
 });
 
