@@ -1,6 +1,7 @@
 import { db, UserSettings } from '../db';
 import type { FillJobContext, FillProfile } from '../content/profileTypes';
 import { CITIES, cityOf, distanceKm, nearbyCities, type City } from './discover/geo';
+import { boardKey } from '../background/appliedMatch';
 
 const list = (s: string | undefined) =>
   (s || '')
@@ -157,16 +158,8 @@ const pageKey = (u: string) => {
 
 /** "How did you hear about us?": where Hirivo saw this job, when the user opened it from Discover. */
 export async function sourceForUrl(pageUrl: string): Promise<string | undefined> {
-  const key = (u: string) => {
-    try {
-      const url = new URL(u);
-      return `${url.hostname.replace(/^(job-boards|boards)\./, '')}/${url.pathname.split('/').filter(Boolean)[0] || ''}`;
-    } catch {
-      return '';
-    }
-  };
-  const k = key(pageUrl);
-  const opened = (await db.discovered.where('status').anyOf('applying', 'saved', 'new').toArray()).find((j) => key(j.url) === k);
+  const k = boardKey(pageUrl);
+  const opened = (await db.discovered.where('status').anyOf('applying', 'saved', 'new').toArray()).find((j) => boardKey(j.url) === k);
   if (!opened) return undefined;
   if (opened.source === 'page') return /linkedin/.test(opened.sourceLabel) ? 'LinkedIn' : /naukri/.test(opened.sourceLabel) ? 'Naukri' : /indeed/.test(opened.sourceLabel) ? 'Indeed' : 'Job board';
   if (opened.source === 'watchlist' || opened.source === 'yc') return 'Company website';

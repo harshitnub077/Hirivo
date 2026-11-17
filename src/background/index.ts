@@ -12,6 +12,8 @@ import { resumeAttachment } from '../services/multiOutreach';
 import { extractJobFromPage } from '../content/extractJob';
 import { extractJobListFromPage } from '../content/extractJobList';
 import type { ApplyReport } from '../services/autopilot/run';
+import { createTabSlots, type Lease } from './tabSlots';
+import { matchAppliedJob } from './appliedMatch';
 
 const RADAR_ALARM = 'radar-poll';
 const FOLLOWUP_ALARM = 'followup-check';
@@ -238,17 +240,25 @@ async function resumeAsBase64() {
 async function markApplied(pageUrl: string) {
   const applying = await db.discovered.where('status').equals('applying').toArray();
   if (applying.length === 0) return;
-  const boardKey = (u: string) => {
-    try {
-      const url = new URL(u);
-      return `${url.hostname.replace(/^(job-boards|boards)\./, '')}/${url.pathname.split('/').filter(Boolean)[0] || ''}`;
-    } catch {
-      return '';
-    }
-  };
-  const key = boardKey(pageUrl);
-  const match = applying.find((j) => boardKey(j.url) === key) || (applying.length === 1 ? applying[0] : undefined);
-  if (match) await db.discovered.update(match.id, { status: 'applied', appliedAt: Date.now() });
+  const match = matchAppliedJob(applying, pageUrl);
+  if (match) {
+    await db.discovered.update(match.id, { status: 'applied', appliedAt: Date.now() });
+    return;
+  }
+  // A submission on a board none of the opened jobs is on: don't guess which job it was.
+  let host = 'a job board';
+  try {
+    host = new URL(pageUrl).hostname;
+  } catch {
+    /* keep the generic name */
+  }
+  chrome.notifications.create(`applied-unmatched:${Date.now()}`, {
+    type: 'basic',
+    iconUrl: 'icons/icon128.png',
+    title: 'Which job did you apply to?',
+    message: `An application went through on ${host}, but Hirivo couldn’t tell which saved job it was. Mark it applied in Discover → Applied.`,
+    priority: 1,
+  });
 }
 
 // ---------- Autopilot ----------
@@ -272,25 +282,23 @@ async function ensureOffscreen() {
   await sleep(800); // let its message listener register before the first message
 }
 
-// At most two background tabs at a time, so a search never floods the browser.
-let tabsInUse = 0;
-const tabWaiters: (() => void)[] = [];
-async function withTabSlot<T>(fn: () => Promise<T>): Promise<T> {
-  if (tabsInUse >= 2) await new Promise<void>((r) => tabWaiters.push(r));
-  tabsInUse++;
-  try {
-    return await fn();
-  } finally {
-    tabsInUse--;
-    tabWaiters.shift()?.();
-  }
-}
+// At most two background tabs at a time, so a search never floods the browser. The held slots live in
+// chrome.storage.session, checked against the tabs still open, so the limit survives the worker sleeping.
+const TAB_SLOTS_KEY = 'tabSlots';
+const { withTabSlot, wake: wakeTabWaiters } = createTabSlots({
+  load: async () => ((await chrome.storage.session.get(TAB_SLOTS_KEY))[TAB_SLOTS_KEY] as Lease[] | undefined) ?? [],
+  save: (leases) => chrome.storage.session.set({ [TAB_SLOTS_KEY]: leases }),
+  openTabIds: async () => new Set((await chrome.tabs.query({})).map((t) => t.id).filter((id): id is number => id !== undefined)),
+  closeTab: (tabId) => chrome.tabs.remove(tabId),
+});
+chrome.tabs.onRemoved.addListener(() => wakeTabWaiters());
 
 /** Reads the job cards on a job-site results page in a background tab, then closes it. */
 async function scrapeInTab(url: string) {
-  return withTabSlot(async () => {
+  return withTabSlot(async (claim) => {
     const tab = await chrome.tabs.create({ url, active: false });
     try {
+      await claim(tab.id!);
       await waitForLoad(tab.id!);
       await sleep(2500); // results render after load on most job sites
       const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id! }, func: extractJobListFromPage });
@@ -318,37 +326,51 @@ function waitForLoad(tabId: number, timeoutMs = 30_000) {
 }
 
 async function readPageInTab(url: string) {
-  const tab = await chrome.tabs.create({ url, active: false });
-  try {
-    await waitForLoad(tab.id!);
-    await sleep(2500); // single-page boards render after load
-    const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id! }, func: extractJobFromPage });
-    return r?.result ?? null;
-  } finally {
-    chrome.tabs.remove(tab.id!).catch(() => undefined);
-  }
+  return withTabSlot(async (claim) => {
+    const tab = await chrome.tabs.create({ url, active: false });
+    try {
+      await claim(tab.id!);
+      await waitForLoad(tab.id!);
+      await sleep(2500); // single-page boards render after load
+      const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id! }, func: extractJobFromPage });
+      return r?.result ?? null;
+    } finally {
+      chrome.tabs.remove(tab.id!).catch(() => undefined);
+    }
+  });
 }
 
+/**
+ * Fills (and maybe submits) a form in a background tab. The tab counts against the limit until the
+ * report comes back; a tab kept open for the user to finish no longer holds a slot after that.
+ */
 async function applyInTab(url: string, submit: boolean, keepTab = true): Promise<ApplyReport> {
-  const tab = await chrome.tabs.create({ url, active: false });
-  const tabId = tab.id!;
-  await waitForLoad(tabId);
-  await sleep(3000);
-  let report: ApplyReport | undefined;
-  for (let i = 0; i < 10 && !report; i++) {
-    report = await chrome.tabs.sendMessage(tabId, { action: 'AUTOPILOT_FILL', submit }).catch(() => undefined);
-    if (report) break;
-    // Forms outside the built-in ATS list: load the form filler on demand (needs the any-site grant).
-    if (i === 2) await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] }).catch(() => undefined);
-    await sleep(1500);
-  }
-  if (!report) return { status: 'failed', filled: 0, written: 0, left: [], error: 'the form page never answered', tabId };
-  if (report.status === 'submitted') setTimeout(() => chrome.tabs.remove(tabId).catch(() => undefined), 5000);
-  else if (!keepTab) {
-    await chrome.tabs.remove(tabId).catch(() => undefined);
-    return { ...report, tabId: undefined };
-  }
-  return { ...report, tabId };
+  // Filling can wait on AI answers, so the lease lasts longer; and a form tab is never closed by expiry.
+  return withTabSlot(
+    async (claim) => {
+      const tab = await chrome.tabs.create({ url, active: false });
+      const tabId = tab.id!;
+      await claim(tabId);
+      await waitForLoad(tabId);
+      await sleep(3000);
+      let report: ApplyReport | undefined;
+      for (let i = 0; i < 10 && !report; i++) {
+        report = await chrome.tabs.sendMessage(tabId, { action: 'AUTOPILOT_FILL', submit }).catch(() => undefined);
+        if (report) break;
+        // Forms outside the built-in ATS list: load the form filler on demand (needs the any-site grant).
+        if (i === 2) await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] }).catch(() => undefined);
+        await sleep(1500);
+      }
+      if (!report) return { status: 'failed', filled: 0, written: 0, left: [], error: 'the form page never answered', tabId };
+      if (report.status === 'submitted') setTimeout(() => chrome.tabs.remove(tabId).catch(() => undefined), 5000);
+      else if (!keepTab) {
+        await chrome.tabs.remove(tabId).catch(() => undefined);
+        return { ...report, tabId: undefined };
+      }
+      return { ...report, tabId };
+    },
+    { closeOnExpiry: false, ttlMs: 300_000 }
+  );
 }
 
 async function sendEmail(m: { to: string; subject: string; body: string; attachResume: boolean }) {
