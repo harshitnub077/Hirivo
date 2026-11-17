@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { FitRequirement, JobSnapshot, ResumeFact } from '../../src/db';
+import type { ResumeFact } from '../../src/db';
 
 // The model is mocked: each test decides exactly what "the AI" returns, in call order.
 const replies: unknown[] = [];
@@ -12,8 +12,6 @@ vi.mock('../../src/llm/router', () => ({
 }));
 
 const { analyzeJobFit, applyMatches, cleanRequirements, computeFitScore } = await import('../../src/services/fitAdvisor');
-const { checkGrounding } = await import('../../src/services/proofWriter');
-const { db } = await import('../../src/db');
 
 const FRONTEND_FACTS: ResumeFact[] = [
   { id: 'FACT-01', category: 'METRIC', claim: 'Cut checkout page load time 38% by moving to React Server Components', sourceSnippet: '', verified: true },

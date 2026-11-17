@@ -154,7 +154,7 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
     const dump: Record<string, unknown> = { exportedAt: new Date().toISOString(), app: 'hirivo' };
     for (const table of db.tables) if (table.name !== 'llmCache') dump[table.name] = await table.toArray();
     const settingsRows = dump.settings as UserSettings[];
-    dump.settings = settingsRows.map(({ gmail, ...s }) => ({ ...s, groqApiKey: '', geminiApiKey: '', openrouterApiKey: '' }));
+    dump.settings = settingsRows.map(({ gmail: _gmail, ...s }) => ({ ...s, groqApiKey: '', geminiApiKey: '', openrouterApiKey: '' }));
     const url = URL.createObjectURL(new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url;
@@ -179,8 +179,8 @@ export function YouView({ settings, resume, facts, voiceProfile }: Props) {
       }
       const saved = Array.isArray(dump.settings) ? dump.settings[0] : undefined;
       if (saved) {
-        const { groqApiKey, geminiApiKey, openrouterApiKey, id, gmail, ...rest } = saved;
-        void groqApiKey, geminiApiKey, openrouterApiKey, id, gmail;
+        // Keys, the row id and the Gmail connection are never imported.
+        const { groqApiKey: _g, geminiApiKey: _ge, openrouterApiKey: _o, id: _id, gmail: _gm, ...rest } = saved;
         await patchSettings(rest);
       }
       flash(`Imported ${rows} items from ${file.name}.`);

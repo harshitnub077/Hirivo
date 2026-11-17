@@ -174,7 +174,7 @@ const CLAIM_VERBS =
 
 // "…cut AWS spend 22%, demonstrating strong Excel skills [FACT-06]": the add-on claims what the
 // fact never said. Cut from the participle to the tag or the end of the sentence.
-const EMBELLISH = /,?\s+(?:demonstrating|showing|proving|highlighting|reflecting|showcasing|underscoring|which (?:required|demanded|involved|taught me|shows|showed|demonstrates|demonstrated|proves|highlights|reflects))\b[^.!?\[]*/gi;
+const EMBELLISH = /,?\s+(?:demonstrating|showing|proving|highlighting|reflecting|showcasing|underscoring|which (?:required|demanded|involved|taught me|shows|showed|demonstrates|demonstrated|proves|highlights|reflects))\b[^.!?[]*/gi;
 
 /** Removes "…, demonstrating X" style add-ons from sentences, keeping the fact and its tag. */
 export function trimEmbellishment(text: string): string {

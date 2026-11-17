@@ -2,11 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 jobs:
-  build-and-test:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,9 +14,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: Read the version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
-          name: hirivo-extension
+          name: hirivo-extension-${{ steps.version.outputs.version }}
           path: dist/

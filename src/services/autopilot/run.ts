@@ -24,6 +24,7 @@ import { setJobStatus } from '../discover';
 import { companyDomainOf } from '../companyDomain';
 import { linkedInPosting } from '../discover/sources/linkedin';
 import { resolveCompanyPosting } from './resolve';
+import { lowFitReason } from './auto';
 
 export interface ApplyReport {
   status: 'submitted' | 'ready' | 'needs-you' | 'failed';
@@ -195,6 +196,12 @@ export async function processJob(item: AutopilotJob, host: AutopilotHost): Promi
   }
   if (!item.force && (checked.ghostScore ?? 0) >= 60 && checked.atsType !== 'unknown') {
     await logStep(id, `Skipped: ${checked.ghostReasons?.[0] || 'the role looks closed on the company’s own board.'}`, 'caution', { status: 'skipped', stage: undefined });
+    return;
+  }
+  // Automatic picks only go ahead when the real Fit check agrees; poor-fit applications get people reported.
+  const lowFit = lowFitReason(item, checked.fitScore, ap.minFit);
+  if (lowFit) {
+    await logStep(id, `Skipped: ${lowFit} Hand it over yourself to apply anyway.`, 'caution', { status: 'skipped', stage: undefined });
     return;
   }
 

@@ -363,6 +363,9 @@ export interface UserSettings {
   githubUrl?: string;
   portfolioUrl?: string;
   targetRoles?: string[];
+  // Never shown, saved as new, picked for the Daily 5 or handed to Autopilot.
+  excludeCompanies?: string[]; // company names, matched whole after normalising
+  excludeTitleWords?: string[]; // whole words or phrases in the title ("senior", "sales", "unpaid")
   // Saved answers for application forms. Empty means "ask me": Fill leaves that question for the user.
   currentCompany?: string;
   currentTitle?: string;
@@ -397,7 +400,8 @@ export interface UserSettings {
     linkedinNotes?: boolean; // prepare LinkedIn notes for the user to send (default on)
     autoApply?: boolean; // hand new matches from each search to Autopilot
     minScore?: number; // the lowest match score handed over automatically (default 60)
-    dailyLimit?: number; // most jobs handed over automatically per day; unset = no limit
+    dailyLimit?: number; // most jobs handed over automatically per day; unset = 10, never above 25
+    minFit?: number; // automatic picks below this Fit score are skipped (default 50)
   };
 }
 

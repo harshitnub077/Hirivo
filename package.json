@@ -1,7 +1,7 @@
 {
   "name": "hirivo",
   "displayName": "Hirivo: Real Jobs, Right People",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "private": true,
   "description": "Checks if a job is real, tells you honestly if you fit, finds who to message, and writes outreach that sounds like you.",
   "type": "module",
@@ -14,6 +14,9 @@
     "verify-seeds": "node scripts/verify-seeds.js",
     "store:screenshots": "node scripts/store-screenshots.js",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "test:e2e": "node tests/e2e/run.mjs",
     "test:live": "vitest run --config vitest.live.config.ts"
   },
@@ -31,6 +34,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@resvg/resvg-js": "^2.6.2",
     "@types/canvas-confetti": "^1.9.0",
     "@types/chrome": "^0.0.308",
@@ -38,9 +42,13 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "fake-indexeddb": "^6.2.5",
+    "globals": "^17.14.0",
     "jsdom": "^30.1.2",
     "typescript": "^5.8.2",
+    "typescript-eslint": "^8.73.0",
     "vite": "^6.2.1",
     "vitest": "^5.0.3"
   }

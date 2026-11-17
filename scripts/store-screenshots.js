@@ -80,7 +80,8 @@ async function connect(wsUrl) {
     const p = pending.get(msg.id);
     if (!p) return;
     pending.delete(msg.id);
-    msg.error ? p.reject(new Error(msg.error.message)) : p.resolve(msg.result);
+    if (msg.error) p.reject(new Error(msg.error.message));
+    else p.resolve(msg.result);
   };
   const send = (method, params = {}) =>
     new Promise((resolve, reject) => {

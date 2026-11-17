@@ -17,7 +17,9 @@ export function normalizeDescription(text: string): string {
     .replace(/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/g, ' ')
     .replace(/\b(?:posted|reposted|ago|today|yesterday|days?|weeks?|months?|hours?|minutes?)\b/g, ' ')
     .replace(/\d+/g, ' ')
-    .replace(/[^a-zऀ-ॿ]+/g, ' ')
+    // Keep Latin letters and the whole Devanagari block (its vowel signs are combining marks on purpose).
+    // eslint-disable-next-line no-misleading-character-class
+    .replace(/[^a-z\u0900-\u097F]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 8000);

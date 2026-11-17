@@ -37,7 +37,7 @@ async function connect(ws) {
   let id = 0; const pending = new Map(); const events = [];
   sock.onmessage = (e) => {
     const m = JSON.parse(e.data);
-    if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.rej(new Error(m.error.message)) : p.res(m.result); }
+    if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); if (m.error) p.rej(new Error(m.error.message)); else p.res(m.result); }
     else if (m.method) events.push(m);
   };
   const send = (method, params = {}) => new Promise((res, rej) => { pending.set(++id, { res, rej }); sock.send(JSON.stringify({ id, method, params })); });
@@ -202,7 +202,7 @@ try {
   });
 
   await step('evidence table cites only real facts', async () => {
-    const rows = await ev(P, `[...document.querySelectorAll('table tr, .evidence li, .evidence-row')].map(r => r.innerText.replace(/\\s+/g, ' ')).slice(0, 14)`);
+    const _rows = await ev(P, `[...document.querySelectorAll('table tr, .evidence li, .evidence-row')].map(r => r.innerText.replace(/\\s+/g, ' ')).slice(0, 14)`);
     const job = await ev(P, `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('jobs').objectStore('jobs').getAll(); q.onsuccess = () => res(q.result[0]); }; })`);
     const factIds = await ev(P, `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('facts').objectStore('facts').getAllKeys(); q.onsuccess = () => res(q.result); }; })`);
     const ev2 = job.fitEvidence || [];
@@ -239,7 +239,7 @@ try {
   });
 
   await step('Open in Gmail opens a prefilled compose window and logs the outreach', async () => {
-    const before = (await targets()).length;
+    const _before = (await targets()).length;
     await click('Open in Gmail');
     // Gmail opens in a new active tab, so the panel moves off this job: wait on the database instead.
     for (let i = 0; i < 30; i++) {
@@ -431,7 +431,7 @@ try {
     await shot('10-discover');
     const t = await text();
     const count = t.match(/(\d+) matching jobs, (\d+) new/)?.[0] || t.match(/For you\s*(\d+)/)?.[0];
-    const first = await ev(P, `[...document.querySelectorAll('.job-card .h2, .list-item .h2, .card .h2')].map(e => e.innerText).filter(x => !/Jobs for you|Your 5/.test(x)).slice(0, 4)`);
+    const _first = await ev(P, `[...document.querySelectorAll('.job-card .h2, .list-item .h2, .card .h2')].map(e => e.innerText).filter(x => !/Jobs for you|Your 5/.test(x)).slice(0, 4)`);
     const st = await ev(P, `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('settings').objectStore('settings').get('config'); q.onsuccess = () => res({ chosenRoles: q.result.chosenRoles, search: q.result.search }); }; })`);
     const all = (store) => `new Promise(res => { const r = indexedDB.open('HirivoDB'); r.onsuccess = () => { const q = r.result.transaction('${store}').objectStore('${store}').getAll(); q.onsuccess = () => res(q.result); }; })`;
     const fetches = await ev(P, all('sourceFetches'));

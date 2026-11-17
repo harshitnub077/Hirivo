@@ -35,7 +35,9 @@ export async function callGemini(
     let message = text;
     try {
       message = JSON.parse(text).error?.message || text;
-    } catch {}
+    } catch {
+      /* not JSON: keep the raw text */
+    }
     throw new ProviderError(`Gemini ${res.status}: ${message}`, res.status);
   }
 

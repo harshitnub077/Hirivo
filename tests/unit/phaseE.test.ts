@@ -9,6 +9,7 @@ vi.mock('../../src/llm/router', () => ({
 }));
 
 const { db } = await import('../../src/db');
+const { patchSettings } = await import('../../src/db/settings');
 const { buildDaily5, localDayKey, nextDailyAt, pickDaily5 } = await import('../../src/services/daily5');
 const { realVerdict } = await import('../../src/services/verdicts');
 
@@ -91,5 +92,17 @@ describe('buildDaily5 (end to end on the database)', () => {
     const row = await buildDaily5(NOW);
     expect(row.picks.map((p) => p.company)).toEqual(['Zeta']);
     expect(await db.daily.get(localDayKey(NOW))).toMatchObject({ picks: row.picks });
+  });
+
+  it('never picks an excluded company or title word', async () => {
+    const base = { source: 'remotive' as const, sourceLabel: 'Remotive', location: 'Remote', remote: true, tags: [], score: 90, matchReasons: [], status: 'new' as const, firstSeenAt: NOW, postedAt: NOW };
+    await db.discovered.bulkPut([
+      { ...base, id: 'r:1', title: 'Backend Engineer', company: 'Acme Inc.', url: 'https://remotive.com/1' },
+      { ...base, id: 'r:2', title: 'Senior Backend Engineer', company: 'Zeta', url: 'https://remotive.com/2' },
+      { ...base, id: 'r:3', title: 'Backend Engineer', company: 'Kite', url: 'https://remotive.com/3' },
+    ]);
+    await patchSettings({ excludeCompanies: ['acme'], excludeTitleWords: ['senior'] });
+    const row = await buildDaily5(NOW);
+    expect(row.picks.map((p) => p.company)).toEqual(['Kite']);
   });
 });

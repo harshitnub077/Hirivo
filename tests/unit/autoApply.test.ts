@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { pickAutoMatches } from '../../src/services/autopilot/auto';
+import { AUTO_DEFAULTS, effectiveDailyLimit, lowFitReason, pickAutoMatches } from '../../src/services/autopilot/auto';
 import { boardSlugs, resolveCompanyPosting, sameRole } from '../../src/services/autopilot/resolve';
 import { portalOf } from '../../src/services/autopilot/run';
 import { linkedInJobId, parseLinkedInPosting } from '../../src/services/discover/sources/linkedin';
@@ -33,12 +33,32 @@ describe('which new matches Autopilot takes', () => {
     expect(pickAutoMatches(rows, [queued('x', { company: 'Acme', createdAt: NOW - 86_400_000 })], on(), NOW).map((j) => j.id)).toEqual(['a']);
     expect(pickAutoMatches(rows, [queued('x', { company: 'Acme', createdAt: NOW - 8 * 86_400_000 })], on(), NOW)).toHaveLength(2);
   });
-  it('keeps to the daily limit when there is one, and has none otherwise', () => {
+  it('keeps to the daily limit: 10 unless set, never above 25', () => {
     const rows = Array.from({ length: 30 }, (_, i) => job(String(i)));
-    expect(pickAutoMatches(rows, [], on(), NOW)).toHaveLength(30);
+    expect(pickAutoMatches(rows, [], on(), NOW)).toHaveLength(AUTO_DEFAULTS.dailyLimit);
+    expect(pickAutoMatches(rows, [], on({ dailyLimit: 200 }), NOW)).toHaveLength(AUTO_DEFAULTS.maxDailyLimit);
+    expect(effectiveDailyLimit(undefined)).toBe(10);
+    expect(effectiveDailyLimit(0)).toBe(10);
+    expect(effectiveDailyLimit(3)).toBe(3);
     const today = [queued('t1', { auto: true }), queued('t2', { auto: true }), queued('t3', { auto: true, createdAt: NOW - 2 * 86_400_000 })];
     expect(pickAutoMatches(rows, today, on({ dailyLimit: 5 }), NOW)).toHaveLength(3);
     expect(pickAutoMatches(rows, [queued('m1'), queued('m2')], on({ dailyLimit: 5 }), NOW)).toHaveLength(5); // the user's own hand-overs don't count
+  });
+});
+
+describe('the user\'s exclusions and the fit gate', () => {
+  it('never hands over an excluded company or title word', () => {
+    const rows = [job('1', { company: 'Acme Pvt Ltd' }), job('2', { title: 'Sales Intern' }), job('3', { title: 'International Relations Intern' })];
+    const picked = pickAutoMatches(rows, [], { ...on(), excludeCompanies: ['ACME'], excludeTitleWords: ['sales'] }, NOW);
+    expect(picked.map((j) => j.id)).toEqual(['3']);
+  });
+  it('skips automatic picks with a poor Fit check, but not jobs the user handed over', () => {
+    expect(lowFitReason({ auto: true }, 30)).toMatch(/below your minimum of 50%/);
+    expect(lowFitReason({ auto: true }, 30, 20)).toBeUndefined();
+    expect(lowFitReason({ auto: true }, 70)).toBeUndefined();
+    expect(lowFitReason({ auto: true }, undefined)).toBeUndefined(); // no fit result: the score already passed
+    expect(lowFitReason({ auto: false }, 10)).toBeUndefined();
+    expect(lowFitReason({ auto: true, force: true }, 10)).toBeUndefined();
   });
 });
 

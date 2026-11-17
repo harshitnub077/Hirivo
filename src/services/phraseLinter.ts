@@ -199,7 +199,7 @@ const BANNED_RULES: Rule[] = [
 
 export function lintOutreachText(text: string): LinterResult {
   const issues: LinterIssue[] = [];
-  let cleanText = text;
+  const cleanText = text;
 
   for (const rule of BANNED_RULES) {
     let match: RegExpExecArray | null;

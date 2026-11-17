@@ -113,7 +113,7 @@ export async function tailorResume({ job, facts, resumeText, skills, useAI }: Ta
   const ranked = rankFacts(achievements, jobText, job.fitEvidence);
   const km = keywordMatch(jobText, `${resumeText}\n${facts.map((f) => f.claim).join('\n')}`);
 
-  let rewrites = new Map<string, string>();
+  const rewrites = new Map<string, string>();
   let summary: string | undefined;
   let summaryDroppedBecause: string | undefined;
 

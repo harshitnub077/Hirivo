@@ -5,6 +5,8 @@ import { db, DailyPick, DailyPicks, DiscoveredJob, JobSnapshot } from '../db';
 import { companyMatches } from './contactLadder';
 import { realVerdict, safetyVerdict, VerdictTone } from './verdicts';
 import { parsePostedDate } from './repostFingerprint';
+import { getSettings } from '../db/settings';
+import { isExcluded } from './targetFilter';
 
 const DAY = 86_400_000;
 export const DAILY_COUNT = 5;
@@ -143,7 +145,8 @@ export async function gatherCandidates(): Promise<Candidate[]> {
       };
     });
 
-  return [...analyzed, ...fromFeed];
+  const exclusions = await getSettings();
+  return [...analyzed, ...fromFeed].filter((c) => !isExcluded(c, exclusions));
 }
 
 /** Picks and saves today's five. Returns the saved row. */

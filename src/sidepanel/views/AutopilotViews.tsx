@@ -4,7 +4,7 @@ import { Bot, CheckCircle2, Circle, ExternalLink, Play, RefreshCw, RotateCcw, Tr
 import { db, type AutopilotJob, type UserSettings } from '../../db';
 import { patchSettings } from '../../db/settings';
 import { allowAnySite, canReadAnySite, handToAutopilot, startAutopilot } from '../../services/autopilot/client';
-import { AUTO_DEFAULTS, pickAutoMatches } from '../../services/autopilot/auto';
+import { AUTO_DEFAULTS, effectiveDailyLimit, pickAutoMatches } from '../../services/autopilot/auto';
 import { gmailConnected } from '../../services/gmail';
 import { openUrl } from '../../services/outreach';
 import { Callout, Pill, timeAgo } from '../ui';
@@ -88,7 +88,7 @@ export function AutopilotSettings({ settings }: { settings: UserSettings }) {
 
 /** "Apply automatically to new matches": each search hands its best new jobs to Autopilot. */
 function AutoApply({ settings, ap, set }: { settings: UserSettings; ap: typeof DEFAULTS & UserSettings['autopilot']; set: (p: Partial<typeof DEFAULTS>) => void }) {
-  const matches = useLiveQuery(async () => pickAutoMatches(await db.discovered.where('status').equals('new').toArray(), await db.autopilot.toArray(), { autopilot: { ...ap, enabled: true, autoApply: true } }), [ap.minScore, ap.dailyLimit]) ?? [];
+  const matches = useLiveQuery(async () => pickAutoMatches(await db.discovered.where('status').equals('new').toArray(), await db.autopilot.toArray(), { ...settings, autopilot: { ...ap, enabled: true, autoApply: true } }), [ap.minScore, ap.dailyLimit, settings.excludeCompanies, settings.excludeTitleWords]) ?? [];
   const [handed, setHanded] = useState<number | null>(null);
   const handOverNow = async () => {
     setHanded(await handToAutopilot(matches.map((j) => ({ url: j.url, title: j.title, company: j.company }))));
@@ -101,7 +101,8 @@ function AutoApply({ settings, ap, set }: { settings: UserSettings; ap: typeof D
         <b>Apply automatically to new matches</b>
       </label>
       <p className="small muted">
-        After each search (every 2 hours), new jobs at or above the score go to Autopilot by themselves, best first, at most {AUTO_DEFAULTS.perCompanyPerWeek} roles per company a week. On LinkedIn,
+        After each search (every 2 hours), new jobs at or above the score go to Autopilot by themselves, best first, at most {AUTO_DEFAULTS.perCompanyPerWeek} roles per company a week and{' '}
+        {effectiveDailyLimit(ap.dailyLimit)} a day (never more than {AUTO_DEFAULTS.maxDailyLimit}: a flood of applications gets people reported). Jobs whose Fit check comes in under the minimum fit are skipped. On LinkedIn,
         Naukri, Indeed and Internshala jobs, Hirivo applies on the company's own board when the same job is there; otherwise it emails and prepares notes, and leaves the portal's Apply button to you.
       </p>
       <div className="row wrap" style={{ gap: 10 }}>
@@ -118,12 +119,20 @@ function AutoApply({ settings, ap, set }: { settings: UserSettings; ap: typeof D
           <input
             type="number"
             min={1}
-            max={200}
+            max={AUTO_DEFAULTS.maxDailyLimit}
             style={{ width: 70 }}
-            placeholder="No limit"
+            placeholder={String(AUTO_DEFAULTS.dailyLimit)}
             defaultValue={settings.autopilot?.dailyLimit || ''}
-            onBlur={(e) => set({ dailyLimit: Number(e.target.value) || undefined } as Partial<typeof DEFAULTS>)}
+            onBlur={(e) => set({ dailyLimit: Number(e.target.value) ? Math.min(Number(e.target.value), AUTO_DEFAULTS.maxDailyLimit) : undefined } as Partial<typeof DEFAULTS>)}
           />
+        </label>
+        <label className="row small">
+          Lowest fit
+          <select value={ap.minFit ?? AUTO_DEFAULTS.minFit} onChange={(e) => set({ minFit: Number(e.target.value) } as Partial<typeof DEFAULTS>)} style={{ width: 70 }}>
+            {[30, 40, 50, 60, 70, 80].map((n) => (
+              <option key={n} value={n}>{n}%</option>
+            ))}
+          </select>
         </label>
       </div>
       {ap.enabled && matches.length > 0 && (

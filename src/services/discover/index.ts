@@ -5,6 +5,7 @@ import { db, DiscoveredJob, JobSource, SearchProfile, UserSettings } from '../..
 import { getSettings } from '../../db/settings';
 import { matchesTargets } from '../watchlist';
 import { cleanTargets } from '../targets';
+import { isExcluded } from '../targetFilter';
 import { fetchArbeitnow, fetchHimalayas, fetchJobicy, fetchRemoteOk, fetchRemotive } from './boards';
 import { fetchHn } from './hn';
 import { fetchYc } from './yc';
@@ -187,6 +188,7 @@ function toRow(raw: RawJob, result: { score: number; reasons: string[]; distance
  */
 export async function runDiscover({ force = false, host }: { force?: boolean; host?: SearchHost } = {}): Promise<DiscoverResult> {
   const profile = await getMatchProfile();
+  const exclusions = await getSettings();
   const existing = new Map((await db.discovered.toArray()).map((j) => [j.id, j]));
   const now = Date.now();
   const byKey = new Map<string, DiscoveredJob>();
@@ -201,6 +203,7 @@ export async function runDiscover({ force = false, host }: { force?: boolean; ho
     const rows: DiscoveredJob[] = [];
     for (const raw of raws) {
       if (!raw.title || !raw.company || !raw.url) continue;
+      if (isExcluded(raw, exclusions)) continue; // the user said never: not shown, not saved
       const key = dedupeKey(raw);
       const have = sameJob(raw, key);
       if (have && rankOf(raw.source) >= rankOf(have.source)) continue;

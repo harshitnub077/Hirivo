@@ -86,7 +86,7 @@ describe('Greenhouse (GitLab)', () => {
 describe('Lever (Palantir)', () => {
   it('fills text, radios, checkbox lists and a 3,000-option university list', async () => {
     load('lever-palantir-form.html');
-    const { qs, result } = await fillAll({ company: 'Palantir Technologies', jobCountry: 'Singapore' });
+    const { qs } = await fillAll({ company: 'Palantir Technologies', jobCountry: 'Singapore' });
     const val = (name: string) => (document.querySelector(`[name="${name}"]`) as HTMLInputElement).value;
     expect(val('name')).toBe('Aarav Mehta');
     expect(val('org')).toBe('Zeta');

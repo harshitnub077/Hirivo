@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronDown, CircleAlert, CircleCheck, RefreshCw } from 'lucide-react';
 import { db, type SearchProfile, type UserSettings } from '../../db';
 import { patchSettings } from '../../db/settings';
+import { parseList } from '../../services/targetFilter';
 import { searchDefaults, searchQueries, SOURCES } from '../../services/discover';
 import { CITIES } from '../../services/discover/geo';
 import { openUrl } from '../../services/outreach';
@@ -134,6 +135,23 @@ export function SearchCard({ settings, running, onSearch, children }: { settings
           onBlur={(e) => set({ minMonthlyPay: Number(e.target.value) || undefined })}
         />
       </Field>
+      <div className="grid-2">
+        <Field label="Never show these companies">
+          <input
+            defaultValue={(settings.excludeCompanies || []).join(', ')}
+            placeholder="Acme, Globex"
+            onBlur={(e) => patchSettings({ excludeCompanies: parseList(e.target.value) })}
+          />
+        </Field>
+        <Field label="Never show titles with">
+          <input
+            defaultValue={(settings.excludeTitleWords || []).join(', ')}
+            placeholder="senior, sales, unpaid"
+            onBlur={(e) => patchSettings({ excludeTitleWords: parseList(e.target.value) })}
+          />
+        </Field>
+      </div>
+      <p className="small muted">Comma-separated. Excluded jobs aren't saved, picked for your 5 or applied to; they disappear from Radar on the next search.</p>
       {children}
       <SourceHealth />
         </div>
