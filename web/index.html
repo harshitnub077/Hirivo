@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>hirivo · Get noticed. Get connected. Get hired.</title>
+    <meta name="description" content="A free Chrome extension for students and job seekers in India. Hirivo finds fresh internships and jobs on LinkedIn, Naukri, Indeed, Internshala and startup boards, checks each one is real and safe, finds the right people, writes to them and fills the application." />
+    <meta property="og:title" content="hirivo · Get noticed. Get connected. Get hired." />
+    <meta property="og:description" content="Fresh jobs near you, checked for scams, an honest fit score, the right people to write to, and applications filled. Free, private, and safe for your LinkedIn account." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="./og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#08090a" />
+    <link rel="icon" href="./brand/hirivo-icon-small.svg" type="image/svg+xml" />
+    <link rel="icon" href="./favicon.png" type="image/png" sizes="32x32" />
+    <script>try{var t=localStorage.getItem('hirivo-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+    <script type="module" src="./src/shell.ts"></script>
+  </head>
+  <body>
+    <!--header:index.html-->
+
+    <main id="main">
+      <section class="hero">
+        <div class="wrap">
+          <span class="pill"><span class="dot"></span>Free Chrome extension · built for India · no sign-up</span>
+          <h1><span>Get noticed.</span> <span>Get connected.</span> <em>Get hired.</em></h1>
+          <p class="lede">Hirivo finds the freshest internships and jobs near you on LinkedIn, Naukri, Indeed, Internshala, Unstop and startup boards. It checks every job is real and safe, tells you honestly if you fit, writes to the people who hire, and fills the application.</p>
+          <div class="ctas">
+            <a class="btn primary lg" href="{{SITE.installHref}}">{{icon:download}}{{SITE.installLabel}}</a>
+            <a class="btn lg" href="./scam-check.html">{{icon:shield-check}}Check a job for scams</a>
+          </div>
+          <p class="fine">Runs in Chrome's side panel. Your resume and data never leave your browser.</p>
+
+          <div class="stage">
+            <figure><img src="./shots/radar.png" alt="Radar: the day's matching jobs from every job site, ranked with reasons" width="380" height="720" loading="eager" /><figcaption>Radar · every site, one ranked list</figcaption></figure>
+            <figure><img src="./shots/now.png" alt="A job with four verdicts: Real, Fit, People and Safety, and the evidence behind each" width="380" height="720" loading="eager" /><figcaption>Now · four answers for the job on screen</figcaption></figure>
+            <figure><img src="./shots/pipeline.png" alt="Pipeline: emails sent, follow-ups due and LinkedIn notes ready to send" width="380" height="720" loading="lazy" /><figcaption>Pipeline · follow-ups that don't slip</figcaption></figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="how">
+        <div class="wrap">
+          <div class="band-head">
+            <h2>Four answers before you spend an evening on an application.</h2>
+            <p>Open any job and Hirivo answers the questions that decide whether it's worth your time, and shows the evidence behind every answer.</p>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="k">{{icon:circle-check}}Real</div>
+              <div class="v">Is it still open?</div>
+              <p>Looks for the role on the company's own hiring board and reads how long it has been up. Reposted and placeholder listings get flagged.</p>
+            </div>
+            <div class="verdict">
+              <div class="k">{{icon:gauge}}Fit</div>
+              <div class="v">Do you fit?</div>
+              <p>Every requirement next to the line on your resume that proves it, or marked as a gap. The score is counted from that table, never guessed.</p>
+            </div>
+            <div class="verdict">
+              <div class="k">{{icon:users}}People</div>
+              <div class="v">Who do you write to?</div>
+              <p>Founders, the hiring manager, HR and people you already know there, ranked by how close they are to the decision, each with a reason.</p>
+            </div>
+            <div class="verdict">
+              <div class="k">{{icon:shield-check}}Safety</div>
+              <div class="v">Is it safe?</div>
+              <p>Catches fee demands, OTP and bank requests, "task job" wording, WhatsApp-only recruiters and brand-new domains, quoting the exact words.</p>
+            </div>
+          </div>
+
+          <div class="steps" style="margin-top: 72px">
+            <div class="step">
+              <span class="n">01</span>
+              <h3>Upload your resume once</h3>
+              <p>Hirivo fills your profile, keeps only achievements it can trace to your resume, and suggests roles that fit you.</p>
+            </div>
+            <div class="step">
+              <span class="n">02</span>
+              <h3>Say what you want once</h3>
+              <p>Internship or job, your city and a radius, remote or on-site, how recent, and the minimum stipend or salary.</p>
+            </div>
+            <div class="step">
+              <span class="n">03</span>
+              <h3>Hirivo does the rounds</h3>
+              <p>It searches every two hours, sends your five best roles each morning at 8, writes the emails and fills the forms. You stay in charge.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band">
+        <div class="wrap">
+          <div class="feature">
+            <div class="copy">
+              <h3>Every job site, one list, the freshest first.</h3>
+              <p>One saved search runs across the portals you already use, plus startups that never post on them.</p>
+              <ul>
+                <li>{{icon:check}}<span><b>LinkedIn, Naukri, Indeed, Internshala and Unstop,</b> read from your own browser. LinkedIn is read logged-out, so your account is never touched.</span></li>
+                <li>{{icon:check}}<span><b>YC startups and Hacker News "Who is hiring",</b> found on their own Greenhouse, Lever and Ashby boards, plus the big remote boards.</span></li>
+                <li>{{icon:check}}<span><b>Posted time, distance and source on every job.</b> The same job on four sites shows once, with the best way to apply.</span></li>
+                <li>{{icon:check}}<span><b>Small teams filter</b> for under-100-person companies, where a direct email gets read.</span></li>
+              </ul>
+            </div>
+            <img class="shot" src="./shots/radar.png" alt="Radar with a saved search and ranked matches" width="380" height="720" loading="lazy" />
+          </div>
+
+          <div class="feature flip">
+            <div class="copy">
+              <h3>Write to the people who hire, in words that are true.</h3>
+              <p>Most applications vanish into a portal. A short note to the right person is what gets one read.</p>
+              <ul>
+                <li>{{icon:check}}<span><b>A ranked contact ladder</b> from the company's site, its YC page, LinkedIn pages you open, its GitHub and your own LinkedIn export.</span></li>
+                <li>{{icon:check}}<span><b>Emails where every claim is backed by your resume.</b> Sentences it can't back are cut before you see them.</span></li>
+                <li>{{icon:check}}<span><b>Write to up to five people at once,</b> each email written for their role, with your resume attached as a Gmail draft.</span></li>
+                <li>{{icon:check}}<span><b>Follow-ups on day 4 and day 9</b> that stop by themselves when someone replies.</span></li>
+              </ul>
+            </div>
+            <img class="shot" src="./shots/pipeline.png" alt="Pipeline with outreach and follow-ups" width="380" height="720" loading="lazy" />
+          </div>
+
+          <div class="feature">
+            <div class="copy">
+              <h3>Applications filled in seconds. You press Submit.</h3>
+              <p>Press <b>Fill with Hirivo</b> on Greenhouse, Lever, Ashby, Workable, Workday and Indian ATS forms like Keka, Darwinbox and Zoho Recruit.</p>
+              <ul>
+                <li>{{icon:check}}<span><b>The questions others skip:</b> notice period, CTC in LPA, CGPA, 10th and 12th marks, year of study, office days, visa and sponsorship.</span></li>
+                <li>{{icon:check}}<span><b>"Why do you want to work here?"</b> answered from your resume facts, in your voice.</span></li>
+                <li>{{icon:check}}<span><b>A clear list of what it left for you,</b> and why: consent boxes, diversity questions and anything your resume can't answer.</span></li>
+                <li>{{icon:check}}<span><b>Autopilot, if you want it:</b> research, email and apply for the jobs you hand it, with every step logged.</span></li>
+              </ul>
+            </div>
+            <img class="shot" src="./shots/now.png" alt="Evidence for a job: still open, safe, and the fit table" width="380" height="720" loading="lazy" />
+          </div>
+        </div>
+      </section>
+
+      <section class="band">
+        <div class="wrap">
+          <div class="band-head">
+            <h2>Built so you never have to apologise for it.</h2>
+            <p>Automation that sends things in your name has to earn your trust. These rules are written into the code, and tested on every change.</p>
+          </div>
+          <div class="grid3">
+            <div class="cell">{{icon:shield-check}}<h3>Safe for your LinkedIn</h3><p>Hirivo never clicks, connects, messages or applies on LinkedIn. It prepares the note; you press Send.</p></div>
+            <div class="cell">{{icon:list-checks}}<h3>Only what your resume backs</h3><p>Every sentence it writes is traced to a line on your resume. New numbers, tools or bigger titles are blocked.</p></div>
+            <div class="cell">{{icon:mail}}<h3>No guessed emails sent</h3><p>Addresses are confirmed from real ones at the company. Guesses are labelled, and Autopilot never sends to them.</p></div>
+            <div class="cell">{{icon:hard-drive}}<h3>Your data stays with you</h3><p>No Hirivo server, no account and no analytics. Export or delete everything in one click.</p></div>
+            <div class="cell">{{icon:send}}<h3>You press Send and Submit</h3><p>Unless you switch on Autopilot, which still won't tick a consent box, solve a CAPTCHA or touch LinkedIn.</p></div>
+            <div class="cell">{{icon:key}}<h3>Free AI, your choice</h3><p>Use a free Groq or Gemini key, or Chrome's on-device AI. Search, scam checks and form filling work with no key at all.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="compare">
+        <div class="wrap">
+          <div class="band-head">
+            <h2>Not another auto-apply bot.</h2>
+            <p>Spraying hundreds of applications gets accounts flagged and recruiters annoyed. Hirivo spends the effort where it pays: real jobs, the right people, honest words.</p>
+          </div>
+          <div class="compare-wrap">
+            <table class="compare">
+              <thead>
+                <tr><th scope="col"></th><th scope="col" class="us">hirivo</th><th scope="col">Typical auto-apply bot</th><th scope="col">Typical resume and tracker app</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Price</td><td class="us">Free</td><td>Monthly subscription for real use</td><td>Free tier, paid for the useful parts</td></tr>
+                <tr><td>Naukri, Internshala, Unstop</td><td class="us yes">{{icon:circle-check}}Searched together</td><td class="no">{{icon:circle-minus}}Often US boards only</td><td class="no">{{icon:circle-minus}}You bring the jobs</td></tr>
+                <tr><td>Checks the job is real and safe</td><td class="us yes">{{icon:circle-check}}Company board, scam signs, domain age</td><td class="no">{{icon:circle-minus}}Rarely</td><td class="no">{{icon:circle-minus}}Rarely</td></tr>
+                <tr><td>Finds people to write to</td><td class="us yes">{{icon:circle-check}}Founders, HR, hiring manager</td><td class="no">{{icon:circle-minus}}No</td><td class="no">{{icon:circle-minus}}Sometimes, often paid</td></tr>
+                <tr><td>What it writes about you</td><td class="us yes">{{icon:circle-check}}Only what your resume proves</td><td>Generated freely</td><td>Generated freely</td></tr>
+                <tr><td>LinkedIn account risk</td><td class="us yes">{{icon:circle-check}}None: never automated</td><td>Easy Apply bots can get accounts flagged</td><td>Low</td></tr>
+                <tr><td>Where your resume lives</td><td class="us yes">{{icon:circle-check}}Your browser only</td><td>Their servers</td><td>Their servers</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="tools">
+        <div class="wrap">
+          <div class="band-head">
+            <h2>Try it now, no install.</h2>
+            <p>Two of Hirivo's checks run right here in your browser. Nothing you paste is sent anywhere.</p>
+          </div>
+          <div class="tools">
+            <a class="tool-card" href="./scam-check.html">
+              {{icon:shield-check:lead}}
+              <h3>Is this job a scam?</h3>
+              <p>Paste a listing or a recruiter's message. Get the exact red flags: fees, OTP requests, task-job wording, personal emails, new domains.</p>
+              <span class="go">Check a job {{icon:arrow-right}}</span>
+            </a>
+            <a class="tool-card" href="./keyword-match.html">
+              {{icon:scan-search:lead}}
+              <h3>Resume keyword match</h3>
+              <p>See which skills and tools a job asks for that your resume never names, so applicant systems don't hide a real match.</p>
+              <span class="go">Match my resume {{icon:arrow-right}}</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="install">
+        <div class="wrap">
+          <div class="band-head">
+            <h2>Install in two minutes.</h2>
+            <p data-store-note>The Chrome Web Store listing is on its way. Until then, load Hirivo straight from its release, the same build the store will ship.</p>
+          </div>
+          <div class="steps">
+            <div class="step">
+              <span class="n">01</span>
+              <h3>Download</h3>
+              <p>Get <code>hirivo-extension.zip</code> from the <a href="{{SITE.downloadUrl}}" style="color: var(--brand)">latest release</a> and unzip it.</p>
+            </div>
+            <div class="step">
+              <span class="n">02</span>
+              <h3>Load it in Chrome</h3>
+              <p>Open <code>chrome://extensions</code>, turn on Developer mode, click <b>Load unpacked</b> and pick the unzipped folder.</p>
+            </div>
+            <div class="step">
+              <span class="n">03</span>
+              <h3>Open the side panel</h3>
+              <p>Click the hirivo icon, or press <code>Alt</code> + <code>H</code> on any page, and upload your resume.</p>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 36px">
+            <a class="btn primary lg" href="{{SITE.downloadUrl}}">{{icon:download}}Download the latest release</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="faq">
+        <div class="wrap">
+          <div class="band-head center"><h2>Questions</h2></div>
+          <div class="faq">
+            <details><summary>Is Hirivo really free?</summary><p>Yes. Everything works with free resources: the public job listings, free AI keys from Groq or Gemini (or Chrome's on-device AI), and your own Gmail. There is no Hirivo server to pay for, so there is nothing to charge you for.</p></details>
+            <details><summary>Can my LinkedIn account get banned?</summary><p>Hirivo never automates LinkedIn. It never clicks, connects, messages or applies there. Searches read LinkedIn's public, logged-out job listings, and it reads a LinkedIn page only when you open it and ask. Connection notes are written for you to copy and send yourself.</p></details>
+            <details><summary>Does it apply to jobs for me?</summary><p>By default it fills the application and you press Submit. If you switch on Autopilot, it can email and apply for the jobs you hand it, with limits: only verified email addresses, a daily cap, never a consent box or CAPTCHA, never LinkedIn, and every step logged in Pipeline.</p></details>
+            <details><summary>Do I need an AI key?</summary><p>No for search, scam and real-job checks, keyword match and form filling. A free key makes fit scores, emails and written answers better; getting a Groq key takes about a minute and Hirivo walks you through it.</p></details>
+            <details><summary>Where does my resume go?</summary><p>Into your browser's own storage, and nowhere else. AI requests go straight from your browser to the provider you chose, with your key. Read the full <a href="./privacy.html" style="color: var(--brand)">privacy policy</a>.</p></details>
+            <details><summary>Does it work outside India?</summary><p>Yes. Remote boards, YC startups and company career pages work anywhere, and the form filler handles international ATS. The portal search and some form answers (CTC in LPA, 10th and 12th marks) are tuned for India.</p></details>
+          </div>
+        </div>
+      </section>
+
+      <section class="closer">
+        <div class="wrap">
+          {{mark:44}}
+          <h2>Five real jobs a day.<br />The right person to write to.</h2>
+          <p>And a message that sounds like you.</p>
+          <div class="ctas">
+            <a class="btn primary lg" href="{{SITE.installHref}}">{{icon:download}}{{SITE.installLabel}}</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!--footer-->
+  </body>
+</html>

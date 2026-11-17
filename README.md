@@ -59,6 +59,15 @@ npm run test:e2e        # full flow in real Chrome with your keys (GROQ_API_KEY,
 npm run verify-seeds    # re-checks the watchlist suggestion list against live boards
 npm run generate-icons  # brand SVGs → PNG icons and store tile
 npm run store:screenshots  # Chrome Web Store screenshots from the demo panel (needs Chrome)
+npm run site:dev        # the website on http://localhost:5200 (landing page, free tools, privacy policy)
+npm run site:build      # static site → web-dist/ (deployed to GitHub Pages by .github/workflows/site.yml)
+npm run site:assets     # re-capture the website's panel images and social preview (needs Playwright)
 ```
 
-See [HIRIVO_MASTER_PLAN.md](HIRIVO_MASTER_PLAN.md) for the roadmap, the rules every contributor follows, and ready-to-paste prompts for each next phase.
+## Website
+
+`web/` is Hirivo's public site: the landing page, two free tools that run the extension's own code in the browser (**Is this job a scam?** with Scam Shield and the domain check, and **Resume keyword match**), and the privacy policy rendered from `docs/privacy.md`. It is static, with no server, analytics or third-party requests. Links that change at launch (the Chrome Web Store URL) live in `web/site.config.ts`.
+
+Releases: push a tag like `v3.2.0` and `.github/workflows/release.yml` publishes a ready-to-load `hirivo-extension.zip` on GitHub Releases.
+
+See [STARTUP_PLAN.md](STARTUP_PLAN.md) for the audit, competitors, roadmap and go-to-market, and [HIRIVO_MASTER_PLAN.md](HIRIVO_MASTER_PLAN.md) for the product roadmap, the rules every contributor follows, and ready-to-paste prompts for each next phase.

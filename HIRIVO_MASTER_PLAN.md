@@ -4,6 +4,8 @@
 
 Positioning line: *"Five real jobs a day, the right person to message, and a message that sounds like you."*
 
+The startup side (audit, competitors, milestones M5–M10, go-to-market, metrics) is in [STARTUP_PLAN.md](STARTUP_PLAN.md).
+
 This file is the single source of truth for anyone building Hirivo: you, Antigravity, or Claude. Read **Rules for every builder** before changing code.
 
 ---
@@ -43,7 +45,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 
 ---
 
-## 3. What exists today (v3.1.0, built and verified)
+## 3. What exists today (v3.2.0, built and verified)
 
 | Area | Status | Where |
 |---|---|---|
@@ -78,6 +80,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Fill: every common question answered from the profile, the resume or the job: durations matched across forms ("30 days" ↔ "1 month" ↔ "Within 30 days"), unit-aware boxes (in days, in LPA, per annum), campus fields (branch, CGPA from the resume, year of study from the graduation year, 10th/12th, qualification level), city/state/PIN/address/dial code, office days and hybrid weeks from the job's city and the user's radius or relocation, sponsorship from the job's saved location, "how did you hear" from the source or the company's own site; probe of 31 real questions went from 11 to 27 handled | Done (v2.14) | `content/formEngine.ts`, `services/formAutofill.ts`, `tests/unit/formScenarios.test.ts` |
 | v3 M4 Loop: "Apply automatically to new matches" (each search hands new jobs ≥ the minimum score to Autopilot, best first, ≤2 roles per company a week, optional daily limit, never a job the user acted on); portal jobs (LinkedIn, Naukri, Indeed, Internshala, Unstop) matched to the company's own Greenhouse/Lever/Ashby posting and applied there, else research + emails + LinkedIn notes and the portal's Apply left to the user; LinkedIn read logged-out (guest job page); 1-3 minutes between applications; automatic runs notify once per search and close their tabs | Done (v3.0) | `services/autopilot/auto.ts`, `autopilot/resolve.ts`, `autopilot/run.ts`, `tests/unit/autoApply.test.ts` |
 | UI redesign: the category standard for dark tools at Linear / Raycast / Vercel-Geist craft. Hairline-split full-bleed sections instead of a card stack; a one-piece verdict instrument; one jade primary per view; underline sub-tabs and a bottom nav with sliding indicators; tabular mono figures; a two-step Lucide scale; 140/200ms ease-out-expo motion with count-up, check-draw and staggered rows, all off under reduced motion; Radar leads with the ranked list (the search folds to one line); light theme tuned separately. Recorded in DESIGN.md and .impeccable/design.json | Done (v3.1) | `src/sidepanel/styles/globals.css`, `ui.tsx`, `DESIGN.md` |
+| Website and distribution (v3.2): static site in `web/` (landing page, free Scam check and Keyword match running the extension's own `scamShield`, `legitimacyScorer`, `keywordMatch` and `resumeFile`, privacy policy rendered from `docs/privacy.md`), GitHub Pages deploy, tagged releases ship `hirivo-extension.zip`; audit hardening: privileged background messages only from Hirivo pages, no header injection in Gmail mail | Done | `web/`, `vite.web.config.ts`, `.github/workflows/site.yml`, `release.yml`, `src/background/senders.ts`, `STARTUP_PLAN.md` |
 | Portal apply on Naukri and Internshala (logged-in sessions) | Deferred by the owner (Oct 2026): needs the owner's sign-in to capture the apply forms | |
 | Gmail power mode (optional, user's own OAuth client): code + PKCE via launchWebAuthFlow, real drafts, follow-ups in-thread, replies detected every 3 h or on Check now, follow-ups stop on reply; permissions requested only on Connect | Done (Phase F) | `src/services/gmail.ts`, `views/GmailSection.tsx` |
 | Dark-first redesign with light/system themes | Done | `src/sidepanel/styles/globals.css`, `views/YouView.tsx` |
@@ -87,7 +90,7 @@ This file is the single source of truth for anyone building Hirivo: you, Antigra
 | Full application fill (v2.10): a content-only form engine reads every question (text, textarea, select, React dropdown, typeahead, radio, checkbox list, Yes/No buttons), answers from the profile and saved Application answers, sends open questions to the user's AI key (answers grounded in resume facts, unsupported sentences cut, company-name typos fixed), and shows a card of filled / written / left-for-you with reasons. Never ticks consent, never answers diversity questions unless the user opted to decline, never picks a "Yes, <specific visa>" variant, never submits. Tested on saved real forms (GitLab/Greenhouse, Palantir/Lever, Notion/Ashby) and live in Chrome | Done | `src/content/formEngine.ts`, `src/content/index.ts`, `src/services/formAnswers.ts`, `views/YouView.tsx` |
 | Write to up to 5 people: ladder contacts or typed work addresses, one role-aware email each (founder, hiring manager, recruiter, inbox, connection), unsupported sentences cut, Gmail drafts with the resume attached (multipart MIME) or one compose window at a time | Done | `src/services/multiOutreach.ts`, `views/ReachOutCard.tsx`, `src/services/gmail.ts` |
 | Autopilot (v2.11, opt-in): hand it any jobs (Now, Radar, all saved). For each: posting from the ATS API (or the page in a background tab), company website found and verified by its homepage, Real/Safety/Fit checks (shared `jobChecks.ts`), team page + GitHub + news research, one grounded email per verified address sent through the user's Gmail (resume attached, spaced out, daily cap), follow-ups sent in-thread, then the form filled in a background tab and submitted when nothing required is left. Pauses with a notification for consent ticks, CAPTCHAs and required questions it can't answer. Research runs in an offscreen document (DOMParser) | Done | `src/services/autopilot/*`, `src/offscreen/index.ts`, `views/AutopilotViews.tsx` |
-| Tests: 289 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
+| Tests: 373 unit tests incl. a real Greenhouse form fixture; live checks incl. 126 real postings that must pass Scam Shield; GitHub Actions CI | Done | `tests/`, `.github/workflows/ci.yml` |
 
 **Commands**
 

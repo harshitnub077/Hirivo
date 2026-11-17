@@ -9,3 +9,6 @@ tests/e2e/shots/
 .impeccable/review/
 .impeccable/decision/
 .impeccable/mocks/
+
+# Website build output
+web-dist/

@@ -1,10 +1,12 @@
 # Chrome Web Store listing
 
 **Name:** Hirivo: Real Jobs, Right People
-**Version:** 3.1.0
+**Version:** 3.2.0
 **Category:** Productivity
 **Language:** English (India), English
-**Privacy policy:** [docs/privacy.md](docs/privacy.md). Publish it at a public URL (GitHub Pages, or the file's GitHub link) and paste that link into the dashboard.
+**Privacy policy:** [docs/privacy.md](docs/privacy.md), published by the website as `privacy.html` (GitHub Pages: `https://harshitnub077.github.io/Hirivo/privacy.html` once Pages is on). Paste that link into the dashboard.
+
+**Homepage URL:** the website's `index.html` on the same Pages address. When the listing is live, set `storeUrl` in `web/site.config.ts` so every "Add to Chrome" button points at the store.
 
 ## Short description (≤132 chars)
 Finds internships and jobs near you on LinkedIn, Naukri and more, emails the right people, and fills every application for you.

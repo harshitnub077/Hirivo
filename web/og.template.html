@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Social preview (1200×630). Rendered to web/public/og.png by scripts/site-assets.js. -->
+<html data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <script type="module" src="./src/shell.ts"></script>
+    <style>
+      body { margin: 0; width: 1200px; height: 630px; overflow: hidden; display: grid; grid-template-columns: 1fr 380px; gap: 56px; align-items: center; padding: 0 72px; box-sizing: border-box; }
+      .logo { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 30px; letter-spacing: -0.03em; }
+
+      body h1 { font-size: 66px; line-height: 1.02; letter-spacing: -0.045em; margin: 34px 0 22px; }
+      body h1 em { font-style: normal; color: var(--brand); }
+      body p { font-size: 25px; color: var(--ink-2); line-height: 1.4; max-width: 30ch; }
+      .shot { border-radius: 18px; overflow: hidden; box-shadow: var(--shot-shadow); align-self: start; margin-top: 64px; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="logo">{{mark:38}}hirivo</div>
+      <h1>Get noticed.<br />Get connected.<br /><em>Get hired.</em></h1>
+      <p>Real jobs near you, the right people to write to, applications filled. Free.</p>
+    </div>
+    <img class="shot" src="./shots/now.png" alt="" />
+  </body>
+</html>

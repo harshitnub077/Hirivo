@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Resume keyword match: free ATS keyword checker · hirivo</title>
+    <meta name="description" content="Paste a job description and upload your resume. See which skills and tools the job names that your resume never mentions, so applicant tracking systems don't hide a real match. Free, private, runs in your browser." />
+    <meta property="og:title" content="Resume keyword match: free ATS check" />
+    <meta property="og:description" content="Which skills does the job ask for that your resume never names? Free, and your resume never leaves your browser." />
+    <meta property="og:image" content="./og.png" />
+    <meta name="theme-color" content="#08090a" />
+    <link rel="icon" href="./brand/hirivo-icon-small.svg" type="image/svg+xml" />
+    <script>try{var t=localStorage.getItem('hirivo-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+    <script type="module" src="./src/shell.ts"></script>
+    <script type="module" src="./src/tools/keywords.ts"></script>
+  </head>
+  <body>
+    <!--header:keyword-match.html-->
+    <main id="main" class="wrap">
+      <div class="tool-hero">
+        <h1>Resume keyword match</h1>
+        <p>Recruiters search applicant systems for exact words. If the job says “PostgreSQL” and your resume says “databases”, a real match can stay hidden. See what's missing, then add it only if it's true.</p>
+      </div>
+
+      <div class="tool-layout">
+        <form class="panel" id="kw-form" novalidate>
+          <h2>Job and resume</h2>
+          <div class="field">
+            <label for="job">Job description</label>
+            <textarea class="textarea" id="job" placeholder="Paste the full job description"></textarea>
+          </div>
+          <div class="field">
+            <label for="resume">Your resume</label>
+            <label class="drop" for="file">{{icon:upload}}<span id="file-label">Upload a PDF, DOCX or TXT, or paste below</span><input id="file" type="file" accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" /></label>
+            <textarea class="textarea" id="resume" style="min-height: 160px" placeholder="…or paste your resume text"></textarea>
+          </div>
+          <div class="row">
+            <button class="btn primary" type="submit">{{icon:scan-search}}Match keywords</button>
+            <button class="btn ghost" type="button" id="sample">Try a sample</button>
+          </div>
+          <p class="err" id="err" role="alert" hidden></p>
+        </form>
+
+        <section class="panel" id="result" aria-live="polite" aria-label="Result">
+          <div class="result-empty">
+            {{icon:scan-search}}
+            The keywords the job names show here, with the ones your resume is missing.
+          </div>
+        </section>
+      </div>
+    </main>
+    <!--footer-->
+  </body>
+</html>

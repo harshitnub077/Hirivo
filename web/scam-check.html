@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Is this job a scam? Free job scam checker · hirivo</title>
+    <meta name="description" content="Paste a job listing or recruiter message. Hirivo's Scam Shield flags registration fees, OTP and bank requests, task-job wording, WhatsApp-only recruiters, personal emails and brand-new company domains, quoting the exact words. Free, runs in your browser." />
+    <meta property="og:title" content="Is this job a scam? Free checker" />
+    <meta property="og:description" content="Flags fees, OTP requests, task-job scams, personal-email recruiters and new domains. Nothing you paste leaves your browser." />
+    <meta property="og:image" content="./og.png" />
+    <meta name="theme-color" content="#08090a" />
+    <link rel="icon" href="./brand/hirivo-icon-small.svg" type="image/svg+xml" />
+    <script>try{var t=localStorage.getItem('hirivo-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+    <script type="module" src="./src/shell.ts"></script>
+    <script type="module" src="./src/tools/scam.ts"></script>
+  </head>
+  <body>
+    <!--header:scam-check.html-->
+    <main id="main" class="wrap">
+      <div class="tool-hero">
+        <h1>Is this job a scam?</h1>
+        <p>Paste the listing, or the message a "recruiter" sent you. Hirivo's Scam Shield checks it for the patterns behind most fake jobs in India and quotes the exact words that worry it. Everything runs in your browser.</p>
+      </div>
+
+      <div class="tool-layout">
+        <form class="panel" id="scam-form" novalidate>
+          <h2>The job</h2>
+          <div class="field">
+            <label for="title">Job title</label>
+            <input class="input" id="title" name="title" autocomplete="off" placeholder="e.g. Data entry intern, work from home" />
+          </div>
+          <div class="field">
+            <label for="desc">Listing or message</label>
+            <textarea class="textarea" id="desc" name="desc" required placeholder="Paste the full job description, WhatsApp message or email here"></textarea>
+          </div>
+          <div class="row split">
+            <div class="field" style="margin-top: 0">
+              <label for="domain">Company website <span class="hint">optional</span></label>
+              <input class="input" id="domain" name="domain" inputmode="url" autocomplete="off" placeholder="acme.com" />
+            </div>
+            <div class="field" style="margin-top: 0">
+              <label for="email">Recruiter's email <span class="hint">optional</span></label>
+              <input class="input" id="email" name="email" type="email" autocomplete="off" placeholder="hr@acme.com" />
+            </div>
+          </div>
+          <p class="hint" style="margin-top: 10px; font-size: 13px; color: var(--muted)">With a website, Hirivo also looks up how old the domain is and whether it receives email (public RDAP and DNS records). Nothing else leaves your browser.</p>
+          <div class="row">
+            <button class="btn primary" type="submit" id="go">{{icon:shield-check}}Check this job</button>
+            <button class="btn ghost" type="button" id="sample">Try a sample</button>
+          </div>
+          <p class="err" id="err" role="alert" hidden></p>
+        </form>
+
+        <section class="panel" id="result" aria-live="polite" aria-label="Result">
+          <div class="result-empty">
+            {{icon:shield}}
+            Your result shows here: a verdict, and every reason behind it.
+          </div>
+        </section>
+      </div>
+    </main>
+    <!--footer-->
+  </body>
+</html>
