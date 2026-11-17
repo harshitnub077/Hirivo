@@ -12,6 +12,7 @@ import { resumeAttachment } from '../services/multiOutreach';
 import { extractJobFromPage } from '../content/extractJob';
 import { extractJobListFromPage } from '../content/extractJobList';
 import type { ApplyReport } from '../services/autopilot/run';
+import { PRIVILEGED, fromExtensionPage } from './senders';
 
 const RADAR_ALARM = 'radar-poll';
 const FOLLOWUP_ALARM = 'followup-check';
@@ -167,7 +168,7 @@ async function checkGmailReplies() {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: `${record.recipientName} replied`,
-        message: `About ${record.jobTitle} at ${record.companyName}. Follow-ups stopped; your interview pack is one click away in Pipeline.`,
+        message: `About ${record.jobTitle} at ${record.companyName}. Follow-ups stopped. Open Gmail to answer, and see the thread in Pipeline.`,
         priority: 2,
       });
     }
@@ -373,7 +374,12 @@ chrome.notifications.onClicked.addListener(async (id) => {
   if (win.id !== undefined) await chrome.sidePanel.open({ windowId: win.id }).catch(() => undefined);
 });
 
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (PRIVILEGED.has(request?.action) && !fromExtensionPage(sender, chrome.runtime.id)) {
+    sendResponse({ error: 'not allowed from this page' });
+    return false;
+  }
   if (request.action === 'GET_FILL_PROFILE') {
     Promise.all([getSettings(), db.resumes.get('primary'), sourceForUrl(String(request.url || '')), jobForPage(String(request.url || ''))])
       .then(([settings, resume, source, job]) =>

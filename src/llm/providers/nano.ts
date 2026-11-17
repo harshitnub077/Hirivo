@@ -14,10 +14,13 @@ declare const LanguageModel:
     }
   | undefined;
 
+// Chrome asks every session to declare its languages; without them it logs a warning and may refuse.
+const LANGS = { expectedInputs: [{ type: 'text', languages: ['en'] }], expectedOutputs: [{ type: 'text', languages: ['en'] }] };
+
 export async function nanoAvailability(): Promise<Availability> {
   try {
     if (typeof LanguageModel === 'undefined') return 'unavailable';
-    return await LanguageModel.availability();
+    return await (LanguageModel.availability as (o?: unknown) => Promise<Availability>)(LANGS);
   } catch {
     return 'unavailable';
   }
@@ -26,7 +29,7 @@ export async function nanoAvailability(): Promise<Availability> {
 // Starts the one-time model download. Must be called from a user click.
 export async function prepareNano(): Promise<Availability> {
   if (typeof LanguageModel === 'undefined') return 'unavailable';
-  const session = await LanguageModel.create();
+  const session = await LanguageModel.create(LANGS);
   session.destroy();
   return nanoAvailability();
 }
@@ -37,6 +40,7 @@ export async function callNano(messages: LLMMessage[], options: CompletionOption
   }
   const system = messages.find((m) => m.role === 'system');
   const session = await LanguageModel.create({
+    ...LANGS,
     temperature: options.temperature ?? 0.2,
     topK: 3,
     initialPrompts: system ? [{ role: 'system', content: system.content }] : [],

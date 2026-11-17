@@ -84,12 +84,15 @@ export interface MailAttachment {
 
 const wrap76 = (b64: string) => b64.replace(/.{76}/g, '$&\r\n');
 
+// Header values come from scraped pages and typed fields: a CR or LF would start a new header.
+const oneLine = (v: string) => v.replace(/[\r\n]+/g, ' ').trim();
+
 export function buildRawMessage(m: { to: string; subject: string; body: string; inReplyTo?: string; references?: string; attachment?: MailAttachment }): string {
   const headers = [
-    `To: ${m.to}`,
+    `To: ${oneLine(m.to)}`,
     `Subject: =?UTF-8?B?${utf8B64(m.subject)}?=`,
     'MIME-Version: 1.0',
-    ...(m.inReplyTo ? [`In-Reply-To: ${m.inReplyTo}`, `References: ${m.references || m.inReplyTo}`] : []),
+    ...(m.inReplyTo ? [`In-Reply-To: ${oneLine(m.inReplyTo)}`, `References: ${oneLine(m.references || m.inReplyTo)}`] : []),
   ];
   const body = wrap76(utf8B64(m.body.replace(/\r?\n/g, '\r\n')));
   if (!m.attachment) {
@@ -109,7 +112,7 @@ export function buildRawMessage(m: { to: string; subject: string; body: string; 
     '',
     body,
     `--${boundary}`,
-    `Content-Type: ${m.attachment.type || 'application/octet-stream'}; name=${encodedName}`,
+    `Content-Type: ${oneLine(m.attachment.type || 'application/octet-stream')}; name=${encodedName}`,
     `Content-Disposition: attachment; filename=${encodedName}`,
     'Content-Transfer-Encoding: base64',
     '',

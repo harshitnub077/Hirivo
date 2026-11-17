@@ -89,6 +89,12 @@ describe('messages', () => {
     expect(utf8(body)).toBe('Hi Neha,\r\nBumping this.');
     expect(fromB64Url(toBase64Url(raw))).toBe(raw);
   });
+
+  it('never lets a scraped or typed address add a header', () => {
+    const raw = buildRawMessage({ to: 'hr@acme.com\r\nBcc: everyone@list.com', subject: 'Hi', body: 'x', inReplyTo: '<a@b>\nBcc: x@y.com' });
+    const head = raw.split('\r\n\r\n')[0];
+    expect(head.split('\r\n').some((l) => l.startsWith('Bcc:'))).toBe(false);
+  });
 });
 
 describe('reply detection', () => {

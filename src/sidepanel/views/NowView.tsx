@@ -48,7 +48,7 @@ function GettingStarted({ hasResume, hasKey, settings, goTo }: { hasResume: bool
   const connections = useLiveQuery(() => db.connections.count(), []) ?? 0;
   const steps = [
     { done: hasResume, label: 'Upload your resume', hint: 'Fills your profile and finds your achievements.', go: undefined as ViewId | undefined },
-    { done: (settings.targetRoles?.length ?? 0) > 0, label: 'Pick the roles you want', hint: 'Discover finds jobs for them every 12 hours.', go: 'radar' as ViewId },
+    { done: (settings.targetRoles?.length ?? 0) > 0, label: 'Pick the roles you want', hint: 'Hirivo searches for them every 2 hours.', go: 'radar' as ViewId },
     { done: hasKey, label: 'Add a free AI key', hint: 'For fit scores, emails and answers. Groq takes a minute.', go: 'you' as ViewId },
     { done: connections > 0, label: 'Import your LinkedIn connections', hint: 'Shows people you already know at each company.', go: 'you' as ViewId },
   ];
